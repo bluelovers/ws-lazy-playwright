@@ -52,3 +52,5 @@ export const __TEST_FIXTURES = path.join(__TEST_ROOT, 'fixtures');
  * @default test/temp
  */
 export const __TEST_TEMP = path.join(__TEST_ROOT, 'temp');
+
+export const __TEST_TEMP_STORAGE = path.join(__TEST_TEMP, 'temp-storage');

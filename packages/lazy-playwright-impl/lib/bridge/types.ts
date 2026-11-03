@@ -42,6 +42,12 @@ export interface IBridgeRequest
 	args: readonly unknown[];
 }
 
+/** 經由 console 訊息傳遞的命令請求；`id` 用於配對回應 */
+export interface IBridgeConsoleRequest extends IBridgeRequest
+{
+	id: string;
+}
+
 /** 通訊回應：頁面端據 `ok` 決定 resolve 或 reject */
 export interface IBridgeResponse
 {
@@ -59,6 +65,20 @@ export interface IBridgeOptions
 	exposeGlobal?: boolean;
 	/** 便利函式名稱，預設 `DEFAULT_BRIDGE_GLOBAL_NAME` */
 	globalName?: string;
+	/**
+	 * 是否啟用 console 訊息通道（由頁面 console 偵測命令），預設 `false`
+	 *
+	 * 純 Node 端聽取，屬非侵入式：不會注入任何腳本。
+	 */
+	useConsole?: boolean;
+	/**
+	 * 是否經由 `addInitScript` 注入 console 通道的頁面端便利函式，預設 `false`
+	 *
+	 * 需先啟用 `useConsole`；僅注入腳本供頁面呼叫，不影響聽取行為。
+	 */
+	exposeConsoleGlobal?: boolean;
+	/** console 通道便利函式名稱，預設 `DEFAULT_BRIDGE_CONSOLE_GLOBAL_NAME` */
+	consoleGlobalName?: string;
 }
 
 /** 通訊協議介面：註冊任意命令並接線至 context */
@@ -67,6 +87,12 @@ export interface IBrowserBridge
 	readonly fakeApiBase: string;
 	readonly globalName: string;
 	readonly exposeGlobal: boolean;
+	/** 是否啟用 console 訊息通道（非侵入式，不注入腳本） */
+	readonly useConsole: boolean;
+	/** 是否注入 console 通道的頁面端便利函式 */
+	readonly exposeConsoleGlobal: boolean;
+	/** console 通道便利函式名稱 */
+	readonly consoleGlobalName: string;
 
 	/** 已註冊的命令名稱 */
 	readonly commands: readonly string[];
