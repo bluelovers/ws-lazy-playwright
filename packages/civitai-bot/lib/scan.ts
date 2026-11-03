@@ -12,6 +12,11 @@ import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './t
  * - 單日目錄（basename 為 `YYYY-MM-DD`）：起始天即該日，根目錄為其上層
  * - 根目錄：需以 `range.startDay` 指定起始天，否則記錄後結束
  *
+ * 天目錄的產出：
+ *
+ * - 含子目錄 → 各子目錄為執行單位
+ * - 僅含檔案、無子目錄（如 `txt2img-images\YYYY-MM-DD` 直接含圖檔）→ 天目錄本身為執行單位
+ *
  * 過濾順序：`startDay` → `endDay` → `startTask`（僅首個有任務的天）→ `maxTasks` / `maxDays`。
  * `maxDays` 僅計算實際有任務的天。
  *
@@ -51,7 +56,9 @@ export async function* iterateTaskDirs(
 		if (range.maxTasks !== undefined && produced >= range.maxTasks) break;
 		if (range.maxDays !== undefined && daysWithTask >= range.maxDays) break;
 
-		let names = (await readdir(join(root, day), { withFileTypes: true }).catch(() => []))
+		const items = await readdir(join(root, day), { withFileTypes: true }).catch(() => []);
+
+		let names = items
 			.filter(entry => entry.isDirectory())
 			.map(entry => entry.name)
 			.sort((a, b) => a.localeCompare(b));
@@ -73,7 +80,21 @@ export async function* iterateTaskDirs(
 			}
 		}
 
-		if (!names.length) continue;
+		if (!names.length)
+		{
+			/**
+			 * 純圖檔天目錄（僅含檔案、無子目錄）：天目錄本身即執行單位，
+			 * 使 `txt2img-images\YYYY-MM-DD` 這類路徑可掃描並納入進度接續
+			 */
+			if (items.some(entry => entry.isFile()))
+			{
+				daysWithTask++;
+				produced++;
+				yield join(root, day);
+			}
+
+			continue;
+		}
 
 		daysWithTask++;
 
