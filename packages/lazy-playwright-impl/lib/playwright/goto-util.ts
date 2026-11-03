@@ -70,7 +70,10 @@ export interface IGotoOptions
 	/** true 或 `{ href: true }` 時比對目前網址，相同則略過導航 */
 	checkExists?: boolean | IGotoCheckExists;
 	/** Playwright 導航選項 */
-	gotoOptions?: IPlaywrightGotoOptions;
+	gotoOptions?: IPlaywrightGotoOptions & {
+		/** 是否使用 referer */
+		referer?: boolean;
+	};
 }
 
 /** goto 導航結果 */
@@ -131,7 +134,9 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions):
 {
 	const checkExistsObj = _handleGotoOptionsCheckExists(options?.checkExists);
 
-	const { shouldGoto } = _checkShouldGotoUrl(url, page.url(), checkExistsObj);
+	const currentPageUrl = page.url();
+
+	const { shouldGoto } = _checkShouldGotoUrl(url, currentPageUrl, checkExistsObj);
 
 	let didGoto = false;
 
@@ -142,7 +147,20 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions):
 	}
 	else
 	{
-		await page.goto(url, options?.gotoOptions);
+		if (typeof options?.gotoOptions?.referer === 'boolean')
+		{
+			if (options.gotoOptions.referer)
+			{
+				// @ts-ignore
+				options.gotoOptions.referer = currentPageUrl;
+			}
+			else
+			{
+				delete options.gotoOptions.referer;
+			}
+		}
+
+		await page.goto(url, options?.gotoOptions as IPlaywrightGotoOptions);
 		didGoto = true;
 	}
 
