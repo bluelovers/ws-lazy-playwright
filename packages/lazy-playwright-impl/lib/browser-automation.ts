@@ -6,6 +6,7 @@ import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind }
 import { EnumLogLabel } from './logger';
 import { closeBrowserSafely, closeContextSafely } from './playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from './playwright/event';
+import { isPageLike } from './playwright/type-guard';
 import { BrowserStorageManager } from './storage';
 import type {
 	IPageListener,
@@ -97,19 +98,23 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return this._context!;
 	}
 
-	/** 主頁面 (Main Page)；可直接指派以更換 */
+	/**
+	 * 主頁面 (Main Page)；可直接指派以更換
+	 *
+	 * 以 {@link isPageLike} 作簡易防護，非 Page-like 的值直接拒絕。
+	 */
 	get page(): Page
 	{
 		/**
 		 * 介面契約為非空，因為在建立 context 後會立即設定主頁面，
 		 * 在建立 context 或 第一個頁面建立前存取會得到 `undefined`。
 		 */
-		return this._page;
+		return this._page ??= this._pages.values().next().value;
 	}
 
 	set page(next: Page)
 	{
-		if (!next)
+		if (!isPageLike(next))
 		{
 			throw new TypeError('page cannot be set to undefined or not a Page instance');
 		}
@@ -279,7 +284,8 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/**
 	 * 鎖定主 context
 	 *
-	 * 關閉所有非主 context，接線主 context 後切換至 {@link EnumAutomationState.Locked}，
+	 * 關閉所有非主 context、清除 `_pages` 內非主頁面、接線主 context 的所有頁面後，
+	 * 以第一個追蹤頁面為主頁面，再切換至 {@link EnumAutomationState.Locked}，
 	 * 自此分頁數監測生效：所有分頁關閉即自動關閉實例。
 	 */
 	protected async _lockContext(primary: BrowserContext): Promise<void>
@@ -293,12 +299,41 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 			await Promise.all(others.map(context => closeContextSafely(context)));
 
+			/**
+			 * 清除 `_pages` 內非 primary 的殘留頁面
+			 *
+			 * 準備期的臨時 context 可能已接線過；其 context 雖已關閉，
+			 * 若 close 事件未及時觸發，此處保證追蹤集合只保留主 context 的頁面。
+			 */
+			for (const page of this._pages)
+			{
+				if (page.context() !== primary)
+				{
+					this._pages.delete(page);
+				}
+			}
+
 			this._context = primary;
 
 			await this._bindContext(primary);
 
-			/** 鎖定後：已存在的第一個頁面即為主頁面，否則由之後新開的頁面接任 */
-			this._page = primary.pages()[0];
+			/** 接線 primary 內所有尚未追蹤的頁面（已追蹤者跳過，避免重複掛載 close 監聽） */
+			for (const page of primary.pages())
+			{
+				if (!this._pages.has(page))
+				{
+					this._bindPage(page);
+				}
+			}
+
+			/**
+			 * 鎖定後：以第一個追蹤的頁面為主頁面，否則由之後新開的頁面接任
+			 *
+			 * 清除主頁面引用，觸發 getter 重新選取
+			 * 強制重新計算主頁面
+			 */
+			this._page = null;
+			void this.page;
 
 			this._state = EnumAutomationState.Locked;
 		}
@@ -367,7 +402,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			/** 主頁面關閉後，由下一個頁面自動繼承 */
 			if (this._page === page)
 			{
-				this._page = this._pages.values().next().value;
+				/**
+				 * 清除主頁面引用，觸發 getter 重新選取
+				 * 強制重新計算主頁面
+				 */
+				this._page = null;
+				void this.page;
 			}
 
 			this._handleNoRemainingPages();
