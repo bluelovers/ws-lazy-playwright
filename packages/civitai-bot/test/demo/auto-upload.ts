@@ -17,6 +17,8 @@ import { autoPost, collectFolders } from '#/lib/auto-post';
 // @ts-ignore
 import { loadTaskProgress } from '#/lib/progress';
 // @ts-ignore
+import { createCompletionRecord } from '#/lib/record';
+// @ts-ignore
 import { prependFolder } from '#/lib/source';
 // @ts-ignore
 import type { IFolderInput, IMessageOptions, IRunSwitches, ITaskRangeOptions } from '#/lib/types';
@@ -47,6 +49,9 @@ const TASK_RANGE: ITaskRangeOptions = {
 
 /** 任務進度檔：記錄已完成任務；中斷後由該檔接續，需完全重跑時刪除該檔 */
 const PROGRESS_FILE = join(__TEST_TEMP, 'civitai-bot', 'auto-post.progress.json');
+
+/** 完成紀錄目錄：完成任務依發布日期分檔保存（`YYYY-MM-DD.json`，含發布網址） */
+const RECORD_DIR = join(__TEST_TEMP, 'civitai-bot', 'completion');
 
 /**
  * CLI 參數（`process.argv`）：
@@ -84,7 +89,8 @@ consoleLogger.log(
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
  * 流程：串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） → 還原登入狀態 →
- * 載入任務進度（{@link loadTaskProgress}） → 開啟建立貼文頁（{@link createPostPage}） →
+ * 載入任務進度（{@link loadTaskProgress}）、建立完成紀錄（{@link createCompletionRecord}） →
+ * 開啟建立貼文頁（{@link createPostPage}） →
  * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
@@ -134,9 +140,12 @@ export async function autoUploadDemo(
 		/** 任務進度：載入已完成任務，供中斷後接續 */
 		const progress = await loadTaskProgress(PROGRESS_FILE, TASK_BASE, range, options);
 
+		/** 完成紀錄：完成任務依發布日期分檔保存 */
+		const record = createCompletionRecord(RECORD_DIR, options);
+
 		const page = await createPostPage(context);
 
-		await autoPost(page, prependFolder(head.value, folders), options, progress, SWITCHES);
+		await autoPost(page, prependFolder(head.value, folders), options, progress, SWITCHES, record);
 	}
 	finally
 	{

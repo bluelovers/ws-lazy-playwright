@@ -18,6 +18,7 @@ import {
 import { iterateFolderInput } from './source';
 import { iterateTaskDirs } from './scan';
 import type { ITaskProgress } from './progress';
+import type { ICompletionRecord } from './record';
 
 /**
  * 完整階段：以生成器 (Generator) 逐項取得來源清單並轉為標準資料夾物件
@@ -62,6 +63,7 @@ export async function* collectFolders(
  *
  * 進度（{@link ITaskProgress}）：已完成的任務直接跳過；任務批次全部完成後寫入進度檔，
  * 中斷或失敗後下次執行可接續後續任務，不需重新開始。
+ * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
  * 不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
@@ -72,6 +74,7 @@ export async function* collectFolders(
  * @param options 訊息控制（獨立物件，不併入其他參數）
  * @param progress 任務進度（可選，獨立物件）：記錄已完成任務供中斷後接續
  * @param switches 執行開關（可選，獨立物件）：解除發布停用與 dry run 的預設值
+ * @param record 完成紀錄（可選，獨立物件）：完成任務依發布日期分檔保存
  */
 export async function autoPost(
 	page: Page,
@@ -79,6 +82,7 @@ export async function autoPost(
 	options?: IMessageOptions,
 	progress?: ITaskProgress,
 	switches?: IRunSwitches,
+	record?: ICompletionRecord,
 ): Promise<void>
 {
 	/** 發布完成後以同一 context 重開建立貼文頁 */
@@ -125,6 +129,9 @@ export async function autoPost(
 			/** 待上傳佇列：缺漏檔案會被排回佇列前端，進入下一次完整階段（AutoPost） */
 			let queue = order;
 
+			/** 本任務各批次發布後取得的網址（供完成紀錄保存） */
+			const publishedUrls: string[] = [];
+
 			while (queue.length)
 			{
 				batchNo++;
@@ -166,13 +173,27 @@ export async function autoPost(
 				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後），絕不按 save */
 				if (await publishPost(currentPage, message, switches?.enablePublish))
 				{
-					/** 發布完成後當前頁面已離開建立貼文頁：重開新頁面執行下一批次 */
+					/**
+					 * 發布後的網址須於重置頁面前取得；
+					 * 當前頁面已離開建立貼文頁，重開新頁面執行下一批次
+					 */
+					publishedUrls.push(currentPage.url());
 					currentPage = await createPostPage(context);
 				}
 			}
 
-			/** 該任務批次全部完成：寫入進度檔，中斷後下次執行由此接續 */
+			/**
+			 * 該任務批次全部完成：先寫入進度檔（確保不重跑），
+			 * 再寫入完成紀錄（含發布網址，依發布日期分檔）
+			 */
 			await progress?.mark(unit.path);
+
+			await record?.append({
+				path: unit.path,
+				day: unit.day,
+				task: unit.task,
+				publishedUrls,
+			});
 		}
 	}
 }
