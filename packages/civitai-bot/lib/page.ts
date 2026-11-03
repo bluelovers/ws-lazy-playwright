@@ -113,22 +113,22 @@ function _isPublishedLanding(url: string, options?: IMessageOptions): boolean
  * 預設開關為 {@link ENABLE_PUBLISH}，可由呼叫端以 `enablePublish` 覆寫（CLI `--publish`）。
  *
  * 發布完成以落地頁特徵 {@link PUBLISHED_URL_PATTERNS} 判定（貼文頁、模型頁等）：
- * 僅等待網址更新（`waitUntil: 'commit'`），不等待頁面載入完成；逾時未跳轉時回傳 `false`。
+ * 僅等待網址更新（`waitUntil: 'commit'`），不等待頁面載入完成；逾時未跳轉回傳 `unconfirmed`。
  * 完成紀錄含發布後的網址（未取得跳轉時無網址）。
  *
  * @param enablePublish 是否執行發布；未提供時沿用 {@link ENABLE_PUBLISH}
- * @returns 是否完成發布；未啟用發布或未觀察到跳轉時回傳 `false`
+ * @returns {@link EnumPublishResult}：`published` 確認落地、`disabled` 未執行發布、`unconfirmed` 已點擊但未確認落地
  */
 export async function publishPost(
 	page: Page,
 	options?: IMessageOptions,
 	enablePublish = ENABLE_PUBLISH,
-): Promise<boolean>
+): Promise<EnumPublishResult>
 {
 	if (!enablePublish)
 	{
 		_logPhase(EnumPostPhase.Publish, options, 'skipped: publish disabled (never clicking save)');
-		return false;
+		return EnumPublishResult.Disabled;
 	}
 
 	const publish = page.locator(PUBLISH_SELECTOR);
@@ -145,7 +145,7 @@ export async function publishPost(
 	/** 網址已到達發布後落地頁（導向已提交）即視為發布完成，無需再等待 */
 	if (_isPublishedLanding(page.url(), options))
 	{
-		return true;
+		return EnumPublishResult.Published;
 	}
 
 	const published = await page.waitForURL(
@@ -162,5 +162,5 @@ export async function publishPost(
 		published ? 'success' : 'log',
 	);
 
-	return published;
+	return published ? EnumPublishResult.Published : EnumPublishResult.Unconfirmed;
 }
