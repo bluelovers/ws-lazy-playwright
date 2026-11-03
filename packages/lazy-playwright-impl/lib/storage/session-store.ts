@@ -1,4 +1,5 @@
 import type { BrowserContext } from 'playwright';
+import { mergeStorageStates } from './merge';
 import {
 	EnumStorageKind,
 	type ISessionState,
@@ -73,6 +74,13 @@ export class SessionStore implements ISessionStore
 	async load(id: string): Promise<ISessionState | undefined>
 	{
 		return (await this._persist.read<ISessionState>(EnumStorageKind.Session, id))?.payload;
+	}
+
+	async saveAll(id: string, contexts: readonly BrowserContext[]): Promise<IStorageRecord<ISessionState>>
+	{
+		const states = await Promise.all(contexts.map(context => context.storageState()));
+
+		return this.save(id, mergeStorageStates(states));
 	}
 
 	async restore(id: string, target: BrowserContext): Promise<boolean>

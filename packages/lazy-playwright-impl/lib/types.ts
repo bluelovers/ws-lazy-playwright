@@ -43,6 +43,7 @@ export interface IBrowserAutomation
 	readonly bridge: IBrowserBridge;
 
 	readonly browser: INullable<Browser>;
+	/** 目前存活的 context；同一實例同一時間只允許一個 */
 	readonly context: INullable<BrowserContext>;
 	readonly pages: readonly Page[];
 

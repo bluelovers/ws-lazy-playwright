@@ -1,4 +1,5 @@
 import type { BrowserContext, Cookie } from 'playwright';
+import { mergeCookies } from './merge';
 import {
 	EnumStorageKind,
 	type ICookieStore,
@@ -47,6 +48,13 @@ export class CookieStore implements ICookieStore
 	async load(id: string): Promise<Cookie[] | undefined>
 	{
 		return (await this._persist.read<Cookie[]>(EnumStorageKind.Cookie, id))?.payload;
+	}
+
+	async saveAll(id: string, contexts: readonly BrowserContext[]): Promise<IStorageRecord<Cookie[]>>
+	{
+		const groups = await Promise.all(contexts.map(context => context.cookies()));
+
+		return this.save(id, mergeCookies(groups));
 	}
 
 	async apply(id: string, target: BrowserContext): Promise<number>

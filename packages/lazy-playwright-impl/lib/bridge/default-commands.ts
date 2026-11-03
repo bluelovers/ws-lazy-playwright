@@ -40,9 +40,11 @@ function _resolveStorageId(args: readonly unknown[]): string
  * 建立內建預設命令
  *
  * - `echo`：回傳簡易且不含隱私的資訊（引擎、瀏覽器類型）
- * - `saveSession`：將目前 context 的 Session 存入儲存
- * - `saveCookies`：將目前 context 的 Cookie 存入儲存
+ * - `saveSession`：儲存目前 context 的 storageState
+ * - `saveCookies`：儲存目前 context 的 Cookie
  *
+ * 儲存範圍為實例目前唯一的 context，而非整個瀏覽器；
+ * 結果一律回傳筆數，讓「存到 0 筆」與「寫入失敗」可被區分。
  * 所有 handler 於呼叫時才讀取 `host.engine`，避免抽象屬性尚未初始化。
  */
 export function createDefaultBridgeCommands(host: IBridgeCommandHost): Record<string, IBridgeCommandHandler>
@@ -59,8 +61,14 @@ export function createDefaultBridgeCommands(host: IBridgeCommandHost): Record<st
 			const context = _resolveContext(host, page);
 			const id = _resolveStorageId(args);
 
-			await host.storage.sessions.save(id, context);
-			return { id, kind: EnumStorageKind.Session };
+			const record = await host.storage.sessions.save(id, context);
+
+			return {
+				id,
+				kind: EnumStorageKind.Session,
+				cookies: record.payload.cookies.length,
+				origins: record.payload.origins.length,
+			};
 		},
 
 		saveCookies: async (args, page) =>
@@ -68,8 +76,13 @@ export function createDefaultBridgeCommands(host: IBridgeCommandHost): Record<st
 			const context = _resolveContext(host, page);
 			const id = _resolveStorageId(args);
 
-			await host.storage.cookies.save(id, context);
-			return { id, kind: EnumStorageKind.Cookie };
+			const record = await host.storage.cookies.save(id, context);
+
+			return {
+				id,
+				kind: EnumStorageKind.Cookie,
+				cookies: record.payload.length,
+			};
 		},
 	};
 }

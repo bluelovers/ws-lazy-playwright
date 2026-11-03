@@ -16,6 +16,18 @@ import type {
 } from './types';
 
 /**
+ * 實例狀態 (Automation State)
+ *
+ * - `Preparing`：準備期，可操作臨時 context，分頁全關不觸發自動關閉
+ * - `Locked`：已鎖定主 context，監測分頁數並關閉所有非主 context
+ */
+export enum EnumAutomationState
+{
+	Preparing = 'preparing',
+	Locked = 'locked',
+}
+
+/**
  * 瀏覽器自動化抽象基底
  *
  * 提供共用的生命週期 (Lifecycle)、分頁追蹤與 Cookie / Session 儲存存取；
@@ -33,7 +45,6 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	readonly bridge: PageBridge;
 
 	protected readonly _options: ICreateBrowserAutomationOptions;
-	protected readonly _contexts = new Set<BrowserContext>();
 	protected readonly _pages = new Set<Page>();
 
 	/**
@@ -47,8 +58,17 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/** 已接線過的 context，避免同一監聽被重複掛載 */
 	protected readonly _wiredContexts = new WeakSet<BrowserContext>();
 
+	/** 接線中的 context，讓 `browser.on('context')` 與 `newContext()` 共用同一份 Promise */
+	protected readonly _boundContexts = new WeakMap<BrowserContext, Promise<void>>();
+
+	/** 釋放舊 context 期間暫停「無分頁即關閉瀏覽器」的判定，避免交換瞬間誤關 */
+	protected _suspendAutoClose = false;
+
 	protected _browser: INullable<Browser>;
 	protected _context: INullable<BrowserContext>;
+
+	/** 目前狀態；預設為準備期，於 context 決定後由 {@link _lockContext} 鎖定 */
+	protected _state: EnumAutomationState = EnumAutomationState.Preparing;
 
 	constructor(options: ICreateBrowserAutomationOptions = {})
 	{
@@ -64,15 +84,16 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return this._browser;
 	}
 
-	/** 最近一次建立的 context */
+	/** 目前存活的 context；同一實例同一時間只允許一個 */
 	get context(): INullable<BrowserContext>
 	{
 		return this._context;
 	}
 
-	get contexts(): readonly BrowserContext[]
+	/** 目前狀態 */
+	get state(): EnumAutomationState
 	{
-		return [...this._contexts];
+		return this._state;
 	}
 
 	get pages(): readonly Page[]
@@ -101,11 +122,13 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 		this._browser = await this._initializeBrowser(launchOptions);
 
-		/** 讓直接以 `browser.newContext()` 建立的 context 也自動繼承已註冊的分頁監聽與通訊協議 */
+		/** 讓直接以 `browser.newContext()` 建立的 context 也自動接線，並維持單一 context 不變式 */
 		this._browser.on('context', (context) =>
 		{
-			this._wirePageLiveOnOnContext(context);
-			void this._bridgeInstall(context);
+			void this._bindContext(context).catch((e) =>
+			{
+				console.error(EnumLogLabel.BrowserAutomation, 'context bind failed:', e);
+			});
 		});
 
 		return this._browser;
@@ -115,6 +138,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	{
 		const browser = await this.launch();
 
+		/** 鎖定狀態下維持單一 context；準備期允許臨時 context 共存 */
+		if (this._state === EnumAutomationState.Locked)
+		{
+			await this._releaseContext();
+		}
+
 		const context = await browser.newContext({
 			...this._options.context,
 			...options,
@@ -122,7 +151,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 		try
 		{
-			await this._bindContext(context);
+			await this._lockContext(context);
 		}
 		catch (e)
 		{
@@ -147,32 +176,136 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	async close(): Promise<void>
 	{
 		const pages = this.pages;
-		const contexts = this.contexts;
+		const context = this._context;
 		const browser = this._browser;
 
 		this._browser = undefined;
 		this._context = undefined;
-		this._contexts.clear();
 		this._pages.clear();
 
-		await closeBrowserSafely({ pages, contexts, browser });
+		await closeBrowserSafely({
+			pages,
+			contexts: context ? [context] : [],
+			browser,
+		});
 	}
 
 	/**
-	 * 註冊 context 並追蹤其自動產生的分頁，
-	 * 確保 `close()` 能完整關閉所有分頁與 context
+	 * 釋放目前的 context，維持「同一實例同一時間只有一個存活 context」
 	 *
-	 * 同時於此接線通訊協議與已註冊的分頁監聽。
+	 * 關閉過程會使該 context 的分頁陸續關閉，若不暫停會誤觸「無分頁即關閉瀏覽器」。
 	 */
-	protected async _bindContext(context: BrowserContext): Promise<void>
+	protected async _releaseContext(): Promise<void>
 	{
+		const context = this._context;
+
+		if (!context) return;
+
+		this._context = undefined;
+		this._suspendAutoClose = true;
+
+		try
+		{
+			await closeContextSafely(context);
+		}
+		finally
+		{
+			this._suspendAutoClose = false;
+		}
+	}
+
+	/**
+	 * 進入準備期
+	 *
+	 * 允許臨時 context 共存，且所有分頁關閉時不觸發實例自動關閉。
+	 */
+	protected _beginPrepare(): void
+	{
+		this._state = EnumAutomationState.Preparing;
+	}
+
+	/**
+	 * 建立臨時 context
+	 *
+	 * 不切換主 context、不鎖定狀態，供啟動階段的探索流程使用；
+	 * 決定主 context 後再呼叫 {@link _lockContext}，非主 context 會被一併關閉。
+	 */
+	protected async _newTemporaryContext(options: BrowserContextOptions = {}): Promise<BrowserContext>
+	{
+		if (this._state !== EnumAutomationState.Preparing)
+		{
+			throw new Error('temporary context is only available while preparing');
+		}
+
+		const browser = await this.launch();
+
+		return browser.newContext({
+			...this._options.context,
+			...options,
+		});
+	}
+
+	/**
+	 * 鎖定主 context
+	 *
+	 * 關閉所有非主 context，接線主 context 後切換至 {@link EnumAutomationState.Locked}，
+	 * 自此分頁數監測生效：所有分頁關閉即自動關閉實例。
+	 */
+	protected async _lockContext(primary: BrowserContext): Promise<void>
+	{
+		this._suspendAutoClose = true;
+
+		try
+		{
+			const others = (this._browser?.contexts() ?? [])
+				.filter(context => context !== primary);
+
+			await Promise.all(others.map(context => closeContextSafely(context)));
+
+			this._context = primary;
+
+			await this._bindContext(primary);
+
+			this._state = EnumAutomationState.Locked;
+		}
+		finally
+		{
+			this._suspendAutoClose = false;
+		}
+	}
+
+	/**
+	 * 接線 context
+	 *
+	 * `browser.on('context')` 與 `newContext()` 兩條路徑共用同一份 Promise，
+	 * 保證同一 context 只接線一次。
+	 */
+	protected _bindContext(context: BrowserContext): Promise<void>
+	{
+		let pending = this._boundContexts.get(context);
+
+		if (!pending)
+		{
+			pending = this._bindContextCore(context);
+			this._boundContexts.set(context, pending);
+		}
+
+		return pending;
+	}
+
+	protected async _bindContextCore(context: BrowserContext): Promise<void>
+	{
+		/** 鎖定狀態下維持單一 context；準備期允許臨時 context 共存 */
+		if (this._state === EnumAutomationState.Locked && this._context && this._context !== context)
+		{
+			await this._releaseContext();
+		}
+
 		this._context = context;
-		this._contexts.add(context);
 
 		context.on('page', page => this._bindPage(page));
 		context.on('close', () =>
 		{
-			this._contexts.delete(context);
 			if (this._context === context)
 			{
 				this._context = undefined;
@@ -181,20 +314,6 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 		await this.bridge.install(context);
 		this._wirePageLiveOnOnContext(context);
-	}
-
-	/**
-	 * 供 `browser.on('context')` 路徑使用
-	 *
-	 * 該路徑沒有呼叫端可承接錯誤，故記錄後不中斷流程；
-	 * 由 `newContext()` 建立的 context 會改由 `_bindContext` 直接傳遞錯誤。
-	 */
-	protected _bridgeInstall(context: BrowserContext): Promise<void>
-	{
-		return this.bridge.install(context).catch((e) =>
-		{
-			console.error(EnumLogLabel.BrowserAutomation, 'bridge install failed:', e);
-		});
 	}
 
 	protected _bindPage(page: Page): void
@@ -211,11 +330,14 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	 * 最後一個分頁關閉後瀏覽器視窗已不可見，
 	 * 主動關閉瀏覽器與所有 context，避免殘留無視窗的背景程序
 	 *
+	 * 僅在鎖定狀態下監測；準備期與 context 交換期間會跳過。
 	 * `close()` 會先同步清空追蹤集合並將 `_browser` 設為 undefined，
-	 * 因此關閉過程觸發的分頁 close 事件不會重複進入關閉流程
+	 * 因此關閉過程觸發的分頁 close 事件不會重複進入關閉流程。
 	 */
 	protected _handleNoRemainingPages(): void
 	{
+		if (this._state !== EnumAutomationState.Locked) return;
+		if (this._suspendAutoClose) return;
 		if (this._pages.size > 0) return;
 		if (!this._browser?.isConnected()) return;
 

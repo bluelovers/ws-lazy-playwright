@@ -45,6 +45,8 @@ export interface ICookieStore
 	load(id: string): Promise<Cookie[] | undefined>;
 	/** 將已儲存的 Cookie 套用到指定 context，回傳套用筆數 */
 	apply(id: string, target: BrowserContext): Promise<number>;
+	/** 從多個 context 收集所有 Cookie，去重後儲存 */
+	saveAll(id: string, contexts: readonly BrowserContext[]): Promise<IStorageRecord<Cookie[]>>;
 	remove(id: string): Promise<boolean>;
 	list(): Promise<string[]>;
 }
@@ -56,6 +58,8 @@ export interface ISessionStore
 	load(id: string): Promise<ISessionState | undefined>;
 	/** 將已儲存的 Session 還原到指定 context；origin 內容於後續導航時注入 */
 	restore(id: string, target: BrowserContext): Promise<boolean>;
+	/** 從多個 context 收集 storageState，合併後儲存；結果可直接作為 `newContext` 的 `storageState` */
+	saveAll(id: string, contexts: readonly BrowserContext[]): Promise<IStorageRecord<ISessionState>>;
 	remove(id: string): Promise<boolean>;
 	list(): Promise<string[]>;
 }
