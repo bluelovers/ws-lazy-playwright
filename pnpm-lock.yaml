@@ -34,6 +34,12 @@ importers:
         specifier: ^1.0.26
         version: 1.0.26(ts-toolbelt@9.6.0)
 
+  packages/civitai-bot:
+    dependencies:
+      tslib:
+        specifier: '>=2.8.1'
+        version: 2.9.1
+
   packages/lazy-playwright-impl:
     dependencies:
       array-hyper-unique:

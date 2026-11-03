@@ -1,16 +1,13 @@
 /// <reference types="node" />
 
 import { console } from 'debug-color2';
-// @ts-ignore
 import { EnumAutomationEngine } from '#/lib/engine';
-// @ts-ignore
 import { createBrowserAutomation } from '#/lib/index';
-// @ts-ignore
 import { EnumLogLabel } from '#/lib/logger';
-// @ts-ignore
 import { __TEST_TEMP_STORAGE } from '#/test/__root';
+import { Page } from 'playwright';
 
-const STORAGE_ID = 'demo';
+const STORAGE_ID = 'default';
 
 /**
  * 示範：讀取已儲存的 Cookie 與 Session，還原到新的 context
@@ -40,8 +37,13 @@ export async function restoreDemo()
 		console.log(EnumLogLabel.Temp, 'cookies applied:', applied);
 		console.log(EnumLogLabel.Temp, 'session restored:', restored);
 
-		const page = await context.newPage();
-		await page.goto('https://example.com/#restoreDemo');
+		let page: Page;
+
+		page = await automation.newPage();
+		await page.goto(automation.bridge.fakeApiBase);
+
+		page = await context.newPage();
+		await page.goto('https://civitai.red/posts/create');
 		console.log(EnumLogLabel.Temp, 'title:', await page.title());
 	}
 	finally

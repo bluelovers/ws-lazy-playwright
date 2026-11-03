@@ -25,6 +25,26 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 			args: [...new Set([
 				...(args ?? []),
 				_playwrightArgsDisableFeatures(),
+
+				// '--remote-debugging-port=9222',
+				// '--remote-debugging-address=127.0.0.1',
+				// `--disable-features`, `${disableFeatures.join(',')}`,
+
+				/** 允許跨站點同源策略放寬（使 SSO 授權可順利傳遞） / Allow cross-origin for SSO */
+				'--disable-web-security',
+
+				/** 允許背景跳轉與彈出視窗（許多 SSO 登入依賴背景 Popup/Redirect） / Allow popups for SSO */
+				'--disable-popup-blocking',
+
+				/** 保留完整的同源政策與 LocalStorage 存取 / Retain same-origin policy & LocalStorage */
+				'--allow-running-insecure-content',
+
+				/** 關鍵：停用強制無痕分頁與隱私防護旗標 / Disable incognito & privacy sandbox */
+				'--incognito=false',
+				// '--incognito', 'false',
+				'--disable-privacy-sandbox',
+
+				'--lang=zh-TW',
 			])],
 		};
 	}

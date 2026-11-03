@@ -1,24 +1,25 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "declaration": false,
     "noUnusedParameters": false,
     "allowUnusedLabels": true,
     "noUnusedLocals": false,
     "noPropertyAccessFromIndexSignature": false,
-    "baseUrl": ".",
-    "paths": {
-      "#/*": ["../*"]
-    },
+    // "baseUrl": ".",
+    // "paths": {
+    //   "#/*": ["../*"]
+    // },
     "types": [
       "jest",
       "node"
     ]
   },
   "include": [
+    "../**/*.ts",
     "**/*.ts"
   ],
   "exclude": [

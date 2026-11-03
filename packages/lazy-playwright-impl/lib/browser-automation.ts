@@ -6,6 +6,7 @@ import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind }
 import { EnumLogLabel } from './logger';
 import { closeBrowserSafely, closeContextSafely } from './playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from './playwright/event';
+import { gotoPage, type IGotoOptions, type IGotoResult } from './playwright/goto-util';
 import { isPageLike } from './playwright/type-guard';
 import { BrowserStorageManager } from './storage';
 import type {
@@ -206,6 +207,24 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this._bindPage(page);
 
 		return page;
+	}
+
+	/**
+	 * 導航至目標網址
+	 *
+	 * `page` 未提供時，依 `newPage` 決定建立新分頁或沿用主分頁；
+	 * `checkExists` 啟用且目前網址已等於目標網址時略過導航。
+	 *
+	 * @param url - 目標網址
+	 * @param options - 導航選項
+	 * @returns 導航分頁與是否有發生 goto 行為
+	 */
+	async goto(url: string, options: IGotoOptions = {}): Promise<IGotoResult>
+	{
+		/** `page` 未提供時，由 `newPage` 決定建立新分頁或沿用主分頁 */
+		const page = options.page ?? (options.newPage ? await this.newPage() : this.page);
+
+		return gotoPage(page, url, options);
 	}
 
 	async close(): Promise<void>
