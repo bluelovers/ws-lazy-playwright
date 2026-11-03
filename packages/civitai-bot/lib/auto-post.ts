@@ -61,8 +61,8 @@ export async function* collectFolders(
  * 4. （發布階段）僅檢查開關，絕不按 save；發布完成（網址跳轉為貼文頁 / 模型頁等落地頁）後
  *    重開建立貼文頁執行下一批次
  *
- * 進度（{@link ITaskProgress}）：已完成的任務直接跳過；任務批次全部完成後寫入進度檔，
- * 中斷或失敗後下次執行可接續後續任務，不需重新開始。
+ * 進度（{@link ITaskProgress}）：已完成的任務直接跳過；每批完成即存中斷檢查點 (Checkpoint)，
+ * 中斷或失敗後下次執行自實際進度續跑（大目錄不重跑整個單位）；單位全部批次完成後標記完成並清除檢查點。
  * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
@@ -72,7 +72,7 @@ export async function* collectFolders(
  * @param page 已導航至建立貼文頁的頁面（後續重開頁面與其共用同一 context）
  * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
  * @param options 訊息控制（獨立物件，不併入其他參數）
- * @param progress 任務進度（可選，獨立物件）：記錄已完成任務供中斷後接續
+ * @param progress 任務進度（可選，獨立物件）：記錄完成任務與中斷檢查點，供自實際進度續跑
  * @param switches 執行設定（可選，獨立物件）：解除發布停用與 dry run、指定建立貼文頁網址
  * @param record 完成紀錄（可選，獨立物件）：完成任務依發布日期分檔保存
  */
@@ -126,11 +126,27 @@ export async function autoPost(
 				continue;
 			}
 
-			/** 待上傳佇列：缺漏檔案會被排回佇列前端，進入下一次完整階段（AutoPost） */
-			let queue = order;
+			/**
+			 * 中斷檢查點：接續上次未完成的實際進度——
+			 * 佇列取剩餘、批次序號接續、已取得的發布網址併回
+			 */
+			const checkpointed = progress?.checkpoint(unit.path);
 
-			/** 本任務各批次發布後取得的網址（供完成紀錄保存） */
-			const publishedUrls: string[] = [];
+			/** 待上傳佇列：優先接續檢查點的剩餘佇列；缺漏檔案仍會排回佇列前端（進入下一次完整階段） */
+			let queue = checkpointed?.remaining ?? order;
+
+			const publishedUrls: string[] = [...(checkpointed?.publishedUrls ?? [])];
+
+			if (checkpointed)
+			{
+				batchNo = checkpointed.batchNo;
+
+				_logPhase(
+					EnumPostPhase.AutoPost,
+					options,
+					`resumed from checkpoint: batch ${batchNo}, ${queue.length} left (${unit.path})`,
+				);
+			}
 
 			while (queue.length)
 			{
@@ -180,6 +196,14 @@ export async function autoPost(
 					publishedUrls.push(currentPage.url());
 					currentPage = await createPostPage(context, switches?.createUrl);
 				}
+
+				/** 批次完成即存檢查點：大目錄中斷後自實際進度續跑，不重跑整個單位 */
+				await progress?.saveCheckpoint({
+					path: unit.path,
+					remaining: queue,
+					batchNo,
+					publishedUrls,
+				});
 			}
 
 			/**

@@ -169,14 +169,14 @@ export async function autoUploadDemo(
 	source?: IFolderInput,
 )
 {
-	/** 任務進度：載入已完成任務供中斷後接續；`size` 為 0 代表無可接續紀錄 */
+	/** 任務進度：載入完成任務與中斷檢查點，供中斷後接續 */
 	const progress = await loadTaskProgress(PROGRESS_FILE, TASK_BASE, options);
 
 	/** 掃描起始點：預設沿用 `range`；無可接續紀錄時改以最後一次發布成功紀錄推導 */
 	let scanRange = range;
 
-	/** 無可接續紀錄時，以最後一次發布成功紀錄找尋新任務的起始點 */
-	if (FROM_LAST_PUBLISH && progress.size === 0)
+	/** 無可接續紀錄（無完成任務、無中斷檢查點）時，以最後一次發布成功紀錄找尋新任務的起始點 */
+	if (FROM_LAST_PUBLISH && progress.size === 0 && !progress.hasCheckpoint)
 	{
 		const start = await findStartAfterLastPublish(RECORD_DIR, options);
 
