@@ -143,6 +143,25 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	protected _bindPage(page: Page): void
 	{
 		this._pages.add(page);
-		page.on('close', () => this._pages.delete(page));
+		page.on('close', () =>
+		{
+			this._pages.delete(page);
+			this._handleNoRemainingPages();
+		});
+	}
+
+	/**
+	 * 最後一個分頁關閉後瀏覽器視窗已不可見，
+	 * 主動關閉瀏覽器與所有 context，避免殘留無視窗的背景程序
+	 *
+	 * `close()` 會先同步清空追蹤集合並將 `_browser` 設為 undefined，
+	 * 因此關閉過程觸發的分頁 close 事件不會重複進入關閉流程
+	 */
+	protected _handleNoRemainingPages(): void
+	{
+		if (this._pages.size > 0) return;
+		if (!this._browser?.isConnected()) return;
+
+		void this.close();
 	}
 }
