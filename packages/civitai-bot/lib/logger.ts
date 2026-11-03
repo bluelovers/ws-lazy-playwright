@@ -28,7 +28,7 @@ export function _logPhase(
 	phase: EnumPostPhase,
 	options: IMessageOptions | undefined,
 	message: string,
-	method: 'log' | 'debug' | 'success' = 'log',
+	method: 'log' | 'debug' | 'success' | 'warn' = 'log',
 ): void
 {
 	if (options?.verbose === false) return;
@@ -43,6 +43,10 @@ export function _logPhase(
 	else if (method === 'success')
 	{
 		consoleLogger.success(EnumLogLabel.Temp, text);
+	}
+	else if (method === 'warn')
+	{
+		consoleLogger.warn(EnumLogLabel.Temp, text);
 	}
 	else
 	{

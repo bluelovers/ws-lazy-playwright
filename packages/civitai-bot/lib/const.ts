@@ -14,17 +14,28 @@ export const FILE_INPUT_SELECTOR = `${DROPZONE_SELECTOR} input[type="file"]`;
 /** 上載完成後才會出現的發布按鈕 */
 export const PUBLISH_SELECTOR = 'button[data-tour="post:publish"]';
 
+/** 發布後落地頁特徵：`name` 供不同模式提醒識別使用 */
+export interface IPublishedUrlPattern
+{
+	/** 模式名稱（不同模式提醒輸出用） */
+	name: string;
+	/** 網址特徵 */
+	pattern: RegExp;
+}
+
 /**
  * 發布後到達的落地頁特徵：網址符合任一即代表發布完成
  *
- * 依發布來源不同，落地頁可能有差異：
+ * 清單首位為預期模式，其餘視為不同模式（命中時以 warn 提醒）：
  *
- * - 貼文頁：`https://civitai.red/posts/<id>`
- * - 模型頁（部分發布流程的落地頁）：`https://civitai.red/models/<id>/<slug>?modelVersionId=<id>`
+ * - `posts`：貼文頁 `https://civitai.red/posts/<id>`（預期）
+ * - `models`：模型頁 `https://civitai.red/models/<id>/<slug>?modelVersionId=<id>`（不同模式）
+ *
+ * 依發布來源不同，落地頁可能有差異。
  */
-export const PUBLISHED_URL_PATTERNS: readonly RegExp[] = [
-	/\/posts\/\d+/,
-	/\/models\/\d+/,
+export const PUBLISHED_URL_PATTERNS: readonly IPublishedUrlPattern[] = [
+	{ name: 'posts', pattern: /\/posts\/\d+/ },
+	{ name: 'models', pattern: /\/models\/\d+/ },
 ];
 
 /** 點擊 publish 後等待網址跳轉為已發布貼文的逾時時間（僅等待網址更新，不等待載入完成） */

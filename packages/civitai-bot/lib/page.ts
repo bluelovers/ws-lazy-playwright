@@ -78,10 +78,30 @@ export async function ensureDropzone(page: Page, options?: IMessageOptions): Pro
 	}
 }
 
-/** 網址符合任一發布後落地頁特徵即視為發布完成 */
-function _isPublishedUrl(url: string): boolean
+/**
+ * 判斷網址是否為發布後落地頁；命中清單首位以外的不同模式時以 warn 提醒
+ */
+function _isPublishedLanding(url: string, options?: IMessageOptions): boolean
 {
-	return PUBLISHED_URL_PATTERNS.some(pattern => pattern.test(url));
+	const index = PUBLISHED_URL_PATTERNS.findIndex(({ pattern }) => pattern.test(url));
+
+	if (index < 0)
+	{
+		return false;
+	}
+
+	/** 落地頁與預期模式（清單首位）不同：提醒操作者，仍視為發布完成 */
+	if (index > 0)
+	{
+		_logPhase(
+			EnumPostPhase.Publish,
+			options,
+			`landing differs from expected pattern "${PUBLISHED_URL_PATTERNS[index].name}": ${url}`,
+			'warn',
+		);
+	}
+
+	return true;
 }
 
 /**
@@ -123,13 +143,13 @@ export async function publishPost(
 	_logPhase(EnumPostPhase.Publish, options, 'clicked');
 
 	/** 網址已到達發布後落地頁（導向已提交）即視為發布完成，無需再等待 */
-	if (_isPublishedUrl(page.url()))
+	if (_isPublishedLanding(page.url(), options))
 	{
 		return true;
 	}
 
 	const published = await page.waitForURL(
-		url => _isPublishedUrl(url.href),
+		url => _isPublishedLanding(url.href, options),
 		{ waitUntil: 'commit', timeout: PUBLISH_URL_TIMEOUT },
 	)
 		.then(() => true)
