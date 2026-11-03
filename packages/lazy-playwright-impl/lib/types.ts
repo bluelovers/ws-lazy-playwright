@@ -1,4 +1,5 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
+import type { IBrowserBridge, IBridgeOptions } from './bridge/types';
 import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
 import type { IBrowserStorageManager, IStorageOptions } from './storage/types';
 
@@ -24,6 +25,8 @@ export interface ICreateBrowserAutomationOptions
 	context?: BrowserContextOptions;
 	/** Cookie / Session 儲存設定 */
 	storage?: IStorageOptions;
+	/** 頁面通訊協議設定 */
+	bridge?: IBridgeOptions;
 }
 
 /**
@@ -37,6 +40,7 @@ export interface IBrowserAutomation
 	readonly engine: EnumAutomationEngine;
 	readonly browserKind: EnumBrowserKind;
 	readonly storage: IBrowserStorageManager;
+	readonly bridge: IBrowserBridge;
 
 	readonly browser: INullable<Browser>;
 	readonly context: INullable<BrowserContext>;

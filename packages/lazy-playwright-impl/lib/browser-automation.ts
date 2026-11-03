@@ -1,6 +1,8 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
+import { PageBridge } from './bridge/index';
+import { createDefaultBridgeCommands } from './bridge/default-commands';
 import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from './engine';
-import { closeBrowserSafely } from './playwright/browser-util';
+import { closeBrowserSafely, closeContextSafely } from './playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from './playwright/event';
 import { BrowserStorageManager } from './storage';
 import type {
@@ -26,6 +28,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 	readonly browserKind: EnumBrowserKind;
 	readonly storage: BrowserStorageManager;
+	readonly bridge: PageBridge;
 
 	protected readonly _options: ICreateBrowserAutomationOptions;
 	protected readonly _contexts = new Set<BrowserContext>();
@@ -50,6 +53,8 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this._options = options;
 		this.browserKind = options.browser ?? DEFAULT_BROWSER_KIND;
 		this.storage = new BrowserStorageManager(options.storage);
+		this.bridge = new PageBridge(options.bridge);
+		this.bridge.registerAll(createDefaultBridgeCommands(this));
 	}
 
 	get browser(): INullable<Browser>
@@ -94,8 +99,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 		this._browser = await this._initializeBrowser(launchOptions);
 
-		/** 讓直接以 `browser.newContext()` 建立的 context 也自動繼承已註冊的分頁監聽 */
-		this._browser.on('context', context => this._wirePageLiveOnOnContext(context));
+		/** 讓直接以 `browser.newContext()` 建立的 context 也自動繼承已註冊的分頁監聽與通訊協議 */
+		this._browser.on('context', (context) =>
+		{
+			this._wirePageLiveOnOnContext(context);
+			void this._bridgeInstall(context);
+		});
 
 		return this._browser;
 	}
@@ -109,7 +118,17 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			...options,
 		});
 
-		this._bindContext(context);
+		try
+		{
+			await this._bindContext(context);
+		}
+		catch (e)
+		{
+			/** 通訊協議接線失敗時不留殘留的空 context */
+			await closeContextSafely(context);
+			throw e;
+		}
+
 		return context;
 	}
 
@@ -140,13 +159,13 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/**
 	 * 註冊 context 並追蹤其自動產生的分頁，
 	 * 確保 `close()` 能完整關閉所有分頁與 context
+	 *
+	 * 同時於此接線通訊協議與已註冊的分頁監聽。
 	 */
-	protected _bindContext(context: BrowserContext): void
+	protected async _bindContext(context: BrowserContext): Promise<void>
 	{
 		this._context = context;
 		this._contexts.add(context);
-
-		this._wirePageLiveOnOnContext(context);
 
 		context.on('page', page => this._bindPage(page));
 		context.on('close', () =>
@@ -156,6 +175,23 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			{
 				this._context = undefined;
 			}
+		});
+
+		await this.bridge.install(context);
+		this._wirePageLiveOnOnContext(context);
+	}
+
+	/**
+	 * 供 `browser.on('context')` 路徑使用
+	 *
+	 * 該路徑沒有呼叫端可承接錯誤，故記錄後不中斷流程；
+	 * 由 `newContext()` 建立的 context 會改由 `_bindContext` 直接傳遞錯誤。
+	 */
+	protected _bridgeInstall(context: BrowserContext): Promise<void>
+	{
+		return this.bridge.install(context).catch((e) =>
+		{
+			console.error('[browser-automation] bridge install failed:', e);
 		});
 	}
 
