@@ -189,6 +189,7 @@ export async function loadTaskProgress(
 				EnumPostPhase.AutoPost,
 				options,
 				`progress checkpoint: batch ${state.batchNo}, ${state.remaining.length} left (${state.path})`,
+				'info',
 			);
 		},
 
@@ -203,7 +204,7 @@ export async function loadTaskProgress(
 			}
 
 			await write();
-			_logPhase(EnumPostPhase.AutoPost, options, `progress saved: ${done.size} done tasks (${path})`);
+			_logPhase(EnumPostPhase.AutoPost, options, `progress saved: ${done.size} done tasks (${path})`, 'info');
 		},
 	};
 }

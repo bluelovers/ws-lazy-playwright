@@ -112,6 +112,7 @@ export async function* iterateTaskDirs(
 		options,
 		`range resolved: ${produced} tasks, ${daysWithTask} days`
 		+ ` (start ${startDay}${range.endDay ? `, end ${range.endDay}` : ''})`,
+		'info'
 	);
 }
 

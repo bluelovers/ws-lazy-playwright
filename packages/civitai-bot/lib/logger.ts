@@ -8,8 +8,8 @@ import { EnumPostPhase, type IMessageOptions } from './types';
  */
 export enum EnumLogLabel
 {
-	/** 示範腳本 */
-	Temp = '[temp]',
+	/** civitai-bot */
+	CivitaiBot = '[civitai-bot]',
 }
 
 /** 終端日誌：帶 label 與時間戳 */
@@ -28,7 +28,7 @@ export function _logPhase(
 	phase: EnumPostPhase,
 	options: IMessageOptions | undefined,
 	message: string,
-	method: 'log' | 'debug' | 'success' | 'warn' = 'log',
+	method: Extract<keyof Console2, 'log' | 'debug' | 'success' | 'warn' | 'info'> = 'log',
 ): void
 {
 	if (options?.verbose === false) return;
@@ -47,6 +47,10 @@ export function _logPhase(
 	else if (method === 'warn')
 	{
 		consoleLogger.warn(EnumLogLabel.Temp, text);
+	}
+	else if (method === 'info')
+	{
+		consoleLogger.info(EnumLogLabel.Temp, text);
 	}
 	else
 	{

@@ -102,7 +102,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			await writeFile(`${file}.tmp`, JSON.stringify({ date, entries }, undefined, '\t'));
 			await rename(`${file}.tmp`, file);
 
-			_logPhase(EnumPostPhase.AutoPost, options, `completion recorded: ${input.path} -> ${date}.json`);
+			_logPhase(EnumPostPhase.AutoPost, options, `completion recorded: ${input.path} -> ${date}.json`, 'info');
 		},
 	};
 }
