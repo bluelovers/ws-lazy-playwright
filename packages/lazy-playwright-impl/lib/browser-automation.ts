@@ -1,7 +1,9 @@
+import { console } from 'debug-color2';
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
 import { PageBridge } from './bridge/index';
 import { createDefaultBridgeCommands } from './bridge/default-commands';
 import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from './engine';
+import { EnumLogLabel } from './logger';
 import { closeBrowserSafely, closeContextSafely } from './playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from './playwright/event';
 import { BrowserStorageManager } from './storage';
@@ -191,7 +193,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	{
 		return this.bridge.install(context).catch((e) =>
 		{
-			console.error('[browser-automation] bridge install failed:', e);
+			console.error(EnumLogLabel.BrowserAutomation, 'bridge install failed:', e);
 		});
 	}
 

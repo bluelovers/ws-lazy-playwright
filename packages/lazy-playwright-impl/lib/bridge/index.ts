@@ -6,6 +6,7 @@ import {
 } from './const';
 import { buildBridgeClientScript } from './client-script';
 import { buildBridgeConsolePage } from './console';
+import { consoleLogger } from '../logger';
 import {
 	buildBridgeHtmlPage,
 	buildBridgeRoutePattern,
@@ -20,6 +21,7 @@ import type {
 	IBrowserBridge,
 } from './types';
 import type { INullable } from '../types';
+import { EnumLogLabel } from '../logger';
 
 /**
  * 頁面通訊協議 (Page Bridge)
@@ -141,9 +143,27 @@ export class PageBridge implements IBrowserBridge
 			return;
 		}
 
+		if (parsed)
+		{
+			consoleLogger.debug(EnumLogLabel.Bridge, 'receive', parsed);
+		}
+		else
+		{
+			consoleLogger.warn(EnumLogLabel.Bridge, 'malformed', request.url());
+		}
+
 		const response: IBridgeResponse = parsed
 			? await this._invoke(parsed, _resolvePage(request))
 			: { ok: false, error: 'malformed bridge request' };
+
+		if (response.ok)
+		{
+			consoleLogger.debug(EnumLogLabel.Bridge, 'respond', response);
+		}
+		else
+		{
+			consoleLogger.warn(EnumLogLabel.Bridge, 'respond', response);
+		}
 
 		/** 位址列直接導航時回傳可讀的 HTML，其餘（fetch / XHR）回傳 JSON */
 		if (isDocument)

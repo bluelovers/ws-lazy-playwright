@@ -240,3 +240,5 @@ coverage
 !__root-core.d.mts
 !__root-core.d.ts
 !__root-core.ts
+
+packages/lazy-playwright-impl/temp-storage
