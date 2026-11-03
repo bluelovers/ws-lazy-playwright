@@ -10,7 +10,7 @@ import {
 	PUBLISH_URL_TIMEOUT,
 } from './const';
 import { _logPhase } from './logger';
-import { EnumPostPhase, type IMessageOptions } from './types';
+import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from './types';
 
 /** 以標準輸入讀取一行（去空白、小寫）；用於 y/n 確認 */
 async function _ask(question: string): Promise<string>

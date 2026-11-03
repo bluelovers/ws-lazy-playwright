@@ -109,7 +109,7 @@ const STORAGE_BASE_DIR = __TEST_TEMP_STORAGE;
  *
  * CLI `--task-base <path>` 可覆寫。
  */
-const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\agent-scheduler\\2026-09-13';
+const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\txt2img-images\\2026-10-30';
 
 /** CLI `--max-tasks <n>`：最大任務數；未指定或非正整數時不覆寫 */
 const MAX_TASKS = _argInt('--max-tasks');

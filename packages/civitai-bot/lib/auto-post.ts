@@ -8,6 +8,7 @@ import { collectUploadOrder } from './upload-order';
 import { reconcileUpload, uploadPack } from './upload';
 import {
 	EnumPostPhase,
+	EnumPublishResult,
 	type IFolderInput,
 	type IFolderStream,
 	type IMessageOptions,
@@ -17,7 +18,7 @@ import {
 } from './types';
 import { iterateFolderInput } from './source';
 import { iterateTaskDirs } from './scan';
-import type { ITaskProgress } from './progress';
+import { findAddedFiles, type ITaskProgress } from './progress';
 import type { ICompletionRecord } from './record';
 
 /**
@@ -61,8 +62,10 @@ export async function* collectFolders(
  * 4. （發布階段）僅檢查開關，絕不按 save；發布完成（網址跳轉為貼文頁 / 模型頁等落地頁）後
  *    重開建立貼文頁執行下一批次
  *
- * 進度（{@link ITaskProgress}）：已完成的任務直接跳過；每批完成即存中斷檢查點 (Checkpoint)，
- * 中斷或失敗後下次執行自實際進度續跑（大目錄不重跑整個單位）；單位全部批次完成後標記完成並清除檢查點。
+ * 進度（{@link ITaskProgress}）：已完成的單位於掃描後比對新增檔案——無新增即跳過，有新增僅處理新增者；
+ * 僅「確認發布」的批次推進中斷檢查點 (Checkpoint)，中斷後自實際進度續跑（大目錄不重跑整個單位）；
+ * 單位全部批次確認發布後標記完成並更新完成邊界（最後處理檔案 + 時間戳）。
+ * 出現 dry run 批次、或有批次未執行 / 未確認發布的單位，不標記完成、不寫完成紀錄。
  * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
@@ -109,13 +112,6 @@ export async function autoPost(
 		/** 天目錄展開為任務；其餘模式即為執行單位 */
 		for await (const unit of expandFolder(folder, options))
 		{
-			/** 進度檔已記錄完成的任務直接跳過，接續上次中斷點 */
-			if (progress?.has(unit.path))
-			{
-				_logPhase(EnumPostPhase.AutoPost, options, `skipped by progress: ${unit.path}`);
-				continue;
-			}
-
 			taskNo++;
 
 			const order = await collectUploadOrder(unit, options);
@@ -126,14 +122,29 @@ export async function autoPost(
 				continue;
 			}
 
+			/** 完成紀錄：已完成單位於掃描後比對新增檔案，無新增即跳過 */
+			const doneEntry = progress?.done(unit.path);
+			const added = doneEntry ? findAddedFiles(order, doneEntry) : undefined;
+
+			if (doneEntry)
+			{
+				if (!added?.length)
+				{
+					_logPhase(EnumPostPhase.AutoPost, options, `skipped by progress: no new files (${unit.path})`);
+					continue;
+				}
+
+				_logPhase(EnumPostPhase.AutoPost, options, `new files after completion: ${added.length} (${unit.path})`);
+			}
+
 			/**
 			 * 中斷檢查點：接續上次未完成的實際進度——
 			 * 佇列取剩餘、批次序號接續、已取得的發布網址併回
 			 */
 			const checkpointed = progress?.checkpoint(unit.path);
 
-			/** 待上傳佇列：優先接續檢查點的剩餘佇列；缺漏檔案仍會排回佇列前端（進入下一次完整階段） */
-			let queue = checkpointed?.remaining ?? order;
+			/** 待上傳佇列：已完成單位只取新增檔案；其餘優先接續檢查點，否則取完整訂單 */
+			let queue = added ?? checkpointed?.remaining ?? order;
 
 			const publishedUrls: string[] = [...(checkpointed?.publishedUrls ?? [])];
 
@@ -148,6 +159,12 @@ export async function autoPost(
 				);
 			}
 
+			/** 本單位是否有批次未執行或未確認發布：有即不標記完成 */
+			let unpublished = false;
+
+			/** 本單位是否出現 dry run 批次：有即代表未全部實際執行 */
+			let hasDryRun = false;
+
 			while (queue.length)
 			{
 				batchNo++;
@@ -161,6 +178,7 @@ export async function autoPost(
 				/** 第 2 批起為 dry run：僅報告批次內容，不上傳、不進入發布階段；可由開關解除 */
 				if (dryRunEnabled && batchNo >= DRY_RUN_FROM_BATCH)
 				{
+					hasDryRun = true;
 					_logPhase(EnumPostPhase.Upload, message, `dry run from batch ${DRY_RUN_FROM_BATCH}: report only`);
 					reportBatch(batchNo, task.map(item => item.path), 'dry run', options);
 					continue;
@@ -187,7 +205,9 @@ export async function autoPost(
 				queue = [...reconcileUpload(batchNo, options, task, setPaths, actual), ...queue];
 
 				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後），絕不按 save */
-				if (await publishPost(currentPage, message, switches?.enablePublish))
+				const publishResult = await publishPost(currentPage, message, switches?.enablePublish);
+
+				if (publishResult === EnumPublishResult.Published)
 				{
 					/**
 					 * 發布後的網址須於重置頁面前取得；
@@ -195,22 +215,52 @@ export async function autoPost(
 					 */
 					publishedUrls.push(currentPage.url());
 					currentPage = await createPostPage(context, switches?.createUrl);
-				}
 
-				/** 批次完成即存檢查點：大目錄中斷後自實際進度續跑，不重跑整個單位 */
-				await progress?.saveCheckpoint({
-					path: unit.path,
-					remaining: queue,
-					batchNo,
-					publishedUrls,
-				});
+					/** 確認發布的批次才推進檢查點：大目錄中斷後自實際進度續跑 */
+					await progress?.saveCheckpoint({
+						path: unit.path,
+						remaining: queue,
+						batchNo,
+						publishedUrls,
+					});
+				}
+				else
+				{
+					/**
+					 * 未執行發布（停用）或未確認落地：不推進檢查點、單位不標記完成；
+					 * 未確認者中止本單位，避免後續批次的檢查點略過該批次
+					 */
+					unpublished = true;
+
+					if (publishResult === EnumPublishResult.Unconfirmed)
+					{
+						break;
+					}
+				}
 			}
 
+			/** 未執行或未確認發布：不標記完成、不寫完成紀錄，留待發布 run 續跑 */
+			if (unpublished)
+			{
+				_logPhase(EnumPostPhase.AutoPost, options, `not marked (publish not completed): ${unit.path}`);
+				continue;
+			}
+
+			/** dry run 批次未實際執行：不標記完成、不寫完成紀錄，留待實際執行的 run 續跑 */
+			if (hasDryRun)
+			{
+				_logPhase(EnumPostPhase.AutoPost, options, `not marked (dry run): ${unit.path}`);
+				continue;
+			}
+
+			/** 完成邊界：完整上傳順序的最後一個檔案（含時間戳），供重跑比對新增檔案 */
+			const last = order[order.length - 1];
+
 			/**
-			 * 該任務批次全部完成：先寫入進度檔（確保不重跑），
+			 * 該任務批次全部完成：先寫入進度檔（含完成邊界），
 			 * 再寫入完成紀錄（含發布網址，依發布日期分檔）
 			 */
-			await progress?.mark(unit.path);
+			await progress?.mark(unit.path, { lastFile: last.path, lastFileTime: last.mtime });
 
 			await record?.append({
 				path: unit.path,

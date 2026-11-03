@@ -47,7 +47,7 @@ async function _statItems(paths: readonly string[]): Promise<IUploadItem[]>
 	for (const path of paths)
 	{
 		const info = await stat(path).catch(() => undefined);
-		if (info) items.push({ path, size: info.size });
+		if (info) items.push({ path, size: info.size, mtime: info.mtimeMs });
 	}
 
 	return items;

@@ -1,8 +1,10 @@
-/** 單一待上傳檔案：路徑與大小（供 5MB 總和切包） */
+/** 單一待上傳檔案：路徑、大小（供 5MB 總和切包）與時間戳（供新增檔案比對） */
 export interface IUploadItem
 {
 	path: string;
 	size: number;
+	/** 檔案時間戳（mtimeMs）：完成邊界比對新增檔案用 */
+	mtime: number;
 }
 
 /**
@@ -126,6 +128,21 @@ export enum EnumPostPhase
 	Publish = 'publish',
 	/** 完整階段：上傳階段 + 發布階段串起的整個自動發文流程 */
 	AutoPost = 'auto-post',
+}
+
+/**
+ * 發布結果：`publishPost` 的回傳值
+ *
+ * 供呼叫端區分「未執行發布」與「已點擊但未確認落地」，進度據此決定是否推進。
+ */
+export enum EnumPublishResult
+{
+	/** 發布停用（未點擊）：該批次不算發布完成 */
+	Disabled = 'disabled',
+	/** 已點擊但未觀察到落地頁網址：發布狀態未確認 */
+	Unconfirmed = 'unconfirmed',
+	/** 已確認發布：網址到達落地頁特徵 */
+	Published = 'published',
 }
 
 /** 檔名類型分類：報表用的單一事實來源 */
