@@ -3,6 +3,7 @@ import { FILE_INPUT_SELECTOR } from './const';
 import { _logPhase } from './logger';
 import { reportBatch } from './report';
 import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types';
+import { debug } from 'node:console';
 
 /** 讀取當前等待區計數文字 `N / 20 files` 的 N；未出現時回傳 0 */
 async function _readUploadCount(page: Page): Promise<number>
@@ -82,14 +83,14 @@ export async function uploadPack(
 {
 	const baseline = await _readUploadCount(page);
 
-	_logPhase(EnumPostPhase.Upload, options, `files set: ${files.length} (total ${expectedTotal})`);
+	_logPhase(EnumPostPhase.Upload, options, `files set: ${files.length} (total ${expectedTotal})`, 'debug');
 
 	await page.locator(FILE_INPUT_SELECTOR).setInputFiles([...files]);
 
 	const uploaded = await waitForUpload(page, baseline, files.length, options);
 	const actual = expectedTotal - (files.length - uploaded);
 
-	_logPhase(EnumPostPhase.Upload, options, `upload complete: ${actual}/${expectedTotal}`);
+	_logPhase(EnumPostPhase.Upload, options, `upload complete: ${actual}/${expectedTotal}`, 'debug');
 
 	return actual;
 }
