@@ -15,18 +15,19 @@ export enum EnumLogLabel
 	Temp = '[temp]',
 }
 
-/**
- * 建立帶時間戳的日誌
- *
- * 一般日誌不需要時間戳，直接 `import { console } from 'debug-color2'` 即可。
- */
-export function createTimedConsole(): Console2
-{
-	return new Console2(null, {
-		label: true,
-		time: true,
-	});
-}
-
 /** 頁面通訊協議的終端日誌：帶 label 與時間戳 */
-export const consoleLogger = createTimedConsole();
+export const consoleLogger = new Console2(null, {
+	label: true,
+	time: true,
+});
+
+/** 頁面通訊協議的終端日誌：僅帶 label，無時間戳 */
+export const consoleLoggerLabelOnly = new Console2(null, {
+	label: true,
+	time: false,
+});
+
+export const consoleLoggerTimeOnly = new Console2(null, {
+	label: false,
+	time: true,
+});
