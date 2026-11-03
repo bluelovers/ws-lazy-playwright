@@ -1,0 +1,78 @@
+{
+  "name": "ws-lazy-playwright",
+  "version": "1.0.0",
+  "private": true,
+  "keywords": [
+    "create-by-yarn-tool"
+  ],
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "review:all": "yarn-tool ws run review --concurrency 1",
+    "review:since": "node --run review:all -- --since",
+    "coverage:all": "yarn-tool ws run coverage --concurrency 1",
+    "coverage:since": "node --run coverage:all -- --since",
+    "lint:all": "yarn-tool ws run lint --concurrency 1",
+    "lint:since": "node --run lint:all -- --since",
+    "pretest": "echo workspaces pretest",
+    "test": "node --run test:since",
+    "test:all": "yarn-tool ws run test --concurrency 1",
+    "test:jest:clearCache": "jest --clearCache",
+    "test:since": "node --run test:all -- --since",
+    "test:snapshot:all": "yarn-tool ws run test:snapshot --concurrency 1",
+    "test:snapshot:since": "node --run test:snapshot:all -- --since",
+    "test:tsd:all": "yarn-tool ws run test:tsd --concurrency 1",
+    "test:tsd:since": "node --run test:tsd:all -- --since",
+    "install:frozenLockfile": "yarn-tool install --frozen-lockfile",
+    "install:resetLockfile": "yarn-tool install --reset-lockfile",
+    "build:all": "yarn-tool ws run build --concurrency 1",
+    "build:since": "node --run build:all -- --since",
+    "ci:install": "node --run ci:install:pnpm",
+    "ci:install:pnpm": "pnpm install --frozen-lockfile && pnpm add --workspace yarn-tool lerna ynpx pnpm typescript ts-node tsx ts-jest jest @bluelovers/jest-config @bluelovers/tsconfig @yarn-tool/require-resolve",
+    "ci:install:yarn": "yarn install --frozen-lockfile && yarn add -W yarn-tool lerna ynpx pnpm typescript ts-node tsx ts-jest jest @bluelovers/jest-config @bluelovers/tsconfig @yarn-tool/require-resolve",
+    "ci:build": "echo workspaces ci:build",
+    "lerna:publish": "node --run prepublishOnly:root && lerna publish --no-private && pnpm run postpublishOnly",
+    "lerna:publish:yes": "node --run lerna:publish:yes:patch --",
+    "lerna:publish:yes:force": "lerna publish --no-private --yes --bump patch --force-publish",
+    "lerna:publish:yes:major": "node --run prepublishOnly:root && lerna publish --no-private --yes --bump major && pnpm run postpublishOnly",
+    "lerna:publish:yes:minor": "node --run prepublishOnly:root && lerna publish --no-private --yes --bump minor && pnpm run postpublishOnly",
+    "lerna:publish:yes:patch": "node --run prepublishOnly:root && lerna publish --no-private --yes --bump patch && pnpm run postpublishOnly",
+    "ws:fix-all": "yarn-tool fix-all --overwriteHostedGitInfo",
+    "ws:fix-all:addStaticFiles": "node --run ws:fix-all -- --addStaticFiles",
+    "ws:fix-all:resetStaticFiles": "node --run ws:fix-all -- --resetStaticFiles",
+    "preversion": "pnpm run test",
+    "version": "echo workspaces version",
+    "postversion": "yarn-tool fix-all --noStaticFiles",
+    "prepare:fix-ws-links": "echo ynpx --quiet @yarn-tool/fix-ws-links",
+    "prepublishOnly": "echo workspaces prepublishOnly",
+    "prepublishOnly:check-bin": "ynpx --quiet @yarn-tool/check-pkg-bin",
+    "prepublishOnly:lockfile": "ynpx --quiet sync-lockfile",
+    "prepublishOnly:root": "node --run prepublishOnly:check-bin && node --run prepare:fix-ws-links",
+    "prepublishOnly:update": "pnpm run ncu && node --run sort-package-json",
+    "publish": "echo workspaces publish",
+    "postpublishOnly": "node --run postpublishOnly:ws-root-changelog & echo postpublishOnly",
+    "postpublishOnly:ws-root-changelog": "ynpx ws-root-changelog & git add ./CHANGELOG.md & git commit ./CHANGELOG.md -m \"chore(changelog): update changelog toc in workspaces root\" & echo update changelog toc in workspaces root",
+    "ncu": "node --run ncu:ws",
+    "ncu:ws": "yarn-tool ncu -u --AA",
+    "ncu:root": "yarn-tool ncu -u",
+    "sort-package-json": "node --run sort-package-json:root && node --run sort-package-json:ws",
+    "sort-package-json:root": "yarn-tool sort",
+    "sort-package-json:ws": "yarn-tool ws sort",
+    "tsc:showConfig": "ynpx get-current-tsconfig -p"
+  },
+  "dependencies": {
+    "ts-type": "^3.0.18",
+    "tslib": "^2.9.1"
+  },
+  "devDependencies": {
+    "@bluelovers/tsconfig": "^2.0.3",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.6.6",
+    "@yarn-tool/require-resolve": "^4.0.13",
+    "@yarn-tool/ws-find-up-paths": "^1.0.26"
+  },
+  "peerDependencies": {
+    "@bluelovers/conventional-changelog-bluelovers": "*"
+  }
+}
