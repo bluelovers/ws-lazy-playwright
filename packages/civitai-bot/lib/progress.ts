@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { _logPhase } from './logger';
-import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types';
+import { EnumPostPhase, type IMessageOptions } from './types';
 
 /** 進度檔格式版本；格式變更時遞增，舊版檔案一律重新開始 */
 const PROGRESS_VERSION = 1;
@@ -11,7 +11,6 @@ interface IProgressFile
 {
 	version: number;
 	basePath: string;
-	range: ITaskRangeOptions;
 	done: string[];
 	updatedAt: string;
 }
@@ -23,6 +22,8 @@ interface IProgressFile
  */
 export interface ITaskProgress
 {
+	/** 已完成任務數：供呼叫端判斷是否有可接續紀錄 */
+	readonly size: number;
 	/** 該執行單位是否已完成（可跳過） */
 	has(path: string): boolean;
 	/** 標記執行單位完成並寫入進度檔 */
@@ -32,18 +33,19 @@ export interface ITaskProgress
 /**
  * 完整階段：載入任務進度檔，回傳可供 `autoPost` 使用的進度物件
  *
- * 檔案不存在、內容無法解析、或 `basePath` / `range` 與目前呼叫不符時，
+ * 檔案不存在、內容無法解析、或 `basePath` 與目前呼叫不符時，
  * 一律以空進度（重新開始）處理並記錄，避免套用不相符的舊進度。
+ *
+ * 進度以「已完成任務路徑」為準，不因任務範圍（`range` / CLI 參數）改變而重置：
+ * 範圍不同的執行依舊跳過已完成任務。
  *
  * @param file 進度檔路徑（含檔名）
  * @param basePath 任務基準路徑：作為進度檔所屬執行的識別
- * @param range 任務範圍：同上
  * @param options 訊息控制（獨立物件，不併入其他參數）
  */
 export async function loadTaskProgress(
 	file: string,
 	basePath: string,
-	range: ITaskRangeOptions,
 	options?: IMessageOptions,
 ): Promise<ITaskProgress>
 {
@@ -61,16 +63,14 @@ export async function loadTaskProgress(
 
 	let done = new Set<string>();
 
-	if (saved && saved.version === PROGRESS_VERSION
-		&& saved.basePath === basePath
-		&& JSON.stringify(saved.range) === JSON.stringify(range))
+	if (saved && saved.version === PROGRESS_VERSION && saved.basePath === basePath)
 	{
 		done = new Set(saved.done);
 		_logPhase(EnumPostPhase.AutoPost, options, `progress resumed: ${done.size} done tasks (${file})`);
 	}
 	else if (saved)
 	{
-		_logPhase(EnumPostPhase.AutoPost, options, `progress mismatched (version/base/range): start over (${file})`);
+		_logPhase(EnumPostPhase.AutoPost, options, `progress mismatched (version/base): start over (${file})`);
 	}
 	else
 	{
@@ -78,6 +78,11 @@ export async function loadTaskProgress(
 	}
 
 	return {
+		get size(): number
+		{
+			return done.size;
+		},
+
 		has: path => done.has(path),
 
 		/**
@@ -91,7 +96,6 @@ export async function loadTaskProgress(
 			const payload: IProgressFile = {
 				version: PROGRESS_VERSION,
 				basePath,
-				range,
 				done: [...done].sort(),
 				updatedAt: new Date().toISOString(),
 			};
