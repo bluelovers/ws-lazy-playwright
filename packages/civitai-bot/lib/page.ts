@@ -5,7 +5,7 @@ import {
 	DROPZONE_SELECTOR,
 	DROPZONE_WAIT_TIMEOUT,
 	ENABLE_PUBLISH,
-	POST_URL_RE,
+	PUBLISHED_URL_PATTERNS,
 	PUBLISH_SELECTOR,
 	PUBLISH_URL_TIMEOUT,
 } from './const';
@@ -78,16 +78,22 @@ export async function ensureDropzone(page: Page, options?: IMessageOptions): Pro
 	}
 }
 
+/** 網址符合任一發布後落地頁特徵即視為發布完成 */
+function _isPublishedUrl(url: string): boolean
+{
+	return PUBLISHED_URL_PATTERNS.some(pattern => pattern.test(url));
+}
+
 /**
- * 發布階段：點擊 publish 按鈕並等待跳轉為已發布貼文（僅在發布開關為 `true` 時執行）
+ * 發布階段：點擊 publish 按鈕並等待跳轉為已發布落地頁（僅在發布開關為 `true` 時執行）
  *
  * 安全規則：絕不點擊 save（草稿）按鈕；publish 僅在開關開啟時點擊，
  * 且只會在上傳階段的 waiter 結束後被呼叫。
  *
  * 預設開關為 {@link ENABLE_PUBLISH}，可由呼叫端以 `enablePublish` 覆寫（CLI `--publish`）。
  *
- * 發布完成以網址特徵 {@link POST_URL_RE} 判定：僅等待網址更新（`waitUntil: 'commit'`），
- * 不等待頁面載入完成；逾時未跳轉時回傳 `false`。
+ * 發布完成以落地頁特徵 {@link PUBLISHED_URL_PATTERNS} 判定（貼文頁、模型頁等）：
+ * 僅等待網址更新（`waitUntil: 'commit'`），不等待頁面載入完成；逾時未跳轉時回傳 `false`。
  * 完成紀錄含發布後的網址（未取得跳轉時無網址）。
  *
  * @param enablePublish 是否執行發布；未提供時沿用 {@link ENABLE_PUBLISH}
@@ -116,13 +122,16 @@ export async function publishPost(
 	await publish.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => undefined);
 	_logPhase(EnumPostPhase.Publish, options, 'clicked');
 
-	/** 網址已跳轉（導向已提交）即視為發布完成，無需再等待 */
-	if (POST_URL_RE.test(page.url()))
+	/** 網址已到達發布後落地頁（導向已提交）即視為發布完成，無需再等待 */
+	if (_isPublishedUrl(page.url()))
 	{
 		return true;
 	}
 
-	const published = await page.waitForURL(POST_URL_RE, { waitUntil: 'commit', timeout: PUBLISH_URL_TIMEOUT })
+	const published = await page.waitForURL(
+		url => _isPublishedUrl(url.href),
+		{ waitUntil: 'commit', timeout: PUBLISH_URL_TIMEOUT },
+	)
 		.then(() => true)
 		.catch(() => false);
 

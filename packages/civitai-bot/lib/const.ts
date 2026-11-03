@@ -14,8 +14,18 @@ export const FILE_INPUT_SELECTOR = `${DROPZONE_SELECTOR} input[type="file"]`;
 /** 上載完成後才會出現的發布按鈕 */
 export const PUBLISH_SELECTOR = 'button[data-tour="post:publish"]';
 
-/** 已發布貼文的網址特徵（`https://civitai.red/posts/<id>`）；跳轉至此即代表發布完成 */
-export const POST_URL_RE = /\/posts\/\d+/;
+/**
+ * 發布後到達的落地頁特徵：網址符合任一即代表發布完成
+ *
+ * 依發布來源不同，落地頁可能有差異：
+ *
+ * - 貼文頁：`https://civitai.red/posts/<id>`
+ * - 模型頁（部分發布流程的落地頁）：`https://civitai.red/models/<id>/<slug>?modelVersionId=<id>`
+ */
+export const PUBLISHED_URL_PATTERNS: readonly RegExp[] = [
+	/\/posts\/\d+/,
+	/\/models\/\d+/,
+];
 
 /** 點擊 publish 後等待網址跳轉為已發布貼文的逾時時間（僅等待網址更新，不等待載入完成） */
 export const PUBLISH_URL_TIMEOUT = 15_000;
