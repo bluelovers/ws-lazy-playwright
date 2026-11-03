@@ -7,7 +7,7 @@ import { EnumAutomationEngine } from 'lazy-playwright-impl/lib/engine';
 // @ts-ignore
 import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';
 // @ts-ignore
-import { __TEST_TEMP } from '#/test/__root';
+import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__root';
 // @ts-ignore
 import { CREATE_URL } from '#/lib/const';
 // @ts-ignore
@@ -16,12 +16,13 @@ import { EnumLogLabel, consoleLogger } from '#/lib/logger';
 import { autoPost, collectFolders } from '#/lib/auto-post';
 // @ts-ignore
 import type { IFolderInput, IMessageOptions, ITaskRangeOptions } from '#/lib/types';
+import { globStream, async as globAsync } from 'fast-glob';
 
 /** 登入狀態的儲存 id：先以 storage/save 寫入 civitai.red 的登入狀態 */
 const STORAGE_ID = 'default';
 
 /** 儲存目錄（Cookie / Session） */
-const STORAGE_BASE_DIR = join(__TEST_TEMP, 'temp-storage');
+const STORAGE_BASE_DIR = __TEST_TEMP_STORAGE;
 
 /**
  * 任務基準路徑：

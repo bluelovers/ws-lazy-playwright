@@ -9,6 +9,7 @@ import { resolveFolderInput } from '#/lib/source';
 import { expandFolder } from '#/lib/folder';
 // @ts-ignore
 import type { IFolderInput } from '#/lib/types';
+import { globStream, async as globAsync } from 'fast-glob';
 
 /** agent-scheduler 單日目錄（示範用） */
 const DAY_BASE = 'D:\\sd-forge\\output\\agent-scheduler\\2026-09-13';
@@ -66,8 +67,6 @@ async function resolveDemo()
  */
 async function globDemo()
 {
-	const { globStream, async: globAsync } = await import('fast-glob');
-
 	/** `globStream`：AsyncIterable（類似 async Generator） */
 	const streamSource: IFolderInput = globStream(['**' + '/*_task*'], {
 		cwd: DAY_BASE,
@@ -101,7 +100,7 @@ async function globDemo()
 
 		for (const folder of folders)
 		{
-			consoleLogger.log(EnumLogLabel.Temp, `  [${folder.kind}] ${folder.path}`);
+			consoleLogger.log(EnumLogLabel.Temp, ` [${folder.kind}] ${folder.path}`);
 		}
 	}
 }

@@ -96,6 +96,8 @@ export type IFolderInput =
 	| IFolderInputEntry
 	| Iterable<IFolderInputEntry>
 	| AsyncIterable<IFolderInputEntry>
+	/** globStream */
+	| NodeJS.ReadableStream
 	| Promise<IFolderInput>
 	| (() => IFolderInput);
 
