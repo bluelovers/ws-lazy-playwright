@@ -1,13 +1,14 @@
 import type { BrowserContext, Page } from 'playwright';
-import type { INullable } from '../types';
-
-export type IPageListener = (page: Page) => unknown;
+import type { INullable, IPageListener } from '../types';
 
 /**
  * 監聽 context 新增的分頁
  *
  * 若 `page` 已存在則先執行一次 `listener`，之後每次 context 產生新分頁 (Popup / Target)
- * 都會再呼叫 `listener`，可用於為每個分頁掛上相同的監控流程。
+ * 都會再呼叫 `listener`。
+ *
+ * 這是單次接線的底層函式；若需跨 context 重建仍保留監聽，
+ * 請改用 `IBrowserAutomation.pageLiveOn`。
  *
  * @param ctx - 具備 `context` 的物件，例如 `IBrowserAutomation` 實例
  * @param page - 起始分頁，可為 `null`

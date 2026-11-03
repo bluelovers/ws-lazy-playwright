@@ -1,8 +1,10 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
 import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from './engine';
 import { closeBrowserSafely } from './playwright/browser-util';
+import { pageLiveOn as _pageLiveOn } from './playwright/event';
 import { BrowserStorageManager } from './storage';
 import type {
+	IPageListener,
 	IBrowserAutomation,
 	ICreateBrowserAutomationOptions,
 	ILaunchOptions,
@@ -28,6 +30,17 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	protected readonly _options: ICreateBrowserAutomationOptions;
 	protected readonly _contexts = new Set<BrowserContext>();
 	protected readonly _pages = new Set<Page>();
+
+	/**
+	 * 已註冊的分頁監聽 (Page Listener)
+	 *
+	 * 保存在實例上而非單一 context，任何由本實例建立的 context 都會自動繼承，
+	 * 因此 context 被重建時監聽不會遺失。
+	 */
+	protected readonly _pageLiveOnListeners = new Set<IPageListener>();
+
+	/** 已接線過的 context，避免同一監聽被重複掛載 */
+	protected readonly _wiredContexts = new WeakSet<BrowserContext>();
 
 	protected _browser: INullable<Browser>;
 	protected _context: INullable<BrowserContext>;
@@ -80,6 +93,10 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		});
 
 		this._browser = await this._initializeBrowser(launchOptions);
+
+		/** 讓直接以 `browser.newContext()` 建立的 context 也自動繼承已註冊的分頁監聽 */
+		this._browser.on('context', context => this._wirePageLiveOnOnContext(context));
+
 		return this._browser;
 	}
 
@@ -129,6 +146,8 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this._context = context;
 		this._contexts.add(context);
 
+		this._wirePageLiveOnOnContext(context);
+
 		context.on('page', page => this._bindPage(page));
 		context.on('close', () =>
 		{
@@ -163,5 +182,43 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		if (!this._browser?.isConnected()) return;
 
 		void this.close();
+	}
+
+	/**
+	 * 註冊分頁建立監聽 (Page Listener)
+	 *
+	 * 監聽保存在實例上，之後建立的每個 context 都會自動重新掛載；
+	 * 若目前已有 context 則立即接線並對 `page` 觸發一次。
+	 *
+	 * @param page - 起始分頁，立即觸發一次；`null` 表示不立即觸發
+	 * @param listener - 分頁建立時的處理器；重複註冊同一函式會被忽略
+	 */
+	pageLiveOn(page: INullable<Page>, listener: IPageListener): void
+	{
+		const isFirstRegistration = !this._pageLiveOnListeners.has(listener);
+		this._pageLiveOnListeners.add(listener);
+
+		/** 已註冊過的監聽不重複接線，避免同一事件被呼叫兩次 */
+		if (isFirstRegistration && this._context)
+		{
+			_pageLiveOn(this, page, listener);
+		}
+	}
+
+	/**
+	 * 將所有已註冊的分頁監聽接線至指定 context
+	 *
+	 * 由 `_bindContext` 與 `browser.on('context')` 兩條路徑共同呼叫，
+	 * 以 `_wiredContexts` 保證同一 context 只接線一次。
+	 */
+	protected _wirePageLiveOnOnContext(context: BrowserContext): void
+	{
+		if (this._wiredContexts.has(context)) return;
+		this._wiredContexts.add(context);
+
+		for (const listener of this._pageLiveOnListeners)
+		{
+			_pageLiveOn({ context }, null, listener);
+		}
 	}
 }

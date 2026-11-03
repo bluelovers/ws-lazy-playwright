@@ -5,6 +5,9 @@ import type { IBrowserStorageManager, IStorageOptions } from './storage/types';
 /** 可空值 (Nullable)：統一 `undefined` 與 `null` 的表達 */
 export type INullable<T> = T | null | undefined;
 
+/** 分頁建立時的監聽器 (Page Listener) */
+export type IPageListener = (page: Page) => unknown;
+
 /** 啟動選項：直接沿用 Playwright 的 `LaunchOptions`，不另行定義副本 */
 export type ILaunchOptions = LaunchOptions;
 
@@ -42,5 +45,17 @@ export interface IBrowserAutomation
 	launch(options?: ILaunchOptions): Promise<Browser>;
 	newContext(options?: BrowserContextOptions): Promise<BrowserContext>;
 	newPage(options?: BrowserContextOptions): Promise<Page>;
+
+	/**
+	 * 註冊分頁建立監聽 (Page Listener)
+	 *
+	 * 已註冊的監聽會保存在實例上，之後任何由本實例建立的 context
+	 * 都會自動重新掛載，不會因 context 重建而遺失。
+	 *
+	 * @param page - 起始分頁，立即觸發一次；`null` 表示不立即觸發
+	 * @param listener - 分頁建立時的處理器；重複註冊同一函式會被忽略
+	 */
+	pageLiveOn(page: INullable<Page>, listener: IPageListener): void;
+
 	close(): Promise<void>;
 }
