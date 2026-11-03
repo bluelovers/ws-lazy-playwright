@@ -1,7 +1,10 @@
 {
   "extends": "@bluelovers/tsconfig/esm/mapfile.json",
   "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "importHelpers": true,
+    "noPropertyAccessFromIndexSignature": false,
     "types": [
       "jest",
       "node"

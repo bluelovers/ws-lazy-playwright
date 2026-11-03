@@ -19,6 +19,7 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 		const { args, ...baseOptions } = options;
 
 		return {
+			headless: false,
 			...baseOptions,
 			/** 以 Set 去除重複參數，保留呼叫端指定的 args 優先權 */
 			args: [...new Set([

@@ -17,7 +17,7 @@ import type { ILaunchOptions } from './types';
  */
 export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 {
-	readonly engine: EnumAutomationEngine = EnumAutomationEngine.Camoufox;
+	override readonly engine: EnumAutomationEngine = EnumAutomationEngine.Camoufox;
 
 	protected readonly _camoufox: ICamoufoxLaunchOptions;
 	protected readonly _os?: EnumCamoufoxOs;
@@ -33,7 +33,7 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 		this._os = options.os;
 	}
 
-	protected async _handleLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
+	protected override async _handleLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
 	{
 		const { args, headless, ...baseOptions } = await super._handleLaunchOptions(options);
 
@@ -63,7 +63,7 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 		};
 	}
 
-	protected async _initializeBrowser(options: LaunchOptions): Promise<Browser>
+	protected override async _initializeBrowser(options: LaunchOptions): Promise<Browser>
 	{
 		return firefox.launch(options);
 	}
