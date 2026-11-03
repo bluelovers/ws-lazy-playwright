@@ -1,4 +1,8 @@
-/** 建立貼文頁 */
+/**
+ * 建立貼文頁（上傳頁面）網址
+ *
+ * 可由 `IRunSwitches.createUrl` 於呼叫端覆寫（CLI `--create-url`）。
+ */
 export const CREATE_URL = 'https://civitai.red/posts/create';
 
 /** 拖曳與點選的上傳區（Mantine Dropzone） */

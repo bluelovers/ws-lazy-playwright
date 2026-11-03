@@ -151,10 +151,10 @@ export interface IMessageOptions
 }
 
 /**
- * 執行開關：由呼叫端於執行前覆寫預設停用的安全開關（CLI 參數用）
+ * 執行設定：由呼叫端於執行前覆寫預設值（CLI 參數用）
  *
  * 未指定的欄位維持預設行為：發布停用（`ENABLE_PUBLISH = false`）、
- * 第 {@link DRY_RUN_FROM_BATCH} 批起 dry run。
+ * 第 {@link DRY_RUN_FROM_BATCH} 批起 dry run、建立貼文頁網址 `CREATE_URL`。
  */
 export interface IRunSwitches
 {
@@ -162,4 +162,6 @@ export interface IRunSwitches
 	enablePublish?: boolean;
 	/** 是否停用 dry run；解除後每批實際上傳並進入發布階段 */
 	disableDryRun?: boolean;
+	/** 建立貼文頁（上傳頁面）網址；未指定時沿用 `CREATE_URL` */
+	createUrl?: string;
 }

@@ -31,11 +31,13 @@ async function _ask(question: string): Promise<string>
  * 完整階段：開啟建立貼文頁（`newPage` + `goto`）
  *
  * 初始頁面與發布完成後的下一批次，皆由此取得新的建立貼文頁。
+ *
+ * @param url 建立貼文頁（上傳頁面）網址；未指定時沿用 {@link CREATE_URL}
  */
-export async function createPostPage(context: BrowserContext): Promise<Page>
+export async function createPostPage(context: BrowserContext, url: string = CREATE_URL): Promise<Page>
 {
 	const page = await context.newPage();
-	await page.goto(CREATE_URL);
+	await page.goto(url);
 	return page;
 }
 

@@ -59,13 +59,38 @@ const RECORD_DIR = join(__TEST_TEMP, 'civitai-bot', 'completion');
  * - `--publish`：解除發布停用（預設停用；絕不按 save 的安全規則不變）
  * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告）
  * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
+ * - `--create-url <url>`：變更上傳（建立貼文）頁面網址（預設 `CREATE_URL`）
  */
-const CLI_ARGS = new Set(process.argv.slice(2));
+const ARGV = process.argv.slice(2);
+
+/** CLI 參數集合：布林旗標判定用 */
+const CLI_ARGS = new Set(ARGV);
+
+/**
+ * 取得 CLI 字串參數值：支援 `--name value` 與 `--name=value`
+ *
+ * 未指定、缺少值、或下一個 token 為旗標（以 `--` 開頭）時回傳 `undefined`
+ */
+function _argValue(name: string): string | undefined
+{
+	const prefix = `${name}=`;
+	const inline = ARGV.find(arg => arg.startsWith(prefix));
+
+	if (inline !== undefined)
+	{
+		return inline.slice(prefix.length) || undefined;
+	}
+
+	const index = ARGV.indexOf(name);
+	const value = index >= 0 ? ARGV[index + 1] : undefined;
+
+	return value !== undefined && !value.startsWith('--') ? value : undefined;
+}
 
 /** 是否於執行結束後關閉瀏覽器 */
 const CLOSE_AFTER = CLI_ARGS.has('--close');
 
-/** 執行開關：僅在明確指定時覆寫預設停用的開關 */
+/** 執行設定：僅在明確指定時覆寫預設值 */
 const SWITCHES: IRunSwitches = {};
 
 if (CLI_ARGS.has('--publish'))
@@ -78,11 +103,15 @@ if (CLI_ARGS.has('--no-dry-run'))
 	SWITCHES.disableDryRun = true;
 }
 
+/** 建立貼文頁（上傳頁面）網址：CLI `--create-url <url>` 指定；未指定時沿用 `CREATE_URL` 預設 */
+SWITCHES.createUrl = _argValue('--create-url');
+
 consoleLogger.log(
 	EnumLogLabel.Temp,
 	`[auto-post] cli: publish=${SWITCHES.enablePublish === true}`
 	+ `, dryRun=${SWITCHES.disableDryRun === true ? 'off' : 'on'}`
-	+ `, close=${CLOSE_AFTER}`,
+	+ `, close=${CLOSE_AFTER}`
+	+ `, createUrl=${SWITCHES.createUrl ?? 'default'}`,
 );
 
 /**
@@ -94,7 +123,7 @@ consoleLogger.log(
  * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
- * CLI 參數（{@link CLI_ARGS}）可解除發布停用與 dry run；`--close` 於結束後關閉瀏覽器。
+ * CLI 參數（{@link CLI_ARGS}）可解除發布停用與 dry run、指定上傳頁面網址、結束後關閉瀏覽器。
  *
  * @param options 訊息控制（獨立物件，不併入其他參數）
  * @param range 任務範圍（獨立物件；僅於未指定 `source` 的掃描模式生效）
@@ -143,7 +172,7 @@ export async function autoUploadDemo(
 		/** 完成紀錄：完成任務依發布日期分檔保存 */
 		const record = createCompletionRecord(RECORD_DIR, options);
 
-		const page = await createPostPage(context);
+		const page = await createPostPage(context, SWITCHES.createUrl);
 
 		await autoPost(page, prependFolder(head.value, folders), options, progress, SWITCHES, record);
 	}

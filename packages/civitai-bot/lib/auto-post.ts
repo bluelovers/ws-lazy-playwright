@@ -73,7 +73,7 @@ export async function* collectFolders(
  * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  * @param progress 任務進度（可選，獨立物件）：記錄已完成任務供中斷後接續
- * @param switches 執行開關（可選，獨立物件）：解除發布停用與 dry run 的預設值
+ * @param switches 執行設定（可選，獨立物件）：解除發布停用與 dry run、指定建立貼文頁網址
  * @param record 完成紀錄（可選，獨立物件）：完成任務依發布日期分檔保存
  */
 export async function autoPost(
@@ -178,7 +178,7 @@ export async function autoPost(
 					 * 當前頁面已離開建立貼文頁，重開新頁面執行下一批次
 					 */
 					publishedUrls.push(currentPage.url());
-					currentPage = await createPostPage(context);
+					currentPage = await createPostPage(context, switches?.createUrl);
 				}
 			}
 
