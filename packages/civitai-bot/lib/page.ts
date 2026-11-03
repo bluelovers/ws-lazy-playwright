@@ -1,6 +1,14 @@
 import { createInterface } from 'node:readline/promises';
-import type { Page } from 'playwright';
-import { DROPZONE_SELECTOR, DROPZONE_WAIT_TIMEOUT, ENABLE_PUBLISH, PUBLISH_SELECTOR } from './const';
+import type { BrowserContext, Page } from 'playwright';
+import {
+	CREATE_URL,
+	DROPZONE_SELECTOR,
+	DROPZONE_WAIT_TIMEOUT,
+	ENABLE_PUBLISH,
+	POST_URL_RE,
+	PUBLISH_SELECTOR,
+	PUBLISH_URL_TIMEOUT,
+} from './const';
 import { _logPhase } from './logger';
 import { EnumPostPhase, type IMessageOptions } from './types';
 
@@ -17,6 +25,18 @@ async function _ask(question: string): Promise<string>
 	{
 		rl.close();
 	}
+}
+
+/**
+ * 完整階段：開啟建立貼文頁（`newPage` + `goto`）
+ *
+ * 初始頁面與發布完成後的下一批次，皆由此取得新的建立貼文頁。
+ */
+export async function createPostPage(context: BrowserContext): Promise<Page>
+{
+	const page = await context.newPage();
+	await page.goto(CREATE_URL);
+	return page;
 }
 
 /**
@@ -57,17 +77,22 @@ export async function ensureDropzone(page: Page, options?: IMessageOptions): Pro
 }
 
 /**
- * 發布階段：點擊 publish 按鈕（僅在 {@link ENABLE_PUBLISH} 為 `true` 時執行）
+ * 發布階段：點擊 publish 按鈕並等待跳轉為已發布貼文（僅在 {@link ENABLE_PUBLISH} 為 `true` 時執行）
  *
  * 安全規則：絕不點擊 save（草稿）按鈕；publish 僅在開關開啟時點擊，
  * 且只會在上傳階段的 waiter 結束後被呼叫。
+ *
+ * 發布完成以網址特徵 {@link POST_URL_RE} 判定：僅等待網址更新（`waitUntil: 'commit'`），
+ * 不等待頁面載入完成；逾時未跳轉時回傳 `false`。
+ *
+ * @returns 是否完成發布；未啟用發布或未觀察到跳轉時回傳 `false`
  */
-export async function publishPost(page: Page, options?: IMessageOptions): Promise<void>
+export async function publishPost(page: Page, options?: IMessageOptions): Promise<boolean>
 {
 	if (!ENABLE_PUBLISH)
 	{
 		_logPhase(EnumPostPhase.Publish, options, 'skipped: ENABLE_PUBLISH = false (never clicking save)');
-		return;
+		return false;
 	}
 
 	const publish = page.locator(PUBLISH_SELECTOR);
@@ -80,4 +105,22 @@ export async function publishPost(page: Page, options?: IMessageOptions): Promis
 
 	await publish.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => undefined);
 	_logPhase(EnumPostPhase.Publish, options, 'clicked');
+
+	/** 網址已跳轉（導向已提交）即視為發布完成，無需再等待 */
+	if (POST_URL_RE.test(page.url()))
+	{
+		return true;
+	}
+
+	const published = await page.waitForURL(POST_URL_RE, { waitUntil: 'commit', timeout: PUBLISH_URL_TIMEOUT })
+		.then(() => true)
+		.catch(() => false);
+
+	_logPhase(
+		EnumPostPhase.Publish,
+		options,
+		published ? `published: ${page.url()}` : `publish url not observed within ${PUBLISH_URL_TIMEOUT / 1000}s`,
+	);
+
+	return published;
 }

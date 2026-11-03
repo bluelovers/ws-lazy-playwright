@@ -10,6 +10,12 @@ export const FILE_INPUT_SELECTOR = `${DROPZONE_SELECTOR} input[type="file"]`;
 /** 上載完成後才會出現的發布按鈕 */
 export const PUBLISH_SELECTOR = 'button[data-tour="post:publish"]';
 
+/** 已發布貼文的網址特徵（`https://civitai.red/posts/<id>`）；跳轉至此即代表發布完成 */
+export const POST_URL_RE = /\/posts\/\d+/;
+
+/** 點擊 publish 後等待網址跳轉為已發布貼文的逾時時間（僅等待網址更新，不等待載入完成） */
+export const PUBLISH_URL_TIMEOUT = 15_000;
+
 /** 單一 publish 任務最多累計的圖片數（站台上限 20，預留餘裕） */
 export const MAX_PER_BATCH = 18;
 

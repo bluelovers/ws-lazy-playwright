@@ -116,7 +116,7 @@ export type IFolderStream = Iterable<ITaskFolder> | AsyncIterable<ITaskFolder>;
  *
  * - {@link EnumPostPhase.Upload} ↔ `collectUploadOrder` / `uploadPack` / `waitForUpload` / `reconcileUpload` / `reportBatch`
  * - {@link EnumPostPhase.Publish} ↔ `publishPost` / `ENABLE_PUBLISH`
- * - {@link EnumPostPhase.AutoPost} ↔ `iterateTaskDirs` / `iterateFolderInput` / `toTaskFolder` / `expandFolder` / `collectFolders` / `autoPost`（兩階段串起的完整流程）
+ * - {@link EnumPostPhase.AutoPost} ↔ `iterateTaskDirs` / `iterateFolderInput` / `toTaskFolder` / `expandFolder` / `collectFolders` / `loadTaskProgress` / `autoPost`（兩階段串起的完整流程）
  */
 export enum EnumPostPhase
 {

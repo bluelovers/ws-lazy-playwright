@@ -9,11 +9,13 @@ import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';
 // @ts-ignore
 import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__root';
 // @ts-ignore
-import { CREATE_URL } from '#/lib/const';
+import { createPostPage } from '#/lib/page';
 // @ts-ignore
 import { EnumLogLabel, consoleLogger } from '#/lib/logger';
 // @ts-ignore
 import { autoPost, collectFolders } from '#/lib/auto-post';
+// @ts-ignore
+import { loadTaskProgress } from '#/lib/progress';
 // @ts-ignore
 import { prependFolder } from '#/lib/source';
 // @ts-ignore
@@ -43,11 +45,15 @@ const TASK_RANGE: ITaskRangeOptions = {
 	// maxDays: 3,
 };
 
+/** 任務進度檔：記錄已完成任務；中斷後由該檔接續，需完全重跑時刪除該檔 */
+const PROGRESS_FILE = join(__TEST_TEMP, 'civitai-bot', 'auto-post.progress.json');
+
 /**
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
- * 流程：串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） → 還原登入狀態 → 開啟建立貼文頁 →
- * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布開關檢查）。
+ * 流程：串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） → 還原登入狀態 →
+ * 載入任務進度（{@link loadTaskProgress}） → 開啟建立貼文頁（{@link createPostPage}） →
+ * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
  *
@@ -92,10 +98,12 @@ export async function autoUploadDemo(
 		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] cookies applied: ${applied}`);
 		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] session restored: ${restored}`);
 
-		const page = await context.newPage();
-		await page.goto(CREATE_URL);
+		/** 任務進度：載入已完成任務，供中斷後接續 */
+		const progress = await loadTaskProgress(PROGRESS_FILE, TASK_BASE, range, options);
 
-		await autoPost(page, prependFolder(head.value, folders), options);
+		const page = await createPostPage(context);
+
+		await autoPost(page, prependFolder(head.value, folders), options, progress);
 	}
 	finally
 	{

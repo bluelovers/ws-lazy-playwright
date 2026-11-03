@@ -2,7 +2,7 @@ import type { Page } from 'playwright';
 import { DRY_RUN_FROM_BATCH, MAX_PER_BATCH, MAX_PACK_BYTES } from './const';
 import { expandFolder, toTaskFolder } from './folder';
 import { _logPhase } from './logger';
-import { ensureDropzone, publishPost } from './page';
+import { createPostPage, ensureDropzone, publishPost } from './page';
 import { packBySize, reportBatch } from './report';
 import { collectUploadOrder } from './upload-order';
 import { reconcileUpload, uploadPack } from './upload';
@@ -16,6 +16,7 @@ import {
 } from './types';
 import { iterateFolderInput } from './source';
 import { iterateTaskDirs } from './scan';
+import type { ITaskProgress } from './progress';
 
 /**
  * 完整階段：以生成器 (Generator) 逐項取得來源清單並轉為標準資料夾物件
@@ -46,7 +47,7 @@ export async function* collectFolders(
 }
 
 /**
- * 完整階段（AutoPost）：確認上傳區後依來源清單分批自動發文
+ * 完整階段（AutoPost）：確認上傳區後依來源串流分批自動發文
  *
  * 為 {@link EnumPostPhase.Upload} 與 {@link EnumPostPhase.Publish} 串起的完整流程：
  * 確認上傳區（失敗時 y/n 提示，中止則不執行後續） → 以 `for await` 逐項執行任務、逐批完整階段：
@@ -55,19 +56,35 @@ export async function* collectFolders(
  * 2. （上傳階段）其餘檔案以 5MB 總和切包陸續上傳，累計至 18 張
  * 3. （上傳階段）`reconcileUpload` 比對數量：符合預期以 success 記錄，
  *    缺漏者（假設為最後幾張）排回佇列進入下一次完整階段，本次以實際數量進入發布階段
- * 4. （發布階段）僅檢查開關，絕不按 save
+ * 4. （發布階段）僅檢查開關，絕不按 save；發布完成（網址跳轉為 `/posts/<id>`）後
+ *    重開建立貼文頁執行下一批次
+ *
+ * 進度（{@link ITaskProgress}）：已完成的任務直接跳過；任務批次全部完成後寫入進度檔，
+ * 中斷或失敗後下次執行可接續後續任務，不需重新開始。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
  * 不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
  *
- * @param page 已導航至建立貼文頁的頁面
+ * @param page 已導航至建立貼文頁的頁面（後續重開頁面與其共用同一 context）
  * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
  * @param options 訊息控制（獨立物件，不併入其他參數）
+ * @param progress 任務進度（可選，獨立物件）：記錄已完成任務供中斷後接續
  */
-export async function autoPost(page: Page, folders: IFolderStream, options?: IMessageOptions): Promise<void>
+export async function autoPost(
+	page: Page,
+	folders: IFolderStream,
+	options?: IMessageOptions,
+	progress?: ITaskProgress,
+): Promise<void>
 {
+	/** 發布完成後以同一 context 重開建立貼文頁 */
+	const context = page.context();
+
+	/** 目前批次使用的頁面；發布完成後重置 */
+	let currentPage = page;
+
 	/** 等待上傳區渲染；失敗時提示手動登入，中止則不執行後續任務 */
-	if (!await ensureDropzone(page, options))
+	if (!await ensureDropzone(currentPage, options))
 	{
 		return;
 	}
@@ -81,6 +98,13 @@ export async function autoPost(page: Page, folders: IFolderStream, options?: IMe
 		/** 天目錄展開為任務；其餘模式即為執行單位 */
 		for await (const unit of expandFolder(folder, options))
 		{
+			/** 進度檔已記錄完成的任務直接跳過，接續上次中斷點 */
+			if (progress?.has(unit.path))
+			{
+				_logPhase(EnumPostPhase.AutoPost, options, `skipped by progress: ${unit.path}`);
+				continue;
+			}
+
 			taskNo++;
 
 			const order = await collectUploadOrder(unit, options);
@@ -116,7 +140,7 @@ export async function autoPost(page: Page, folders: IFolderStream, options?: IMe
 				const [lead, ...rest] = task;
 
 				let setPaths: string[] = [lead.path];
-				let actual = await uploadPack(page, [lead.path], 1, message);
+				let actual = await uploadPack(currentPage, [lead.path], 1, message);
 
 				/** （上傳階段）其餘檔案依 5MB 總和切包陸續上傳，累計至 18 張 */
 				for (const pack of packBySize(rest, MAX_PACK_BYTES))
@@ -126,15 +150,22 @@ export async function autoPost(page: Page, folders: IFolderStream, options?: IMe
 
 					const files = pack.map(item => item.path);
 					setPaths = [...setPaths, ...files];
-					actual = await uploadPack(page, files, setPaths.length, message);
+					actual = await uploadPack(currentPage, files, setPaths.length, message);
 				}
 
 				/** （上傳階段）比對數量：缺漏者排回佇列；結果與批次報告由該函式輸出 */
 				queue = [...reconcileUpload(batchNo, options, task, setPaths, actual), ...queue];
 
 				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後），絕不按 save */
-				await publishPost(page, message);
+				if (await publishPost(currentPage, message))
+				{
+					/** 發布完成後當前頁面已離開建立貼文頁：重開新頁面執行下一批次 */
+					currentPage = await createPostPage(context);
+				}
 			}
+
+			/** 該任務批次全部完成：寫入進度檔，中斷後下次執行由此接續 */
+			await progress?.mark(unit.path);
 		}
 	}
 }
