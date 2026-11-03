@@ -77,21 +77,29 @@ export async function ensureDropzone(page: Page, options?: IMessageOptions): Pro
 }
 
 /**
- * 發布階段：點擊 publish 按鈕並等待跳轉為已發布貼文（僅在 {@link ENABLE_PUBLISH} 為 `true` 時執行）
+ * 發布階段：點擊 publish 按鈕並等待跳轉為已發布貼文（僅在發布開關為 `true` 時執行）
  *
  * 安全規則：絕不點擊 save（草稿）按鈕；publish 僅在開關開啟時點擊，
  * 且只會在上傳階段的 waiter 結束後被呼叫。
  *
+ * 預設開關為 {@link ENABLE_PUBLISH}，可由呼叫端以 `enablePublish` 覆寫（CLI `--publish`）。
+ *
  * 發布完成以網址特徵 {@link POST_URL_RE} 判定：僅等待網址更新（`waitUntil: 'commit'`），
  * 不等待頁面載入完成；逾時未跳轉時回傳 `false`。
+ * 完成紀錄含發布後的網址（未取得跳轉時無網址）。
  *
+ * @param enablePublish 是否執行發布；未提供時沿用 {@link ENABLE_PUBLISH}
  * @returns 是否完成發布；未啟用發布或未觀察到跳轉時回傳 `false`
  */
-export async function publishPost(page: Page, options?: IMessageOptions): Promise<boolean>
+export async function publishPost(
+	page: Page,
+	options?: IMessageOptions,
+	enablePublish = ENABLE_PUBLISH,
+): Promise<boolean>
 {
-	if (!ENABLE_PUBLISH)
+	if (!enablePublish)
 	{
-		_logPhase(EnumPostPhase.Publish, options, 'skipped: ENABLE_PUBLISH = false (never clicking save)');
+		_logPhase(EnumPostPhase.Publish, options, 'skipped: publish disabled (never clicking save)');
 		return false;
 	}
 
@@ -120,6 +128,7 @@ export async function publishPost(page: Page, options?: IMessageOptions): Promis
 		EnumPostPhase.Publish,
 		options,
 		published ? `published: ${page.url()}` : `publish url not observed within ${PUBLISH_URL_TIMEOUT / 1000}s`,
+		published ? 'success' : 'log',
 	);
 
 	return published;

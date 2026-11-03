@@ -149,3 +149,17 @@ export interface IMessageOptions
 	/** 批次序號：作為訊息前綴；未提供時不顯示批次 */
 	batchNo?: number;
 }
+
+/**
+ * 執行開關：由呼叫端於執行前覆寫預設停用的安全開關（CLI 參數用）
+ *
+ * 未指定的欄位維持預設行為：發布停用（`ENABLE_PUBLISH = false`）、
+ * 第 {@link DRY_RUN_FROM_BATCH} 批起 dry run。
+ */
+export interface IRunSwitches
+{
+	/** 是否執行發布；解除 `ENABLE_PUBLISH` 預設停用（絕不按 save 的安全規則不變） */
+	enablePublish?: boolean;
+	/** 是否停用 dry run；解除後每批實際上傳並進入發布階段 */
+	disableDryRun?: boolean;
+}

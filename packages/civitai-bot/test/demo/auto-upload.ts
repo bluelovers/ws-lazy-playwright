@@ -19,7 +19,7 @@ import { loadTaskProgress } from '#/lib/progress';
 // @ts-ignore
 import { prependFolder } from '#/lib/source';
 // @ts-ignore
-import type { IFolderInput, IMessageOptions, ITaskRangeOptions } from '#/lib/types';
+import type { IFolderInput, IMessageOptions, IRunSwitches, ITaskRangeOptions } from '#/lib/types';
 import { globStream, async as globAsync } from 'fast-glob';
 
 /** 登入狀態的儲存 id：先以 storage/save 寫入 civitai.red 的登入狀態 */
@@ -49,6 +49,38 @@ const TASK_RANGE: ITaskRangeOptions = {
 const PROGRESS_FILE = join(__TEST_TEMP, 'civitai-bot', 'auto-post.progress.json');
 
 /**
+ * CLI 參數（`process.argv`）：
+ *
+ * - `--publish`：解除發布停用（預設停用；絕不按 save 的安全規則不變）
+ * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告）
+ * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
+ */
+const CLI_ARGS = new Set(process.argv.slice(2));
+
+/** 是否於執行結束後關閉瀏覽器 */
+const CLOSE_AFTER = CLI_ARGS.has('--close');
+
+/** 執行開關：僅在明確指定時覆寫預設停用的開關 */
+const SWITCHES: IRunSwitches = {};
+
+if (CLI_ARGS.has('--publish'))
+{
+	SWITCHES.enablePublish = true;
+}
+
+if (CLI_ARGS.has('--no-dry-run'))
+{
+	SWITCHES.disableDryRun = true;
+}
+
+consoleLogger.log(
+	EnumLogLabel.Temp,
+	`[auto-post] cli: publish=${SWITCHES.enablePublish === true}`
+	+ `, dryRun=${SWITCHES.disableDryRun === true ? 'off' : 'on'}`
+	+ `, close=${CLOSE_AFTER}`,
+);
+
+/**
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
  * 流程：串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） → 還原登入狀態 →
@@ -56,6 +88,7 @@ const PROGRESS_FILE = join(__TEST_TEMP, 'civitai-bot', 'auto-post.progress.json'
  * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
+ * CLI 參數（{@link CLI_ARGS}）可解除發布停用與 dry run；`--close` 於結束後關閉瀏覽器。
  *
  * @param options 訊息控制（獨立物件，不併入其他參數）
  * @param range 任務範圍（獨立物件；僅於未指定 `source` 的掃描模式生效）
@@ -103,11 +136,14 @@ export async function autoUploadDemo(
 
 		const page = await createPostPage(context);
 
-		await autoPost(page, prependFolder(head.value, folders), options, progress);
+		await autoPost(page, prependFolder(head.value, folders), options, progress, SWITCHES);
 	}
 	finally
 	{
-		// await automation.close();
+		if (CLOSE_AFTER)
+		{
+			await automation.close();
+		}
 	}
 }
 

@@ -26,6 +26,7 @@ export const MAX_PACK_BYTES = 5 * 1024 * 1024;
  * 從第幾批開始改為 dry run（僅報告批次內容，不上傳、不進入發布階段）
  *
  * 第 1 批為實際上傳；第 2 批起站台等待區已滿且未經 save / publish 無法清空。
+ * 可由 `IRunSwitches.disableDryRun` 於呼叫端解除（CLI `--no-dry-run`）。
  */
 export const DRY_RUN_FROM_BATCH = 2;
 
@@ -36,6 +37,7 @@ export const DROPZONE_WAIT_TIMEOUT = 15_000;
  * 是否執行發布；安全開關，預設 `false`（屬 {@link EnumPostPhase.Publish} 的範圍）
  *
  * 於上傳階段 waiter 結束後才檢查，絕不點擊 save（草稿）按鈕。
+ * 可由 `IRunSwitches.enablePublish` 於呼叫端解除（CLI `--publish`）。
  */
 export const ENABLE_PUBLISH = false;
 

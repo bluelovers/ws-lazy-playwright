@@ -11,6 +11,7 @@ import {
 	type IFolderInput,
 	type IFolderStream,
 	type IMessageOptions,
+	type IRunSwitches,
 	type ITaskFolder,
 	type ITaskRangeOptions,
 } from './types';
@@ -64,17 +65,20 @@ export async function* collectFolders(
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
  * 不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
+ * 兩者皆可由 {@link IRunSwitches} 於呼叫端解除（CLI 參數）。
  *
  * @param page 已導航至建立貼文頁的頁面（後續重開頁面與其共用同一 context）
  * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  * @param progress 任務進度（可選，獨立物件）：記錄已完成任務供中斷後接續
+ * @param switches 執行開關（可選，獨立物件）：解除發布停用與 dry run 的預設值
  */
 export async function autoPost(
 	page: Page,
 	folders: IFolderStream,
 	options?: IMessageOptions,
 	progress?: ITaskProgress,
+	switches?: IRunSwitches,
 ): Promise<void>
 {
 	/** 發布完成後以同一 context 重開建立貼文頁 */
@@ -82,6 +86,9 @@ export async function autoPost(
 
 	/** 目前批次使用的頁面；發布完成後重置 */
 	let currentPage = page;
+
+	/** dry run 是否生效：開關解除（`disableDryRun`）時全程實際上傳與發布 */
+	const dryRunEnabled = switches?.disableDryRun !== true;
 
 	/** 等待上傳區渲染；失敗時提示手動登入，中止則不執行後續任務 */
 	if (!await ensureDropzone(currentPage, options))
@@ -128,8 +135,8 @@ export async function autoPost(
 
 				const message: IMessageOptions = { ...options, batchNo };
 
-				/** 第 2 批起為 dry run：僅報告批次內容，不上傳、不進入發布階段 */
-				if (batchNo >= DRY_RUN_FROM_BATCH)
+				/** 第 2 批起為 dry run：僅報告批次內容，不上傳、不進入發布階段；可由開關解除 */
+				if (dryRunEnabled && batchNo >= DRY_RUN_FROM_BATCH)
 				{
 					_logPhase(EnumPostPhase.Upload, message, `dry run from batch ${DRY_RUN_FROM_BATCH}: report only`);
 					reportBatch(batchNo, task.map(item => item.path), 'dry run', options);
@@ -157,7 +164,7 @@ export async function autoPost(
 				queue = [...reconcileUpload(batchNo, options, task, setPaths, actual), ...queue];
 
 				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後），絕不按 save */
-				if (await publishPost(currentPage, message))
+				if (await publishPost(currentPage, message, switches?.enablePublish))
 				{
 					/** 發布完成後當前頁面已離開建立貼文頁：重開新頁面執行下一批次 */
 					currentPage = await createPostPage(context);
