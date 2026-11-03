@@ -1,6 +1,6 @@
 import type { Page } from 'playwright';
 import { DRY_RUN_FROM_BATCH, MAX_PER_BATCH, MAX_PACK_BYTES } from './const';
-import { expandFolder } from './folder';
+import { expandFolder, toTaskFolder } from './folder';
 import { _logPhase } from './logger';
 import { ensureDropzone, publishPost } from './page';
 import { packBySize, reportBatch } from './report';
@@ -9,37 +9,47 @@ import { reconcileUpload, uploadPack } from './upload';
 import {
 	EnumPostPhase,
 	type IFolderInput,
+	type IFolderStream,
 	type IMessageOptions,
 	type ITaskFolder,
 	type ITaskRangeOptions,
 } from './types';
-import { resolveFolderInput } from './source';
-import { collectTaskDirs } from './scan';
-import { toTaskFolder } from './folder';
+import { iterateFolderInput } from './source';
+import { iterateTaskDirs } from './scan';
 
 /**
- * 完整階段：取得來源清單並轉為標準資料夾物件
+ * 完整階段：以生成器 (Generator) 逐項取得來源清單並轉為標準資料夾物件
  *
  * - 指定 `source`（globStream / globAsync / Iterable / Generator / 構建函式）：以其為準
  * - 未指定：以 `basePath` + `range` 掃描
+ *
+ * 兩分支皆延遲產出 (Lazy Yield)：呼叫端以 `for await` 逐項消費，不建立中間陣列 (Intermediate Array)。
  */
-export async function collectFolders(
+export async function* collectFolders(
 	basePath: string,
 	range: ITaskRangeOptions,
 	options?: IMessageOptions,
 	source?: IFolderInput,
-): Promise<ITaskFolder[]>
+): AsyncGenerator<ITaskFolder>
 {
-	return source !== undefined
-		? await resolveFolderInput(source, options)
-		: (await collectTaskDirs(basePath, range, options)).map(path => toTaskFolder(path));
+	if (source !== undefined)
+	{
+		yield* iterateFolderInput(source, options);
+	}
+	else
+	{
+		for await (const path of iterateTaskDirs(basePath, range, options))
+		{
+			yield toTaskFolder(path);
+		}
+	}
 }
 
 /**
  * 完整階段（AutoPost）：確認上傳區後依來源清單分批自動發文
  *
  * 為 {@link EnumPostPhase.Upload} 與 {@link EnumPostPhase.Publish} 串起的完整流程：
- * 確認上傳區（失敗時 y/n 提示，中止則不執行後續） → 以 `for...of` 逐一執行任務、逐批完整階段：
+ * 確認上傳區（失敗時 y/n 提示，中止則不執行後續） → 以 `for await` 逐項執行任務、逐批完整階段：
  *
  * 1. （上傳階段）第一個檔案單獨上傳並等待完成
  * 2. （上傳階段）其餘檔案以 5MB 總和切包陸續上傳，累計至 18 張
@@ -51,10 +61,10 @@ export async function collectFolders(
  * 不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
  *
  * @param page 已導航至建立貼文頁的頁面
- * @param folders 來源清單（由 {@link collectFolders} 取得）
+ * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  */
-export async function autoPost(page: Page, folders: readonly ITaskFolder[], options?: IMessageOptions): Promise<void>
+export async function autoPost(page: Page, folders: IFolderStream, options?: IMessageOptions): Promise<void>
 {
 	/** 等待上傳區渲染；失敗時提示手動登入，中止則不執行後續任務 */
 	if (!await ensureDropzone(page, options))
@@ -65,11 +75,11 @@ export async function autoPost(page: Page, folders: readonly ITaskFolder[], opti
 	let batchNo = 0;
 	let taskNo = 0;
 
-	/** 來源清單一律以 `for...of` 逐一執行，不建立中間陣列 */
-	for (const folder of folders)
+	/** 來源串流以 `for await` 逐項消費，不建立中間陣列 (Intermediate Array) */
+	for await (const folder of folders)
 	{
 		/** 天目錄展開為任務；其餘模式即為執行單位 */
-		for (const unit of await expandFolder(folder, options))
+		for await (const unit of expandFolder(folder, options))
 		{
 			taskNo++;
 

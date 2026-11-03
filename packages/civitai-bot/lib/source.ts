@@ -30,15 +30,16 @@ function _isFolderInputObject(value: unknown): value is IFolderInputObject
 }
 
 /**
- * 完整階段：解析來源輸入為標準資料夾清單（供 `for...of` 逐一執行）
+ * 完整階段：以生成器 (Generator) 逐項解析來源輸入為標準資料夾物件
  *
  * 支援模式：單一字串 / 物件、`Iterable<string|object>`、同步 Generator、
  * `globStream`（AsyncIterable）、`globAsync`（Promise）、
  * 構建函式 `() => 以上任一`（可逐層展開）。
  *
- * 非同步來源（globStream / Promise）需先取完 —— 同步 `for...of` 無法等待非同步。
+ * 單次遍歷 (Single Pass)：解析一項即產出一項，不建立中間陣列 (Intermediate Array)，
+ * 由呼叫端以 `for await` 逐項消費；非同步來源在迭代當下才被取用。
  */
-export async function resolveFolderInput(input: IFolderInput, options?: IMessageOptions): Promise<ITaskFolder[]>
+export async function* iterateFolderInput(input: IFolderInput, options?: IMessageOptions): AsyncGenerator<ITaskFolder>
 {
 	/** 構建函式可逐層展開 */
 	let value: unknown = input;
@@ -54,40 +55,62 @@ export async function resolveFolderInput(input: IFolderInput, options?: IMessage
 		value = await value;
 	}
 
-	const entries: IFolderInputEntry[] = [];
-
 	if (typeof value === 'string')
 	{
-		entries.push(value);
+		yield toTaskFolder(value);
 	}
 	else if (_isAsyncIterable(value))
 	{
-		/** globStream：先取完再交由 for-of 執行 */
+		/** globStream：逐項取用 AsyncIterable 後轉換產出 */
 		for await (const entry of value as AsyncIterable<IFolderInputEntry>)
 		{
-			entries.push(entry);
+			yield toTaskFolder(entry);
 		}
 	}
 	else if (_isIterable(value))
 	{
 		for (const entry of value as Iterable<IFolderInputEntry>)
 		{
-			entries.push(entry);
+			yield toTaskFolder(entry);
 		}
 	}
 	else if (_isFolderInputObject(value))
 	{
-		entries.push(value);
+		yield toTaskFolder(value);
 	}
 	else
 	{
 		_logPhase(EnumPostPhase.AutoPost, options, `unsupported source input: ${String(value)}`);
-		return [];
 	}
+}
 
-	const folders = entries.map(entry => toTaskFolder(entry));
+/**
+ * 完整階段：物化 {@link iterateFolderInput} 為標準資料夾清單（供需要長度或陣列 API 的呼叫端使用）
+ *
+ * 以單次遍歷 (Single Pass) 消費來源串流後回傳。
+ */
+export async function resolveFolderInput(input: IFolderInput, options?: IMessageOptions): Promise<ITaskFolder[]>
+{
+	const folders: ITaskFolder[] = [];
+
+	for await (const folder of iterateFolderInput(input, options))
+	{
+		folders.push(folder);
+	}
 
 	_logPhase(EnumPostPhase.AutoPost, options, `source resolved: ${folders.length} folders`);
 
 	return folders;
+}
+
+/**
+ * 將已探測的首項接回資料夾串流 (Folder Stream)
+ *
+ * 呼叫端可先以 `next()` 探測首項（判定空清單、提前中止），
+ * 再以單一 `for await` 消費首項與其後串流，避免為判斷空否而遍歷兩次。
+ */
+export async function* prependFolder(first: ITaskFolder, rest: AsyncIterable<ITaskFolder>): AsyncGenerator<ITaskFolder>
+{
+	yield first;
+	yield* rest;
 }

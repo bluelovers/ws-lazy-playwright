@@ -76,6 +76,8 @@ export type IFolderInputEntry = string | IFolderInputObject;
  * - 單一字串或單一物件
  * - 構建函式 `() => 以上任一模式`（可逐層展開）
  *
+ * 由 {@link iterateFolderInput} 逐項解析為 {@link IFolderStream}。
+ *
  * 範例：
  *
  * ```ts
@@ -102,11 +104,19 @@ export type IFolderInput =
 	| (() => IFolderInput);
 
 /**
+ * 資料夾串流 (Folder Stream)：來源解析後的標準資料夾輸出形態
+ *
+ * 同步 / 非同步可迭代（Iterable / AsyncIterable）皆可，由生成器 (Generator) 延遲產出 (Lazy Yield)，
+ * 呼叫端以 `for await` 逐項消費；大量目錄時不建立中間陣列 (Intermediate Array)。
+ */
+export type IFolderStream = Iterable<ITaskFolder> | AsyncIterable<ITaskFolder>;
+
+/**
  * 自動化階段命名：說明與維護時的範圍基準，避免搞錯要修改 / 執行的部分
  *
  * - {@link EnumPostPhase.Upload} ↔ `collectUploadOrder` / `uploadPack` / `waitForUpload` / `reconcileUpload` / `reportBatch`
  * - {@link EnumPostPhase.Publish} ↔ `publishPost` / `ENABLE_PUBLISH`
- * - {@link EnumPostPhase.AutoPost} ↔ `collectTaskDirs` / `resolveFolderInput` / `toTaskFolder` / `expandFolder` / `autoPost`（兩階段串起的完整流程）
+ * - {@link EnumPostPhase.AutoPost} ↔ `iterateTaskDirs` / `iterateFolderInput` / `toTaskFolder` / `expandFolder` / `collectFolders` / `autoPost`（兩階段串起的完整流程）
  */
 export enum EnumPostPhase
 {

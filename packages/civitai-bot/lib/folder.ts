@@ -62,29 +62,42 @@ export function toTaskFolder(entry: IFolderInputEntry): ITaskFolder
 }
 
 /**
- * 完整階段：展開資料夾為實際執行單位
+ * 完整階段：以生成器 (Generator) 逐項展開資料夾為實際執行單位
  *
- * - {@link EnumFolderKind.Day}：含任務子目錄（`_task(`）時展開為各任務（{@link EnumFolderKind.DayTask}），
- *   否則維持自身（如 `txt2img-images\2026-11-03` 直接含圖檔）
- * - 其餘模式：維持自身
+ * - {@link EnumFolderKind.Day}：含任務子目錄（`_task(`）時逐項產出各任務（{@link EnumFolderKind.DayTask}），
+ *   否則產出自身（如 `txt2img-images\2026-11-03` 直接含圖檔）
+ * - 其餘模式：產出自身
+ *
+ * 延遲產出 (Lazy Yield)：不建立中間陣列 (Intermediate Array)，呼叫端以 `for await` 逐項消費。
  */
-export async function expandFolder(folder: ITaskFolder, options?: IMessageOptions): Promise<ITaskFolder[]>
+export async function* expandFolder(folder: ITaskFolder, options?: IMessageOptions): AsyncGenerator<ITaskFolder>
 {
-	if (folder.kind !== EnumFolderKind.Day) return [folder];
+	if (folder.kind !== EnumFolderKind.Day)
+	{
+		yield folder;
+		return;
+	}
 
 	const tasks = (await readdir(folder.path, { withFileTypes: true }).catch(() => []))
 		.filter(entry => entry.isDirectory() && TASK_DIR_RE.test(entry.name))
 		.map(entry => entry.name)
 		.sort((a, b) => a.localeCompare(b));
 
-	if (!tasks.length) return [folder];
+	if (!tasks.length)
+	{
+		yield folder;
+		return;
+	}
 
 	_logPhase(EnumPostPhase.AutoPost, options, `day expanded: ${tasks.length} tasks from ${folder.path}`);
 
-	return tasks.map(name => toTaskFolder({
-		path: join(folder.path, name),
-		kind: EnumFolderKind.DayTask,
-		day: folder.day,
-		task: name,
-	}));
+	for (const name of tasks)
+	{
+		yield toTaskFolder({
+			path: join(folder.path, name),
+			kind: EnumFolderKind.DayTask,
+			day: folder.day,
+			task: name,
+		});
+	}
 }

@@ -4,7 +4,7 @@ import { console } from 'debug-color2';
 // @ts-ignore
 import { EnumLogLabel, consoleLogger } from '#/lib/logger';
 // @ts-ignore
-import { resolveFolderInput } from '#/lib/source';
+import { iterateFolderInput } from '#/lib/source';
 // @ts-ignore
 import { expandFolder } from '#/lib/folder';
 // @ts-ignore
@@ -19,17 +19,20 @@ const DAY_BASE = 'D:\\sd-forge\\output\\agent-scheduler\\2026-09-13';
  *
  * 支援：單一字串、`Iterable<string|object>`、同步 Generator、
  * `globStream`（AsyncIterable）、`globAsync`（Promise）、構建函式。
+ *
+ * 各模式皆由 {@link iterateFolderInput} 串接為生成器 (Generator)：
+ * 解析一項即展開一項，大量目錄時不建立中間陣列 (Intermediate Array)。
  */
 async function resolveDemo()
 {
 	/** 單一字串 */
-	const fromString = await resolveFolderInput(`${DAY_BASE}\\14-41-51_task(7gysqd604e7jv3m)`);
+	const fromString: IFolderInput = `${DAY_BASE}\\14-41-51_task(7gysqd604e7jv3m)`;
 
 	/** `Iterable<object>`：至少含 `path`，可選 `kind` / `day` / `task` */
-	const fromIterable = await resolveFolderInput([
+	const fromIterable: IFolderInput = [
 		{ path: `${DAY_BASE}\\14-41-51_task(7gysqd604e7jv3m)` },
 		{ path: DAY_BASE },
-	]);
+	];
 
 	/** 同步 Generator */
 	function* taskPaths()
@@ -37,33 +40,42 @@ async function resolveDemo()
 		yield `${DAY_BASE}\\14-41-51_task(7gysqd604e7jv3m)`;
 		yield DAY_BASE;
 	}
-	const fromGenerator = await resolveFolderInput(taskPaths());
+	const fromGenerator: IFolderInput = taskPaths();
 
 	/** 構建函式 `() => 以上任一模式`（可逐層展開） */
-	const fromBuilder = await resolveFolderInput(() => () => [DAY_BASE]);
+	const fromBuilder: IFolderInput = () => () => [DAY_BASE];
 
-	for (const [name, folders] of [
+	for (const [name, source] of [
 		['string', fromString],
 		['iterable', fromIterable],
 		['generator', fromGenerator],
 		['builder', fromBuilder],
 	] as const)
 	{
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}]: ${folders.length} folders`);
+		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}] (streaming):`);
 
-		for (const folder of folders)
+		let count = 0;
+
+		for await (const folder of iterateFolderInput(source))
 		{
+			count++;
+
 			/** 天目錄展開為任務；其餘維持自身 */
-			for (const unit of await expandFolder(folder))
+			for await (const unit of expandFolder(folder))
 			{
 				consoleLogger.log(EnumLogLabel.Temp, `  [${unit.kind}] ${unit.path}`);
 			}
 		}
+
+		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}]: ${count} folders`);
 	}
 }
 
 /**
- * 示範：glob 輸入模式（需 fast-glob；AsyncIterable 會先取完再交由 `for...of` 執行）
+ * 示範：glob 輸入模式（需 fast-glob）
+ *
+ * `globStream`（AsyncIterable）與 `globAsync`（Promise）皆在迭代當下由
+ * {@link iterateFolderInput} 取用並逐項產出。
  */
 async function globDemo()
 {
@@ -94,14 +106,17 @@ async function globDemo()
 		['globAsync', asyncSource],
 	] as const)
 	{
-		const folders = await resolveFolderInput(source);
+		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}] (streaming):`);
 
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}]: ${folders.length} folders`);
+		let count = 0;
 
-		for (const folder of folders)
+		for await (const folder of iterateFolderInput(source))
 		{
+			count++;
 			consoleLogger.log(EnumLogLabel.Temp, ` [${folder.kind}] ${folder.path}`);
 		}
+
+		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}]: ${count} folders`);
 	}
 }
 

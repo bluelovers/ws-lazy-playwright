@@ -15,6 +15,8 @@ import { EnumLogLabel, consoleLogger } from '#/lib/logger';
 // @ts-ignore
 import { autoPost, collectFolders } from '#/lib/auto-post';
 // @ts-ignore
+import { prependFolder } from '#/lib/source';
+// @ts-ignore
 import type { IFolderInput, IMessageOptions, ITaskRangeOptions } from '#/lib/types';
 import { globStream, async as globAsync } from 'fast-glob';
 
@@ -44,7 +46,7 @@ const TASK_RANGE: ITaskRangeOptions = {
 /**
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
- * 流程：取得來源清單（{@link collectFolders}） → 還原登入狀態 → 開啟建立貼文頁 →
+ * 流程：串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） → 還原登入狀態 → 開啟建立貼文頁 →
  * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布開關檢查）。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
@@ -60,9 +62,13 @@ export async function autoUploadDemo(
 	source?: IFolderInput,
 )
 {
-	const folders = await collectFolders(TASK_BASE, range, options, source);
+	/** 來源串流 (Folder Stream)：生成器逐項產出，大量目錄時不建立中間陣列 */
+	const folders = collectFolders(TASK_BASE, range, options, source);
 
-	if (!folders.length)
+	/** 探測首項：空清單即提前中止（不啟動瀏覽器），首項稍後接回串流 */
+	const head = await folders.next();
+
+	if (head.done)
 	{
 		consoleLogger.log(EnumLogLabel.Temp, '[auto-post] no folders to run');
 		return;
@@ -89,7 +95,7 @@ export async function autoUploadDemo(
 		const page = await context.newPage();
 		await page.goto(CREATE_URL);
 
-		await autoPost(page, folders, options);
+		await autoPost(page, prependFolder(head.value, folders), options);
 	}
 	finally
 	{

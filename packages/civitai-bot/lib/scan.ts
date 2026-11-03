@@ -5,21 +5,24 @@ import { _logPhase } from './logger';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types';
 
 /**
- * 完整階段：解析任務範圍，回傳依天與任務排序的任務資料夾路徑
+ * 完整階段：以生成器 (Generator) 逐日解析任務範圍，依序產出任務資料夾路徑
  *
  * 基準路徑：
  *
  * - 單日目錄（basename 為 `YYYY-MM-DD`）：起始天即該日，根目錄為其上層
- * - 根目錄：需以 `range.startDay` 指定起始天，否則記錄後回傳空
+ * - 根目錄：需以 `range.startDay` 指定起始天，否則記錄後結束
  *
  * 過濾順序：`startDay` → `endDay` → `startTask`（僅首個有任務的天）→ `maxTasks` / `maxDays`。
  * `maxDays` 僅計算實際有任務的天。
+ *
+ * 延遲遍歷 (Lazy Traversal)：天目錄逐日 `readdir`，命中 `maxTasks` / `maxDays` 即停止讀取後續天；
+ * 不建立中間陣列 (Intermediate Array)，呼叫端以 `for await` 逐項消費。
  */
-export async function collectTaskDirs(
+export async function* iterateTaskDirs(
 	basePath: string,
 	range: ITaskRangeOptions,
 	options?: IMessageOptions,
-): Promise<string[]>
+): AsyncGenerator<string>
 {
 	const baseName = basename(basePath);
 	const isDayDir = DAY_DIR_RE.test(baseName);
@@ -29,7 +32,7 @@ export async function collectTaskDirs(
 	if (!startDay)
 	{
 		_logPhase(EnumPostPhase.AutoPost, options, 'startDay is required when TASK_BASE is a root directory');
-		return [];
+		return;
 	}
 
 	const dayDirs = (await readdir(root, { withFileTypes: true }).catch(() => []))
@@ -39,13 +42,13 @@ export async function collectTaskDirs(
 		.filter(name => name >= startDay)
 		.filter(name => !range.endDay || name <= range.endDay);
 
-	const taskDirs: string[] = [];
+	let produced = 0;
 	let daysWithTask = 0;
 	let startTaskApplied = false;
 
 	for (const day of dayDirs)
 	{
-		if (range.maxTasks !== undefined && taskDirs.length >= range.maxTasks) break;
+		if (range.maxTasks !== undefined && produced >= range.maxTasks) break;
 		if (range.maxDays !== undefined && daysWithTask >= range.maxDays) break;
 
 		let names = (await readdir(join(root, day), { withFileTypes: true }).catch(() => []))
@@ -76,17 +79,38 @@ export async function collectTaskDirs(
 
 		for (const name of names)
 		{
-			if (range.maxTasks !== undefined && taskDirs.length >= range.maxTasks) break;
-			taskDirs.push(join(root, day, name));
+			if (range.maxTasks !== undefined && produced >= range.maxTasks) break;
+
+			produced++;
+			yield join(root, day, name);
 		}
 	}
 
 	_logPhase(
 		EnumPostPhase.AutoPost,
 		options,
-		`range resolved: ${taskDirs.length} tasks, ${daysWithTask} days`
+		`range resolved: ${produced} tasks, ${daysWithTask} days`
 		+ ` (start ${startDay}${range.endDay ? `, end ${range.endDay}` : ''})`,
 	);
+}
 
-	return taskDirs;
+/**
+ * 完整階段：物化 {@link iterateTaskDirs} 為依天與任務排序的任務資料夾路徑清單
+ *
+ * 需要清單長度或陣列 API 的呼叫端使用；一般流程以 `for await` 直接消費 {@link iterateTaskDirs}。
+ */
+export async function collectTaskDirs(
+	basePath: string,
+	range: ITaskRangeOptions,
+	options?: IMessageOptions,
+): Promise<string[]>
+{
+	const paths: string[] = [];
+
+	for await (const path of iterateTaskDirs(basePath, range, options))
+	{
+		paths.push(path);
+	}
+
+	return paths;
 }
