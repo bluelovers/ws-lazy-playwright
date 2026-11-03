@@ -67,6 +67,9 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	protected _browser: INullable<Browser>;
 	protected _context: INullable<BrowserContext>;
 
+	/** 主頁面 (Main Page) */
+	protected _page: INullable<Page>;
+
 	/** 目前狀態；預設為準備期，於 context 決定後由 {@link _lockContext} 鎖定 */
 	protected _state: EnumAutomationState = EnumAutomationState.Preparing;
 
@@ -75,19 +78,46 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this._options = options;
 		this.browserKind = options.browser ?? DEFAULT_BROWSER_KIND;
 		this.storage = new BrowserStorageManager(options.storage);
-		this.bridge = new PageBridge(options.bridge);
-		this.bridge.registerAll(createDefaultBridgeCommands(this));
+		this.bridge = new PageBridge(this, options.bridge);
+		this.bridge.registerAll(createDefaultBridgeCommands());
 	}
 
-	get browser(): INullable<Browser>
+	get browser(): Browser
 	{
-		return this._browser;
+		return this._browser!;
 	}
 
 	/** 目前存活的 context；同一實例同一時間只允許一個 */
-	get context(): INullable<BrowserContext>
+	get context(): BrowserContext
 	{
-		return this._context;
+		/**
+		 * 介面契約為非空，於第一個 context 建立前存取會得到 `undefined`；
+		 * 內部一律以 `_context` 判空。
+		 */
+		return this._context!;
+	}
+
+	/** 主頁面 (Main Page)；可直接指派以更換 */
+	get page(): Page
+	{
+		/**
+		 * 介面契約為非空，因為在建立 context 後會立即設定主頁面，
+		 * 在建立 context 或 第一個頁面建立前存取會得到 `undefined`。
+		 */
+		return this._page;
+	}
+
+	set page(next: Page)
+	{
+		if (!next)
+		{
+			throw new TypeError('page cannot be set to undefined or not a Page instance');
+		}
+		else if (!this._pages.has(next))
+		{
+			throw new RangeError('page is not in the current context');
+		}
+		this._page = next;
 	}
 
 	/** 目前狀態 */
@@ -181,6 +211,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 		this._browser = undefined;
 		this._context = undefined;
+		this._page = undefined;
 		this._pages.clear();
 
 		await closeBrowserSafely({
@@ -266,6 +297,9 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 			await this._bindContext(primary);
 
+			/** 鎖定後：已存在的第一個頁面即為主頁面，否則由之後新開的頁面接任 */
+			this._page = primary.pages()[0];
+
 			this._state = EnumAutomationState.Locked;
 		}
 		finally
@@ -319,9 +353,23 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	protected _bindPage(page: Page): void
 	{
 		this._pages.add(page);
+
+		/** 鎖定後，尚無主頁面時由新開啟的頁面接任 */
+		if (this._state === EnumAutomationState.Locked && !this._page)
+		{
+			this._page = page;
+		}
+
 		page.on('close', () =>
 		{
 			this._pages.delete(page);
+
+			/** 主頁面關閉後，由下一個頁面自動繼承 */
+			if (this._page === page)
+			{
+				this._page = this._pages.values().next().value;
+			}
+
 			this._handleNoRemainingPages();
 		});
 	}

@@ -15,10 +15,12 @@ import {
 } from './protocol';
 import type {
 	IBridgeCommandHandler,
+	IBridgeCommandHost,
 	IBridgeOptions,
 	IBridgeRequest,
 	IBridgeResponse,
 	IBrowserBridge,
+	IBrowserCtx,
 } from './types';
 import type { INullable } from '../types';
 import { EnumLogLabel } from '../logger';
@@ -36,13 +38,15 @@ export class PageBridge implements IBrowserBridge
 	readonly globalName: string;
 	readonly exposeGlobal: boolean;
 
+	protected readonly _host: IBridgeCommandHost;
 	protected readonly _commands = new Map<string, IBridgeCommandHandler>();
 
 	/** 以 Promise 記錄安裝狀態，避免兩個接線路徑重複註冊路由 */
 	protected readonly _installed = new WeakMap<BrowserContext, Promise<void>>();
 
-	constructor(options: IBridgeOptions = {})
+	constructor(host: IBridgeCommandHost, options: IBridgeOptions = {})
 	{
+		this._host = host;
 		this.fakeApiBase = (options.fakeApiBase ?? DEFAULT_FAKE_API_BASE).replace(/\/+$/, '');
 		this.globalName = options.globalName ?? DEFAULT_BRIDGE_GLOBAL_NAME;
 		this.exposeGlobal = options.exposeGlobal ?? false;
@@ -99,7 +103,7 @@ export class PageBridge implements IBrowserBridge
 
 	protected async _install(context: BrowserContext): Promise<void>
 	{
-		await context.route(this._routePattern(), route => this._handleRoute(route));
+		await context.route(this._routePattern(), route => this._handleRoute(route, context));
 
 		if (this.exposeGlobal)
 		{
@@ -117,7 +121,7 @@ export class PageBridge implements IBrowserBridge
 		return buildBridgeRoutePattern(this.fakeApiBase);
 	}
 
-	protected async _handleRoute(route: Route): Promise<void>
+	protected async _handleRoute(route: Route, context: BrowserContext): Promise<void>
 	{
 		const request = route.request();
 
@@ -152,8 +156,14 @@ export class PageBridge implements IBrowserBridge
 			consoleLogger.warn(EnumLogLabel.Bridge, 'malformed', request.url());
 		}
 
+		const page = _resolvePage(request);
+		const mainPage = this._host.page;
+
+		/** `ctx.page` 為主頁面，`page` 參數則是發出請求的頁面 */
+		const ctx: IBrowserCtx = mainPage ? { context, page: mainPage } : { context };
+
 		const response: IBridgeResponse = parsed
-			? await this._invoke(parsed, _resolvePage(request))
+			? await this._invoke(parsed, page, ctx)
 			: { ok: false, error: 'malformed bridge request' };
 
 		if (response.ok)
@@ -185,7 +195,11 @@ export class PageBridge implements IBrowserBridge
 		});
 	}
 
-	protected async _invoke(request: IBridgeRequest, page: INullable<Page>): Promise<IBridgeResponse>
+	protected async _invoke(
+		request: IBridgeRequest,
+		page: INullable<Page>,
+		ctx: IBrowserCtx,
+	): Promise<IBridgeResponse>
 	{
 		const handler = this._commands.get(request.cmd);
 
@@ -196,7 +210,7 @@ export class PageBridge implements IBrowserBridge
 
 		try
 		{
-			const result = await handler(request.args, page);
+			const result = await handler(request.args, page, ctx, this._host);
 			return { ok: true, result: result ?? null };
 		}
 		catch (e)

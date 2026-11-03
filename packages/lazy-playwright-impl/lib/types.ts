@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
-import type { IBrowserBridge, IBridgeOptions } from './bridge/types';
+import type { IBrowserBridge, IBrowserCtx, IBridgeOptions } from './bridge/types';
 import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
 import type { IBrowserStorageManager, IStorageOptions } from './storage/types';
 
@@ -33,9 +33,12 @@ export interface ICreateBrowserAutomationOptions
  * 瀏覽器自動化基底介面 (Base Interface)
  *
  * 所有引擎實作共用的契約：生命週期 (Lifecycle) 與 Cookie / Session 儲存存取。
+ * 繼承 {@link IBrowserCtx}，因此實例可直接作為 ctx 傳入。
+ * `context` 為目前唯一的存活 context，`page` 為主頁面 (Main Page)。
+ *
  * 實作可直接繼承 `AbstractBrowserAutomation`，只需提供啟動選項與瀏覽器建立兩個鉤子 (Hook)。
  */
-export interface IBrowserAutomation
+export interface IBrowserAutomation extends IBrowserCtx
 {
 	readonly engine: EnumAutomationEngine;
 	readonly browserKind: EnumBrowserKind;
@@ -43,8 +46,7 @@ export interface IBrowserAutomation
 	readonly bridge: IBrowserBridge;
 
 	readonly browser: INullable<Browser>;
-	/** 目前存活的 context；同一實例同一時間只允許一個 */
-	readonly context: INullable<BrowserContext>;
+	/** 所有已追蹤的頁面 */
 	readonly pages: readonly Page[];
 
 	launch(options?: ILaunchOptions): Promise<Browser>;
