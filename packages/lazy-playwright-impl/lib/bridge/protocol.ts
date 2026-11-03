@@ -24,6 +24,22 @@ export function buildBridgeUrl(fakeApiBase: string, request: IBridgeRequest): st
 }
 
 /**
+ * 產生路由比對用的正規表示式
+ *
+ * 以正規表示式取代 glob：`/base/**` 需要斜線才會命中，
+ * 無法攔截 `https://m9.test/__m9__` 這種結尾無斜線的網址。
+ * 此處同時接受結尾為 `/`、`?` 或字串結束。
+ */
+export function buildBridgeRoutePattern(fakeApiBase: string): RegExp
+{
+	const base = fakeApiBase
+		.replace(/\/+$/, '')
+		.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+	return new RegExp(`^${base}(?:[/?]|$)`);
+}
+
+/**
  * 解析請求 URL 為命令請求
  *
  * 缺少 `cmd` 或 `args` 非 JSON 陣列時回傳 `undefined`，由呼叫端決定錯誤回應。

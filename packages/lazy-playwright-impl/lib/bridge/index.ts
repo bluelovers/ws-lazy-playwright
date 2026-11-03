@@ -5,8 +5,10 @@ import {
 	BRIDGE_CORS_HEADERS,
 } from './const';
 import { buildBridgeClientScript } from './client-script';
+import { buildBridgeConsolePage } from './console';
 import {
 	buildBridgeHtmlPage,
+	buildBridgeRoutePattern,
 	parseBridgeRequest,
 	serializeBridgeResponse,
 } from './protocol';
@@ -108,9 +110,9 @@ export class PageBridge implements IBrowserBridge
 		}
 	}
 
-	protected _routePattern(): string
+	protected _routePattern(): RegExp
 	{
-		return `${this.fakeApiBase}/**`;
+		return buildBridgeRoutePattern(this.fakeApiBase);
 	}
 
 	protected async _handleRoute(route: Route): Promise<void>
@@ -125,12 +127,26 @@ export class PageBridge implements IBrowserBridge
 		}
 
 		const parsed = parseBridgeRequest(request.url());
+		const isDocument = request.resourceType() === 'document';
+
+		/** 位址列導航且未指定命令時，提供可互動的指令控制台 */
+		if (isDocument && !parsed)
+		{
+			await route.fulfill({
+				status: 200,
+				contentType: 'text/html; charset=utf-8',
+				headers: { ...BRIDGE_CORS_HEADERS },
+				body: buildBridgeConsolePage(this.fakeApiBase, this.commands),
+			});
+			return;
+		}
+
 		const response: IBridgeResponse = parsed
 			? await this._invoke(parsed, _resolvePage(request))
 			: { ok: false, error: 'malformed bridge request' };
 
 		/** 位址列直接導航時回傳可讀的 HTML，其餘（fetch / XHR）回傳 JSON */
-		if (request.resourceType() === 'document')
+		if (isDocument)
 		{
 			await route.fulfill({
 				status: 200,
