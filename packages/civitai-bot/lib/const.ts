@@ -1,3 +1,5 @@
+import type { ILogMethod } from './logger';
+
 /**
  * 建立貼文頁（上傳頁面）網址
  *
@@ -13,6 +15,39 @@ export const FILE_INPUT_SELECTOR = `${DROPZONE_SELECTOR} input[type="file"]`;
 
 /** 上載完成後才會出現的發布按鈕 */
 export const PUBLISH_SELECTOR = 'button[data-tour="post:publish"]';
+
+/** 系統提示（Mantine Notifications）單則元素：標題 `.mantine-Notification-title`、內文 `.mantine-Notification-description` */
+export const NOTIFICATION_SELECTOR = '.mantine-Notifications-notification';
+
+/**
+ * 系統提示中代表「已達上限」的特徵（如「You've reached today's limit of 150 posts.」）
+ *
+ * 命中即停止任務。
+ */
+export const LIMIT_RE = /reached\b[^.]*\blimit|daily limit|upload limit/i;
+
+/** 系統提示記錄規則：依標題 / 內文模式決定 log method */
+export interface INotificationLogRule
+{
+	/** 標題模式（省略即不比對標題） */
+	title?: RegExp;
+	/** 內文模式（省略即不比對內文） */
+	description?: RegExp;
+	/** 命中時使用的 log method */
+	method: ILogMethod;
+}
+
+/**
+ * 系統提示記錄規則表（由上而下取第一筆命中；皆未命中以 `warn` 記錄）
+ *
+ * 單筆規則中已存在的模式皆須命中（AND），未存在的模式略過。
+ */
+export const NOTIFICATION_LOG_RULES: readonly INotificationLogRule[] = [
+	/** 建立貼文失敗（如「Failed to create post」） */
+	{ title: /Failed to create post/i, method: 'error' },
+	/** 已達上限（如「You've reached today's limit of 150 posts.」；同時觸發停止任務） */
+	{ description: LIMIT_RE, method: 'error' },
+];
 
 /** 發布後落地頁特徵：`name` 供不同模式提醒識別使用 */
 export interface IPublishedUrlPattern

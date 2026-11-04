@@ -1,6 +1,7 @@
 import type { Page } from 'playwright';
 import { FILE_INPUT_SELECTOR } from './const';
 import { _logPhase } from './logger';
+import { checkNotifications } from './page';
 import { reportBatch } from './report';
 import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types';
 import { debug } from 'node:console';
@@ -73,6 +74,9 @@ export async function waitForUpload(page: Page, baseline: number, needed: number
  * 先讀取設定前的基準計數，完成後以「本批預期總數 - 未上傳數」回推，
  * 設定數量與完成數量的訊息由此輸出（自動反映實際值），
  * 單獨上傳與切包上傳共用此函式，訊息自然一致。
+ *
+ * 設定檔案前後皆檢查系統提示（{@link checkNotifications}）：
+ * 如檔案被拒、數量上限等失敗訊息即時以 warn 記錄。
  */
 export async function uploadPack(
 	page: Page,
@@ -83,12 +87,18 @@ export async function uploadPack(
 {
 	const baseline = await _readUploadCount(page);
 
+	/** 上傳前：檢查系統提示（如先前操作遺留的失敗訊息） */
+	await checkNotifications(page, options, EnumPostPhase.Upload, 'before');
+
 	_logPhase(EnumPostPhase.Upload, options, `files set: ${files.length} (total ${expectedTotal})`, 'debug');
 
 	await page.locator(FILE_INPUT_SELECTOR).setInputFiles([...files]);
 
 	const uploaded = await waitForUpload(page, baseline, files.length, options);
 	const actual = expectedTotal - (files.length - uploaded);
+
+	/** 上傳後：檢查系統提示（如檔案被拒、上傳失敗訊息） */
+	await checkNotifications(page, options, EnumPostPhase.Upload, 'after');
 
 	_logPhase(EnumPostPhase.Upload, options, `upload complete: ${actual}/${expectedTotal}`, 'debug');
 

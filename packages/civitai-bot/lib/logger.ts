@@ -18,6 +18,9 @@ export const consoleLogger = new Console2(null, {
 	time: true,
 });
 
+/** 終端日誌記錄方法：{@link _logPhase} 與系統提示記錄規則共用的 method 型別（單一來源） */
+export type ILogMethod = keyof Pick<Console2, 'log' | 'debug' | 'success' | 'warn' | 'info' | 'error'>;
+
 /**
  * 以指定階段名義輸出訊息；內容自動反映實際數量，不硬編碼
  *
@@ -28,7 +31,7 @@ export function _logPhase(
 	phase: EnumPostPhase,
 	options: IMessageOptions | undefined,
 	message: string,
-	method: Extract<keyof Console2, 'log' | 'debug' | 'success' | 'warn' | 'info' | 'error'> = 'log',
+	method: ILogMethod = 'log',
 ): void
 {
 	if (options?.verbose === false) return;

@@ -9,7 +9,7 @@ import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';
 // @ts-ignore
 import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__root';
 // @ts-ignore
-import { createPostPage } from '#/lib/page';
+import { createPostPage, LimitReachedError } from '#/lib/page';
 // @ts-ignore
 import { EnumLogLabel, consoleLogger } from '#/lib/logger';
 // @ts-ignore
@@ -163,6 +163,7 @@ consoleLogger.info(
  * 串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） →
  * 還原登入狀態、建立完成紀錄（{@link createCompletionRecord}） → 開啟建立貼文頁（{@link createPostPage}） →
  * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
+ * 系統提示顯示已達上限（{@link LimitReachedError}）時停止任務。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
  * CLI 參數（{@link CLI_ARGS}）可覆寫任務基準路徑、最大任務數與上傳頁面網址，
@@ -239,6 +240,16 @@ export async function autoUploadDemo(
 		const page = await createPostPage(context, SWITCHES.createUrl);
 
 		await autoPost(page, prependFolder(head.value, folders), options, progress, SWITCHES, record);
+	}
+	catch (error)
+	{
+		/** 系統提示判定已達上限：停止任務（進度已於批次完成時落盤，下次可續跑） */
+		if (!(error instanceof LimitReachedError)) throw error;
+
+		consoleLogger.error(
+			EnumLogLabel.CivitaiBot,
+			`[auto-post] limit reached, task stopped: ${error.message}`,
+		);
 	}
 	finally
 	{

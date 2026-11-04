@@ -5,11 +5,14 @@ import {
 	DROPZONE_SELECTOR,
 	DROPZONE_WAIT_TIMEOUT,
 	ENABLE_PUBLISH,
+	LIMIT_RE,
+	NOTIFICATION_LOG_RULES,
+	NOTIFICATION_SELECTOR,
 	PUBLISHED_URL_PATTERNS,
 	PUBLISH_SELECTOR,
 	PUBLISH_URL_TIMEOUT,
 } from './const';
-import { _logPhase } from './logger';
+import { _logPhase, type ILogMethod } from './logger';
 import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from './types';
 
 /** 以標準輸入讀取一行（去空白、小寫）；用於 y/n 確認 */
@@ -250,6 +253,102 @@ async function _waitPublishReady(
 	}
 }
 
+/** 系統提示判定已達上限（如今日發布上限）：拋出以中止後續任務 */
+export class LimitReachedError extends Error
+{
+	constructor(message: string)
+	{
+		super(message);
+		this.name = 'LimitReachedError';
+	}
+}
+
+/** 依記錄規則決定提示的 log method（{@link NOTIFICATION_LOG_RULES}）；皆未命中以 `warn` */
+function _notificationMethod(notification: { title: string; description: string }): ILogMethod
+{
+	const rule = NOTIFICATION_LOG_RULES.find(rule =>
+		(rule.title === undefined || rule.title.test(notification.title))
+		&& (rule.description === undefined || rule.description.test(notification.description)),
+	);
+
+	return rule?.method ?? 'warn';
+}
+
+/**
+ * 完整階段：讀取畫面上的系統提示（Mantine Notifications）並記錄
+ *
+ * 上傳（前/後）與發布（前/後）皆檢查：系統提示通常代表操作失敗
+ * （如「今日發布數已達上限」），須於該時機點暴露給操作者。
+ * 僅讀取與記錄，不關閉提示；同一提示可能相鄰時機點重複記錄。
+ *
+ * 記錄 method 依標題 / 內文模式決定（{@link NOTIFICATION_LOG_RULES}，
+ * 如「Failed to create post」為 `error`），皆未命中以 `warn`。
+ *
+ * 提示命中已達上限特徵（{@link LIMIT_RE}）時拋出 {@link LimitReachedError}，
+ * 呼叫端應停止任務。
+ *
+ * @param page 目前頁面
+ * @param options 訊息控制（獨立物件，不併入其他參數）
+ * @param phase 檢查所屬階段（輸出前綴）
+ * @param moment 檢查時機：`before`（操作前）或 `after`（操作後）
+ * @param waitTimeout 先等待任一提示出現的逾時（ms；`0` 代表立即讀取）
+ * @throws {LimitReachedError} 提示命中已達上限特徵時拋出
+ */
+export async function checkNotifications(
+	page: Page,
+	options: IMessageOptions | undefined,
+	phase: EnumPostPhase,
+	moment: 'before' | 'after',
+	waitTimeout = 0,
+): Promise<void>
+{
+	if (waitTimeout > 0)
+	{
+		/** 提示可能於操作後才出現：先等待任一提示顯示，逾時即直接讀取 */
+		await page.waitForSelector(NOTIFICATION_SELECTOR, { state: 'visible', timeout: waitTimeout })
+			.catch(() => undefined);
+	}
+
+	const notifications = await page.evaluate(selector =>
+	{
+		return [...document.querySelectorAll(selector)].map(element =>
+		{
+			return {
+				title: element.querySelector('.mantine-Notification-title')?.textContent?.trim() ?? '',
+				description: element.querySelector('.mantine-Notification-description')?.textContent?.trim() ?? '',
+			};
+		});
+	}, NOTIFICATION_SELECTOR)
+		.catch(() => []);
+
+	if (!notifications.length)
+	{
+		_logPhase(phase, options, `notification check (${moment}): none`, 'debug');
+		return;
+	}
+
+	for (const notification of notifications)
+	{
+		_logPhase(
+			phase,
+			options,
+			`notification (${moment}): ${notification.title} - ${notification.description}`,
+			_notificationMethod(notification),
+		);
+	}
+
+	/** 命中已達上限特徵：拋出以停止任務 */
+	const limit = notifications.find(({ title, description }) => LIMIT_RE.test(`${title} ${description}`));
+
+	if (limit)
+	{
+		const message = `${limit.title}: ${limit.description}`;
+
+		_logPhase(phase, options, `limit reached, task will stop: ${message}`, 'error');
+		throw new LimitReachedError(message);
+	}
+}
+
 /**
  * 發布階段：點擊 publish 按鈕並等待跳轉為已發布落地頁（僅在發布開關為 `true` 時執行）
  *
@@ -260,6 +359,8 @@ async function _waitPublishReady(
  * 或停用（`[data-disabled="true"]` / `[disabled]`）狀態消失，且穩定維持 3 秒
  * （期間任一狀態變化即重新計時）才點擊；
  * 逾時仍未就緒回傳 `unconfirmed`（未點擊），呼叫端不得標記完成。
+ * 點擊前後檢查系統提示（{@link checkNotifications}）：如「今日發布數已達上限」
+ * 等失敗訊息於點擊後與按鈕消失競速讀取，即時以 warn 記錄。
  *
  * 預設開關為 {@link ENABLE_PUBLISH}，可由呼叫端以 `enablePublish` 覆寫（CLI `--publish`）。
  *
@@ -295,10 +396,25 @@ export async function publishPost(
 
 	await page.waitForTimeout(1000);
 
+	/** 點擊前：檢查系統提示（如先前操作遺留的失敗訊息） */
+	await checkNotifications(page, options, EnumPostPhase.Publish, 'before');
+
 	_logPhase(EnumPostPhase.Publish, options, `clicking: ${PUBLISH_SELECTOR}`);
 	await publishBtn.click();
 
-	await publishBtn.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => undefined);
+	/** 按鈕消失（跳轉啟動）等待：與點擊後的提示檢查競速共用 */
+	const hidden = publishBtn.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => undefined);
+
+	/**
+	 * 點擊後：競速等待系統提示出現（如發布失敗、今日上限提示）與按鈕消失，
+	 * 先到者結束並即時記錄提示；結束後仍須等按鈕消失才進入落地檢查
+	 */
+	await Promise.race([
+		checkNotifications(page, options, EnumPostPhase.Publish, 'after', 30_000),
+		hidden,
+	]);
+
+	await hidden;
 	_logPhase(EnumPostPhase.Publish, options, 'clicked');
 
 	/** 網址已到達發布後落地頁（導向已提交）即視為發布完成，無需再等待 */

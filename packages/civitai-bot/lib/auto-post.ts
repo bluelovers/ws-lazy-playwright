@@ -71,6 +71,7 @@ export async function* collectFolders(
  * agent-scheduler 任務受發布次數上限（{@link IRunSwitches.agsMaxPublish}）截斷時忽略剩餘圖片，
  * 完成邊界僅至實際發布的最後檔案，被忽略者可於日後比對為新增再行執行。
  * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址與完成邊界。
+ * 上傳與發布前後檢查系統提示：提示顯示已達上限時拋出錯誤中止整個流程，由呼叫端停止任務。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
  * 不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
