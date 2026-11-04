@@ -27,6 +27,8 @@ import { globStream, async as globAsync } from 'fast-glob';
 /**
  * CLI 參數（`process.argv`）：
  *
+ * 通用：
+ *
  * - `--task-base <path>`：任務基準路徑（預設為單日目錄常數；見 {@link TASK_BASE}）
  * - `--max-tasks <n>`：最大任務數（覆寫 {@link TASK_RANGE}.maxTasks）
  * - `--from-last-publish`：無可接續紀錄時，以最後一次發布成功紀錄找尋新任務起始點
@@ -35,6 +37,10 @@ import { globStream, async as globAsync } from 'fast-glob';
  * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告）
  * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
  * - `--create-url <url>`：變更上傳（建立貼文）頁面網址（預設 `CREATE_URL`）
+ *
+ * agent-scheduler 專用（`--ags-` prefix）：
+ *
+ * - `--ags-max-publish <n>`：任務的發布次數上限，達上限即忽略剩餘圖片（僅任務模式生效，預設不限制）
  */
 const ARGV = process.argv.slice(2);
 
@@ -95,6 +101,9 @@ if (CLI_ARGS.has('--no-dry-run'))
 /** 建立貼文頁（上傳頁面）網址：CLI `--create-url <url>` 指定；未指定時沿用 `CREATE_URL` 預設 */
 SWITCHES.createUrl = _argValue('--create-url');
 
+/** agent-scheduler 任務發布次數上限：CLI `--ags-max-publish <n>`；未指定或無效值不設限 */
+SWITCHES.agsMaxPublish = _argInt('--ags-max-publish');
+
 /** 登入狀態的儲存 id：先以 storage/save 寫入 civitai.red 的登入狀態 */
 const STORAGE_ID = 'default';
 
@@ -109,7 +118,7 @@ const STORAGE_BASE_DIR = __TEST_TEMP_STORAGE;
  *
  * CLI `--task-base <path>` 可覆寫。
  */
-const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\txt2img-images\\2026-10-30';
+const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\agent-scheduler\\2026-09-13';
 
 /** CLI `--max-tasks <n>`：最大任務數；未指定或非正整數時不覆寫 */
 const MAX_TASKS = _argInt('--max-tasks');
@@ -135,7 +144,8 @@ consoleLogger.log(
 	`[auto-post] cli: publish=${SWITCHES.enablePublish === true}`
 	+ `, dryRun=${SWITCHES.disableDryRun === true ? 'off' : 'on'}`
 	+ `, close=${CLOSE_AFTER}`
-	+ `, createUrl=${SWITCHES.createUrl ?? 'default'}`,
+	+ `, createUrl=${SWITCHES.createUrl ?? 'default'}`
+	+ `, agsMaxPublish=${SWITCHES.agsMaxPublish ?? 'none'}`,
 );
 
 consoleLogger.log(

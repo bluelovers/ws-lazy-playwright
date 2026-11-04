@@ -17,6 +17,8 @@ export interface ITaskCheckpoint
 	batchNo: number;
 	/** 該單位已取得的發布網址：續跑時併回完成紀錄 */
 	publishedUrls: string[];
+	/** 該輪已發布次數：限量發布續跑時接續計數（舊檢查點可省略） */
+	publishCount?: number;
 }
 
 /** 完成邊界：完成時的最後處理檔案與時間戳，供重跑比對新增檔案 */

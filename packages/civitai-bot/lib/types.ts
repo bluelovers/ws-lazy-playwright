@@ -181,4 +181,6 @@ export interface IRunSwitches
 	disableDryRun?: boolean;
 	/** 建立貼文頁（上傳頁面）網址；未指定時沿用 `CREATE_URL` */
 	createUrl?: string;
+	/** agent-scheduler 任務的發布次數上限：達上限即忽略剩餘圖片（僅任務模式生效，CLI `--ags-max-publish`，預設不限制） */
+	agsMaxPublish?: number;
 }

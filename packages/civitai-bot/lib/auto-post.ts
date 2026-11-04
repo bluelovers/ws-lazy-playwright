@@ -7,6 +7,7 @@ import { packBySize, reportBatch } from './report';
 import { collectUploadOrder } from './upload-order';
 import { reconcileUpload, uploadPack } from './upload';
 import {
+	EnumFolderKind,
 	EnumPostPhase,
 	EnumPublishResult,
 	type IFolderInput,
@@ -15,6 +16,7 @@ import {
 	type IRunSwitches,
 	type ITaskFolder,
 	type ITaskRangeOptions,
+	type IUploadItem,
 } from './types';
 import { iterateFolderInput } from './source';
 import { iterateTaskDirs } from './scan';
@@ -66,6 +68,8 @@ export async function* collectFolders(
  * 僅「確認發布」的批次推進中斷檢查點 (Checkpoint)，中斷後自實際進度續跑（大目錄不重跑整個單位）；
  * 單位全部批次確認發布後標記完成並更新完成邊界（最後處理檔案 + 時間戳）。
  * 出現 dry run 批次、或有批次未執行 / 未確認發布的單位，不標記完成、不寫完成紀錄。
+ * agent-scheduler 任務受發布次數上限（{@link IRunSwitches.agsMaxPublish}）截斷時忽略剩餘圖片，
+ * 完成邊界僅至實際發布的最後檔案，被忽略者可於日後比對為新增再行執行。
  * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
@@ -76,7 +80,7 @@ export async function* collectFolders(
  * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  * @param progress 任務進度（可選，獨立物件）：記錄完成任務與中斷檢查點，供自實際進度續跑
- * @param switches 執行設定（可選，獨立物件）：解除發布停用與 dry run、指定建立貼文頁網址
+ * @param switches 執行設定（可選，獨立物件）：解除發布停用與 dry run、指定建立貼文頁網址、任務發布次數上限
  * @param record 完成紀錄（可選，獨立物件）：完成任務依發布日期分檔保存
  */
 export async function autoPost(
@@ -148,9 +152,20 @@ export async function autoPost(
 
 			const publishedUrls: string[] = [...(checkpointed?.publishedUrls ?? [])];
 
+			/** agent-scheduler 任務的發布次數上限（僅任務模式生效，其他模式不限制） */
+			const agsPublishLimit = (unit.kind === EnumFolderKind.DayTask || unit.kind === EnumFolderKind.Task)
+				? switches?.agsMaxPublish
+				: undefined;
+
+			/** 發布次數 / 是否被上限截斷 / 最後實際發布的檔案（截斷時作為完成邊界） */
+			let publishCount = 0;
+			let truncated = false;
+			let lastPublished: IUploadItem | undefined;
+
 			if (checkpointed)
 			{
 				batchNo = checkpointed.batchNo;
+				publishCount = checkpointed.publishCount ?? 0;
 
 				_logPhase(
 					EnumPostPhase.AutoPost,
@@ -216,12 +231,39 @@ export async function autoPost(
 					publishedUrls.push(currentPage.url());
 					currentPage = await createPostPage(context, switches?.createUrl);
 
+					publishCount++;
+
+					/**
+					 * 實際發布的最後檔案：被忽略（未發布）的圖片留在其後，
+					 * 使日後重跑可比對為新增
+					 */
+					const publishedItems = task.slice(0, actual);
+
+					if (publishedItems.length)
+					{
+						lastPublished = publishedItems[publishedItems.length - 1];
+					}
+
+					/** 達發布次數上限：忽略剩餘圖片，完成邊界僅至實際發布的最後檔案 */
+					if (agsPublishLimit !== undefined && publishCount >= agsPublishLimit)
+					{
+						truncated = true;
+
+						_logPhase(
+							EnumPostPhase.Publish,
+							message,
+							`publish limit ${agsPublishLimit} reached: ${queue.length} left ignored (${unit.path})`,
+						);
+						break;
+					}
+
 					/** 確認發布的批次才推進檢查點：大目錄中斷後自實際進度續跑 */
 					await progress?.saveCheckpoint({
 						path: unit.path,
 						remaining: queue,
 						batchNo,
 						publishedUrls,
+						publishCount,
 					});
 				}
 				else
@@ -253,8 +295,13 @@ export async function autoPost(
 				continue;
 			}
 
-			/** 完成邊界：完整上傳順序的最後一個檔案（含時間戳），供重跑比對新增檔案 */
-			const last = order[order.length - 1];
+			/**
+			 * 完成邊界：截斷時僅至實際發布的最後檔案（被忽略者留在邊界之後）；
+			 * 完整完成則為上傳順序末端。供重跑比對新增檔案
+			 */
+			const last = truncated && lastPublished
+				? lastPublished
+				: order[order.length - 1];
 
 			/**
 			 * 該任務批次全部完成：先寫入進度檔（含完成邊界），
