@@ -194,7 +194,7 @@ export async function loadTaskProgress(
 				EnumPostPhase.AutoPost,
 				options,
 				`progress checkpoint: batch ${state.batchNo}, ${state.remaining.length} left (${state.path})`,
-				'info',
+				'success',
 			);
 		},
 

@@ -184,6 +184,8 @@ async function _waitPublishReady(
 	/** 穩定期起算點：`undefined` 代表當前未處於穩定期 */
 	let stableSince: number | undefined;
 
+	let printNotReady = true;
+
 	for (;;)
 	{
 		const state = await _readPublishState(page);
@@ -212,10 +214,21 @@ async function _waitPublishReady(
 		if (!ready)
 		{
 			stableSince = undefined;
+
+			if (printNotReady)
+			{
+				_logPhase(EnumPostPhase.Publish, options, 'waiting: publish button not ready', 'warn');
+				printNotReady = false;
+			}
 		}
 		else if (stableSince === undefined || changed)
 		{
 			stableSince = Date.now();
+
+			if (!changed)
+			{
+				_logPhase(EnumPostPhase.Publish, options, 'publish button visible, waiting for stable period', 'debug');
+			}
 		}
 		else if (Date.now() - stableSince >= READY_STABLE_MS)
 		{
@@ -280,7 +293,7 @@ export async function publishPost(
 		return EnumPublishResult.Unconfirmed;
 	}
 
-	// await page.waitForTimeout(3000);
+	await page.waitForTimeout(1000);
 
 	_logPhase(EnumPostPhase.Publish, options, `clicking: ${PUBLISH_SELECTOR}`);
 	await publishBtn.click();
