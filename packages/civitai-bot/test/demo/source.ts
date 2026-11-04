@@ -52,7 +52,7 @@ async function resolveDemo()
 		['builder', fromBuilder],
 	] as const)
 	{
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}] (streaming):`);
+		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}] (streaming):`);
 
 		let count = 0;
 
@@ -63,11 +63,11 @@ async function resolveDemo()
 			/** 天目錄展開為任務；其餘維持自身 */
 			for await (const unit of expandFolder(folder))
 			{
-				consoleLogger.log(EnumLogLabel.Temp, `  [${unit.kind}] ${unit.path}`);
+				consoleLogger.log(EnumLogLabel.CivitaiBot, `  [${unit.kind}] ${unit.path}`);
 			}
 		}
 
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}]: ${count} folders`);
+		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}]: ${count} folders`);
 	}
 }
 
@@ -106,17 +106,17 @@ async function globDemo()
 		['globAsync', asyncSource],
 	] as const)
 	{
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}] (streaming):`);
+		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}] (streaming):`);
 
 		let count = 0;
 
 		for await (const folder of iterateFolderInput(source))
 		{
 			count++;
-			consoleLogger.log(EnumLogLabel.Temp, ` [${folder.kind}] ${folder.path}`);
+			consoleLogger.log(EnumLogLabel.CivitaiBot, ` [${folder.kind}] ${folder.path}`);
 		}
 
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] source [${name}]: ${count} folders`);
+		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}]: ${count} folders`);
 	}
 }
 

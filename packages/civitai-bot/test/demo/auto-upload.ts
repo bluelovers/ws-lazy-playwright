@@ -131,7 +131,7 @@ const PROGRESS_FILE = join(__TEST_TEMP, 'civitai-bot', 'auto-post.progress.json'
 const RECORD_DIR = join(__TEST_TEMP, 'civitai-bot', 'completion');
 
 consoleLogger.log(
-	EnumLogLabel.Temp,
+	EnumLogLabel.CivitaiBot,
 	`[auto-post] cli: publish=${SWITCHES.enablePublish === true}`
 	+ `, dryRun=${SWITCHES.disableDryRun === true ? 'off' : 'on'}`
 	+ `, close=${CLOSE_AFTER}`
@@ -139,7 +139,7 @@ consoleLogger.log(
 );
 
 consoleLogger.log(
-	EnumLogLabel.Temp,
+	EnumLogLabel.CivitaiBot,
 	`[auto-post] cli scan: taskBase=${TASK_BASE}`
 	+ `, maxTasks=${TASK_RANGE.maxTasks ?? 'none'}`
 	+ `, fromLastPublish=${FROM_LAST_PUBLISH}`,
@@ -194,7 +194,7 @@ export async function autoUploadDemo(
 
 	if (head.done)
 	{
-		consoleLogger.log(EnumLogLabel.Temp, '[auto-post] no folders to run');
+		consoleLogger.log(EnumLogLabel.CivitaiBot, '[auto-post] no folders to run');
 		return;
 	}
 
@@ -213,8 +213,8 @@ export async function autoUploadDemo(
 		const applied = await automation.storage.cookies.apply(STORAGE_ID, context);
 		const restored = await automation.storage.sessions.restore(STORAGE_ID, context);
 
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] cookies applied: ${applied}`);
-		consoleLogger.log(EnumLogLabel.Temp, `[auto-post] session restored: ${restored}`);
+		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] cookies applied: ${applied}`);
+		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] session restored: ${restored}`);
 
 		/** 完成紀錄：完成任務依發布日期分檔保存 */
 		const record = createCompletionRecord(RECORD_DIR, options);

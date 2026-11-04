@@ -38,22 +38,22 @@ export function _logPhase(
 
 	if (method === 'debug')
 	{
-		consoleLogger.debug(EnumLogLabel.Temp, text);
+		consoleLogger.debug(EnumLogLabel.CivitaiBot, text);
 	}
 	else if (method === 'success')
 	{
-		consoleLogger.success(EnumLogLabel.Temp, text);
+		consoleLogger.success(EnumLogLabel.CivitaiBot, text);
 	}
 	else if (method === 'warn')
 	{
-		consoleLogger.warn(EnumLogLabel.Temp, text);
+		consoleLogger.warn(EnumLogLabel.CivitaiBot, text);
 	}
 	else if (method === 'info')
 	{
-		consoleLogger.info(EnumLogLabel.Temp, text);
+		consoleLogger.info(EnumLogLabel.CivitaiBot, text);
 	}
 	else
 	{
-		consoleLogger.log(EnumLogLabel.Temp, text);
+		consoleLogger.log(EnumLogLabel.CivitaiBot, text);
 	}
 }
