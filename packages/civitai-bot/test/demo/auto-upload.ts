@@ -31,8 +31,8 @@ import { globStream, async as globAsync } from 'fast-glob';
  *
  * - `--task-base <path>`：任務基準路徑（預設為單日目錄常數；見 {@link TASK_BASE}）
  * - `--max-tasks <n>`：最大任務數（覆寫 {@link TASK_RANGE}.maxTasks）
- * - `--from-last-publish`：無可接續紀錄時，以最後一次發布成功紀錄找尋新任務起始點
- *   （覆寫 startDay / startTask）
+ * - `--from-last-publish`：無可接續紀錄時，以完成紀錄重建續跑狀態（完成邊界寫入進度）
+ *   並找尋新任務起始點（覆寫 startDay / startTask）
  * - `--publish`：解除發布停用（預設停用；絕不按 save 的安全規則不變）
  * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告）
  * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
@@ -82,7 +82,7 @@ function _argInt(name: string): number | undefined
 /** 是否於執行結束後關閉瀏覽器 */
 const CLOSE_AFTER = CLI_ARGS.has('--close');
 
-/** 是否以最後一次發布成功紀錄找尋新任務起始點（僅無可接續紀錄時生效） */
+/** 是否以完成紀錄重建續跑狀態並找尋新任務起始點（僅無可接續紀錄時生效） */
 const FROM_LAST_PUBLISH = CLI_ARGS.has('--from-last-publish');
 
 /** 執行設定：僅在明確指定時覆寫預設值 */
@@ -118,7 +118,7 @@ const STORAGE_BASE_DIR = __TEST_TEMP_STORAGE;
  *
  * CLI `--task-base <path>` 可覆寫。
  */
-const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\agent-scheduler\\2026-09-13';
+const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\txt2img-grids\\2026-11-04';
 
 /** CLI `--max-tasks <n>`：最大任務數；未指定或非正整數時不覆寫 */
 const MAX_TASKS = _argInt('--max-tasks');
@@ -139,7 +139,7 @@ const PROGRESS_FILE = join(__TEST_TEMP, 'civitai-bot', 'auto-post.progress.json'
 /** 完成紀錄目錄：完成任務依發布日期分檔保存（`YYYY-MM-DD.json`，含發布網址） */
 const RECORD_DIR = join(__TEST_TEMP, 'civitai-bot', 'completion');
 
-consoleLogger.log(
+consoleLogger.debug(
 	EnumLogLabel.CivitaiBot,
 	`[auto-post] cli: publish=${SWITCHES.enablePublish === true}`
 	+ `, dryRun=${SWITCHES.disableDryRun === true ? 'off' : 'on'}`
@@ -148,7 +148,7 @@ consoleLogger.log(
 	+ `, agsMaxPublish=${SWITCHES.agsMaxPublish ?? 'none'}`,
 );
 
-consoleLogger.log(
+consoleLogger.info(
 	EnumLogLabel.CivitaiBot,
 	`[auto-post] cli scan: taskBase=${TASK_BASE}`
 	+ `, maxTasks=${TASK_RANGE.maxTasks ?? 'none'}`
@@ -159,14 +159,14 @@ consoleLogger.log(
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
  * 流程：載入任務進度（{@link loadTaskProgress}） → 無可接續紀錄且指定 `--from-last-publish` 時，
- * 以完成紀錄找尋新任務起始點（{@link findStartAfterLastPublish}） →
+ * 以完成紀錄重建續跑狀態——完成邊界寫入進度、起始點覆寫範圍（{@link findStartAfterLastPublish}） →
  * 串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） →
  * 還原登入狀態、建立完成紀錄（{@link createCompletionRecord}） → 開啟建立貼文頁（{@link createPostPage}） →
  * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
  * CLI 參數（{@link CLI_ARGS}）可覆寫任務基準路徑、最大任務數與上傳頁面網址，
- * 解除發布停用與 dry run，自最後一次發布成功紀錄找尋起始點，並於結束後關閉瀏覽器。
+ * 解除發布停用與 dry run，以完成紀錄重建續跑狀態並找尋起始點，並於結束後關閉瀏覽器。
  *
  * @param options 訊息控制（獨立物件，不併入其他參數）
  * @param range 任務範圍（獨立物件；僅於未指定 `source` 的掃描模式生效）
@@ -182,17 +182,24 @@ export async function autoUploadDemo(
 	/** 任務進度：載入完成任務與中斷檢查點，供中斷後接續 */
 	const progress = await loadTaskProgress(PROGRESS_FILE, TASK_BASE, options);
 
-	/** 掃描起始點：預設沿用 `range`；無可接續紀錄時改以最後一次發布成功紀錄推導 */
+	/** 掃描起始點：預設沿用 `range`；無可接續紀錄時改以完成紀錄推導 */
 	let scanRange = range;
 
-	/** 無可接續紀錄（無完成任務、無中斷檢查點）時，以最後一次發布成功紀錄找尋新任務的起始點 */
+	/** 無可接續紀錄（無完成任務、無中斷檢查點）時，以完成紀錄重建續跑狀態 */
 	if (FROM_LAST_PUBLISH && progress.size === 0 && !progress.hasCheckpoint)
 	{
-		const start = await findStartAfterLastPublish(RECORD_DIR, options);
+		const resume = await findStartAfterLastPublish(RECORD_DIR, options);
 
-		if (start)
+		if (resume)
 		{
-			scanRange = { ...range, ...start };
+			/** 起始點：含最後發布任務本身，由完成邊界比對其新增檔案 */
+			if (resume.start)
+			{
+				scanRange = { ...range, ...resume.start };
+			}
+
+			/** 完成邊界寫入進度：已完成任務比對新增檔案，不重發已完成者 */
+			await progress.seed(resume.done);
 		}
 	}
 

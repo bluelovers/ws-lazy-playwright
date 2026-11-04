@@ -73,8 +73,8 @@ export async function collectUploadOrder(folder: ITaskFolder, options?: IMessage
 		const names = _orderNames(_filterImages(await readdir(folder.path).catch(() => [] as string[])));
 		const items = await _statItems(names.map(name => join(folder.path, name)));
 
-		_logPhase(EnumPostPhase.AutoPost, options, `collected: ${items.length} images`);
-		_logPhase(EnumPostPhase.AutoPost, options, `folder [${folder.kind}]: ${folder.path}`);
+		_logPhase(EnumPostPhase.AutoPost, options, `collected: ${items.length} images`, 'info');
+		_logPhase(EnumPostPhase.AutoPost, options, `folder [${folder.kind}]: ${folder.path}`, 'info');
 
 		return items;
 	}
@@ -92,8 +92,8 @@ export async function collectUploadOrder(folder: ITaskFolder, options?: IMessage
 
 	const items = await _statItems(paths);
 
-	_logPhase(EnumPostPhase.AutoPost, options, `collected: ${items.length} images`);
-	_logPhase(EnumPostPhase.AutoPost, options, `task dir [${folder.kind}]: ${folder.path}`);
+	_logPhase(EnumPostPhase.AutoPost, options, `collected: ${items.length} images`, 'info');
+	_logPhase(EnumPostPhase.AutoPost, options, `task dir [${folder.kind}]: ${folder.path}`, 'info');
 
 	return items;
 }

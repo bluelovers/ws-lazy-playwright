@@ -2,10 +2,16 @@ import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { DAY_DIR_RE, TASK_DIR_RE } from './const';
 import { _logPhase } from './logger';
+import type { IDoneBoundary, IDoneEntry } from './progress';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types';
 
-/** 完成任務條目：紀錄檔的單筆內容 */
-export interface ICompletionEntry
+/**
+ * 完成任務條目：紀錄檔的單筆內容
+ *
+ * 完成邊界（{@link IDoneBoundary}）與進度檔同源，供進度遺失時重建續跑狀態；
+ * 舊紀錄可省略邊界，此時僅能以路徑推導起始點。
+ */
+export interface ICompletionEntry extends Partial<IDoneBoundary>
 {
 	/** 執行單位路徑 */
 	path: string;
@@ -19,13 +25,22 @@ export interface ICompletionEntry
 	publishedUrls: string[];
 }
 
-/** 寫入輸入：`completedAt` 由寫入當下補上 */
-export interface ICompletionInput
+/** 寫入輸入：`completedAt` 由寫入當下補上；完成邊界（{@link IDoneBoundary}）必填 */
+export interface ICompletionInput extends IDoneBoundary
 {
 	path: string;
 	day?: string;
 	task?: string;
 	publishedUrls?: readonly string[];
+}
+
+/** 從完成紀錄重建的續跑狀態（{@link findStartAfterLastPublish} 回傳） */
+export interface ICompletionResume
+{
+	/** 掃描起始點（可推導時）：含最後發布任務本身，由完成邊界比對其新增檔案 */
+	start?: Pick<ITaskRangeOptions, 'startDay' | 'startTask'>;
+	/** 可重建的完成邊界（同一路徑取最新條目）：呼叫端寫入進度後，重跑即比對新增檔案 */
+	done: IDoneEntry[];
 }
 
 /** 完成紀錄寫入器：完成任務依發布日期分檔保存 */
@@ -57,7 +72,7 @@ function _nextDay(day: string): string
 /**
  * 完整階段：建立完成紀錄寫入器
  *
- * 完成任務依發布日期分檔保存（`<dir>/YYYY-MM-DD.json`，內容含該任務取得的發布網址）。
+ * 完成任務依發布日期分檔保存（`<dir>/YYYY-MM-DD.json`，內容含該任務取得的發布網址與完成邊界）。
  * 同日檔案以「讀取既有內容 → 追加 → 暫存檔改名」寫入：
  * 中途失敗或中斷時，正式檔案仍保留上一次的完整內容，不寫入半份資料。
  *
@@ -96,6 +111,8 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 				task: input.task,
 				completedAt: now.toISOString(),
 				publishedUrls: [...(input.publishedUrls ?? [])],
+				lastFile: input.lastFile,
+				lastFileTime: input.lastFileTime,
 			});
 
 			await mkdir(dir, { recursive: true });
@@ -107,7 +124,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 	};
 }
 
-/** 依最後發布成功的任務條目，推導「其之後」的掃描起始點 */
+/** 依最後發布成功的任務條目，推導掃描起始點（含完成邊界者起始任務為其本身） */
 async function _deriveStartAfter(
 	entry: ICompletionEntry,
 	options?: IMessageOptions,
@@ -122,6 +139,12 @@ async function _deriveStartAfter(
 	{
 		_logPhase(EnumPostPhase.AutoPost, options, `cannot derive start point (not day/task): ${entry.path}`);
 		return undefined;
+	}
+
+	/** 新紀錄含完成邊界：起始任務為其本身，由邊界比對新增（截斷任務的未發布餘量續跑） */
+	if (entry.lastFile !== undefined && entry.lastFileTime !== undefined)
+	{
+		return { startDay: day, startTask: task };
 	}
 
 	const tasks = (await readdir(dayDir, { withFileTypes: true }).catch(() => []))
@@ -142,15 +165,18 @@ async function _deriveStartAfter(
 }
 
 /**
- * 完整階段：以最後一次發布成功紀錄找尋新任務的掃描起始點
+ * 完整階段：以完成紀錄重建續跑狀態（起始點 + 完成邊界）
  *
- * 自完成紀錄目錄最新的日期檔案往回找，取第一筆 `publishedUrls` 非空的條目
- * （即最後一次發布成功），再依其路徑定位「其之後」的起點：
+ * 自完成紀錄目錄讀取全部日期檔案（由舊至新），重建兩部分：
  *
- * - 同天尚有後續任務 → `startDay` 為該天、`startTask` 為其下一個任務
- * - 已是該天最後任務 → `startDay` 為隔天（不含 `startTask`）
+ * 1. 起始點：取最後一筆 `publishedUrls` 非空的條目（即最後一次發布成功），再依其路徑定位：
+ *    - 條目含完成邊界（新紀錄）→ `startTask` 為其本身（含），由完成邊界比對新增檔案，
+ *      截斷任務（發布次數上限）的未發布餘量可續跑
+ *    - 舊紀錄無完成邊界 → 同天尚有後續任務時 `startTask` 為其下一個；已是該天最後任務則 `startDay` 為隔天
+ * 2. 完成邊界：各路徑取最新條目中有邊界者，交由呼叫端寫入進度（{@link ICompletionResume}），
+ *    使起始任務比對新增檔案而不重發已完成者
  *
- * 無發布成功紀錄、或該條目非「天目錄 + 任務」結構時回傳 `undefined` 並記錄，
+ * 無任何紀錄、或既無可推導起始點也無可重建邊界時回傳 `undefined` 並記錄，
  * 呼叫端維持原範圍。
  *
  * @param dir 完成紀錄目錄（{@link createCompletionRecord} 的寫入目錄）
@@ -159,45 +185,78 @@ async function _deriveStartAfter(
 export async function findStartAfterLastPublish(
 	dir: string,
 	options?: IMessageOptions,
-): Promise<Pick<ITaskRangeOptions, 'startDay' | 'startTask'> | undefined>
+): Promise<ICompletionResume | undefined>
 {
 	const files = (await readdir(dir, { withFileTypes: true }).catch(() => []))
 		.filter(item => item.isFile() && DAY_FILE_RE.test(item.name))
 		.map(item => item.name)
 		.sort((a, b) => b.localeCompare(a));
 
-	for (const file of files)
+	/** 由舊至新讀取全部條目：起始點取最後發布者、完成邊界同路徑取最新者 */
+	const entries: ICompletionEntry[] = [];
+
+	for (const file of [...files].reverse())
 	{
 		const saved = await readFile(join(dir, file), 'utf8')
 			.then(text => JSON.parse(text) as { entries?: ICompletionEntry[] })
 			.catch(() => undefined);
 
-		const entries = saved?.entries ?? [];
-
-		/** 由後往前：最後一筆有發布網址者即最後一次發布成功 */
-		for (let i = entries.length - 1; i >= 0; i--)
-		{
-			const entry = entries[i];
-
-			if (!entry.publishedUrls?.length) continue;
-
-			const start = await _deriveStartAfter(entry, options);
-
-			if (start)
-			{
-				_logPhase(
-					EnumPostPhase.AutoPost,
-					options,
-					`start after last publish (${entry.path}): startDay ${start.startDay}`
-					+ `${start.startTask ? `, startTask ${start.startTask}` : ''}`,
-				);
-			}
-
-			return start;
-		}
+		entries.push(...(saved?.entries ?? []));
 	}
 
-	_logPhase(EnumPostPhase.AutoPost, options, `no successful publish record in ${dir}: start point not applied`);
+	let start: Pick<ITaskRangeOptions, 'startDay' | 'startTask'> | undefined;
+	let publishedFound = false;
 
-	return undefined;
+	/** 由新至舊：最後一筆有發布網址者即最後一次發布成功（僅該筆決定起始點） */
+	for (let i = entries.length - 1; i >= 0; i--)
+	{
+		const entry = entries[i];
+
+		if (!entry.publishedUrls?.length) continue;
+
+		publishedFound = true;
+		start = await _deriveStartAfter(entry, options);
+
+		if (start)
+		{
+			_logPhase(
+				EnumPostPhase.AutoPost,
+				options,
+				`start after last publish (${entry.path}): startDay ${start.startDay}`
+				+ `${start.startTask ? `, startTask ${start.startTask}` : ''}`,
+			);
+		}
+
+		break;
+	}
+
+	if (!publishedFound)
+	{
+		_logPhase(EnumPostPhase.AutoPost, options, `no successful publish record in ${dir}: start point not applied`, 'warn');
+	}
+
+	/** 完成邊界：同一路徑以最新條目為準；舊紀錄無邊界者略過 */
+	const doneMap = new Map<string, IDoneEntry>();
+
+	for (const entry of entries)
+	{
+		if (entry.lastFile === undefined || entry.lastFileTime === undefined) continue;
+
+		doneMap.set(entry.path, { path: entry.path, lastFile: entry.lastFile, lastFileTime: entry.lastFileTime });
+	}
+
+	const done = [...doneMap.values()];
+
+	if (done.length)
+	{
+		_logPhase(EnumPostPhase.AutoPost, options, `completion boundaries restored: ${done.length} (${dir})`);
+	}
+
+	/** 既無可推導起始點也無可重建邊界：無可套用的續跑狀態 */
+	if (!start && !done.length)
+	{
+		return undefined;
+	}
+
+	return { start, done };
 }

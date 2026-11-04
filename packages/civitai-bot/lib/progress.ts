@@ -51,7 +51,8 @@ interface IProgressFile
  * 任務進度：執行單位的完成記錄（含完成邊界）與中斷檢查點 (Checkpoint)
  *
  * 供中斷或失敗後接續：`done` 於執行前比對新增檔案，
- * `saveCheckpoint` 於每批確認發布後保存實際進度，`mark` 於單位完成後記錄完成邊界並清除其檢查點。
+ * `saveCheckpoint` 於每批確認發布後保存實際進度，`mark` 於單位完成後記錄完成邊界並清除其檢查點；
+ * `seed` 於進度遺失時由外部紀錄（完成紀錄）批量重建完成邊界。
  */
 export interface ITaskProgress
 {
@@ -67,6 +68,8 @@ export interface ITaskProgress
 	saveCheckpoint(state: ITaskCheckpoint): Promise<void>;
 	/** 標記執行單位完成：記錄完成邊界、清除其檢查點並寫入進度檔 */
 	mark(path: string, boundary: IDoneBoundary): Promise<void>;
+	/** 批量補入完成邊界（僅補進度缺少的路徑，單次落盤）：進度遺失時由完成紀錄重建 */
+	seed(entries: readonly IDoneEntry[]): Promise<void>;
 }
 
 /**
@@ -207,6 +210,34 @@ export async function loadTaskProgress(
 
 			await write();
 			_logPhase(EnumPostPhase.AutoPost, options, `progress saved: ${done.size} done tasks (${path})`, 'info');
+		},
+
+		seed: async (entries: readonly IDoneEntry[]) =>
+		{
+			let added = 0;
+
+			/** 僅補進度缺少的路徑：既有進度（較新）優先，不被外部紀錄覆寫 */
+			for (const entry of entries)
+			{
+				if (done.has(entry.path)) continue;
+
+				done.set(entry.path, entry);
+				added++;
+			}
+
+			if (!added)
+			{
+				_logPhase(EnumPostPhase.AutoPost, options, `progress seed: nothing restored (${entries.length} given)`);
+				return;
+			}
+
+			await write();
+			_logPhase(
+				EnumPostPhase.AutoPost,
+				options,
+				`progress seeded: ${added} boundaries restored (${done.size} done tasks)`,
+				'info',
+			);
 		},
 	};
 }

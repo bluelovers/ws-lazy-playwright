@@ -70,7 +70,7 @@ export async function* collectFolders(
  * 出現 dry run 批次、或有批次未執行 / 未確認發布的單位，不標記完成、不寫完成紀錄。
  * agent-scheduler 任務受發布次數上限（{@link IRunSwitches.agsMaxPublish}）截斷時忽略剩餘圖片，
  * 完成邊界僅至實際發布的最後檔案，被忽略者可於日後比對為新增再行執行。
- * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址。
+ * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址與完成邊界。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
  * 不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
@@ -305,7 +305,7 @@ export async function autoPost(
 
 			/**
 			 * 該任務批次全部完成：先寫入進度檔（含完成邊界），
-			 * 再寫入完成紀錄（含發布網址，依發布日期分檔）
+			 * 再寫入完成紀錄（含發布網址與完成邊界，依發布日期分檔）
 			 */
 			await progress?.mark(unit.path, { lastFile: last.path, lastFileTime: last.mtime });
 
@@ -314,6 +314,8 @@ export async function autoPost(
 				day: unit.day,
 				task: unit.task,
 				publishedUrls,
+				lastFile: last.path,
+				lastFileTime: last.mtime,
 			});
 		}
 	}
