@@ -28,7 +28,7 @@ export function _logPhase(
 	phase: EnumPostPhase,
 	options: IMessageOptions | undefined,
 	message: string,
-	method: Extract<keyof Console2, 'log' | 'debug' | 'success' | 'warn' | 'info'> = 'log',
+	method: Extract<keyof Console2, 'log' | 'debug' | 'success' | 'warn' | 'info' | 'error'> = 'log',
 ): void
 {
 	if (options?.verbose === false) return;
