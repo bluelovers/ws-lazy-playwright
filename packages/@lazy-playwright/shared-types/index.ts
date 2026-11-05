@@ -14,5 +14,5 @@ export interface IBrowserCtx
 	page?: Page;
 }
 
-/** 至少包含一個屬性的瀏覽器上下文輸入 */
+/** 至少包含一個屬性的瀏覽器上下文輸入，僅用於提醒開發者，不代表只需要其中一個屬性 */
 export type IBrowserCtxInput = ITSRequireAtLeastOne<IBrowserCtx>;

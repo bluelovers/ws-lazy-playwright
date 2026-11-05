@@ -26,7 +26,7 @@ import type {
 } from './types';
 import type { INullable } from '../types/types';
 import { EnumLogLabel } from '../logger';
-import { IBrowserCtx } from '@lazy-playwright/shared-types';
+import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 
 /**
  * 頁面通訊協議 (Page Bridge)
@@ -226,7 +226,7 @@ export class PageBridge implements IBrowserBridge
 	}
 
 	/** 由所屬 context 組出執行上下文；`ctx.page` 為主頁面 */
-	protected _buildCtx(context: BrowserContext): IBrowserCtx
+	protected _buildCtx(context: BrowserContext): IBrowserCtxInput
 	{
 		const mainPage = this._host.page;
 
@@ -314,7 +314,7 @@ export class PageBridge implements IBrowserBridge
 	protected async _invoke(
 		request: IBridgeRequest,
 		page: INullable<Page>,
-		ctx: IBrowserCtx,
+		ctx: IBrowserCtxInput,
 	): Promise<IBridgeResponse>
 	{
 		const handler = this._commands.get(request.cmd);

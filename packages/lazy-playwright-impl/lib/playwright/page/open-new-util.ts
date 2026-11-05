@@ -1,4 +1,4 @@
-import { IBrowserCtx } from '@lazy-playwright/shared-types';
+import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 
 /**
  * 建立新分頁的選項
@@ -21,9 +21,9 @@ export interface ICreateNewPageOptions
  * @param options - 建立選項
  * @returns 建立的新分頁
  */
-export async function createNewPage(ctx: IBrowserCtx, options?: ICreateNewPageOptions)
+export async function createNewPage(ctx: IBrowserCtxInput, options?: ICreateNewPageOptions)
 {
-	let page = await ctx.context.newPage();
+	let page = await ctx.context!.newPage();
 
 	/**
 	 * background 模式且新分頁非主分頁時才需還原前景：

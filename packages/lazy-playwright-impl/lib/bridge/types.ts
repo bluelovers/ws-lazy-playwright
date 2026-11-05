@@ -2,10 +2,11 @@ import type { BrowserContext, Page } from 'playwright';
 import type { EnumAutomationEngine, EnumBrowserKind } from '../types/engine';
 import type { IBrowserStorageManager } from '../storage/types';
 import type { INullable } from '../types/types';
-import { IBrowserCtx } from '@lazy-playwright/shared-types';
+import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
+import type { ITSRequiredWith } from 'ts-type';
 
 /** 命令處理器的宿主 (Host)：由 `IBrowserAutomation` 實例傳入 */
-export interface IBridgeCommandHost extends IBrowserCtx
+export interface IBridgeCommandHost extends ITSRequiredWith<IBrowserCtx, 'context'>
 {
 	readonly engine: EnumAutomationEngine;
 	readonly browserKind: EnumBrowserKind;
@@ -23,7 +24,7 @@ export interface IBridgeCommandHost extends IBrowserCtx
 export type IBridgeCommandHandler = (
 	args: readonly unknown[],
 	page: INullable<Page>,
-	ctx: IBrowserCtx,
+	ctx: IBrowserCtxInput,
 	host: IBridgeCommandHost,
 ) => unknown | Promise<unknown>;
 

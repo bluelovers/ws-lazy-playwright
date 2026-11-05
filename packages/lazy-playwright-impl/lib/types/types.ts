@@ -4,7 +4,8 @@ import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
 import type { IPlaywrightModule, IPlaywrightModuleId } from '../core/module-registry';
 import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 import { ICreateNewPageOptions } from '../playwright/page/open-new-util';
-import { IBrowserCtx } from '@lazy-playwright/shared-types';
+import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
+import { ITSRequiredWith } from 'ts-type';
 
 /** 可空值 (Nullable)：統一 `undefined` 與 `null` 的表達 */
 export type INullable<T> = T | null | undefined;
@@ -46,7 +47,7 @@ export interface ICreateBrowserAutomationOptions
  *
  * 實作可直接繼承 `AbstractBrowserAutomation`，只需提供啟動選項與瀏覽器建立兩個鉤子 (Hook)。
  */
-export interface IBrowserAutomation extends IBrowserCtx
+export interface IBrowserAutomation extends ITSRequiredWith<IBrowserCtx, 'context'>
 {
 	readonly engine: EnumAutomationEngine;
 	readonly browserKind: EnumBrowserKind;
