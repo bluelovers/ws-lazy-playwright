@@ -67,6 +67,9 @@ importers:
       '@bluelovers/string-natural-compare':
         specifier: ^2.0.17
         version: 2.0.17
+      '@lazy-playwright/shared-types':
+        specifier: ^1.0.0
+        version: link:../@lazy-playwright/shared-types
       cache-path:
         specifier: ^4.0.16
         version: 4.0.16(ts-toolbelt@9.6.0)
