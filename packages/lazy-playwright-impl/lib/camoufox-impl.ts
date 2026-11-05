@@ -33,9 +33,9 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 		this._os = options.os;
 	}
 
-	protected override async _handleLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
+	protected override async _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
 	{
-		const { args, headless, ...baseOptions } = await super._handleLaunchOptions(options);
+		const { args, headless, ...baseOptions } = await super._handleBrowserLaunchOptions(options);
 
 		const camoufoxOpts = await launchOptions({
 			humanize: true,

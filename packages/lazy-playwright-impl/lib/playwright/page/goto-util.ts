@@ -1,4 +1,5 @@
 import type { Page } from 'playwright';
+import type { ITSOverwrite } from 'ts-type';
 
 /**
  * checkExists 的物件形式
@@ -15,7 +16,7 @@ export interface IGotoCheckExists
  * @see Page.goto
  * @see https://playwright.dev/docs/api/class-page#page-goto
  */
-export interface IPlaywrightGotoOptions
+export interface IPlaywrightGotoOptions extends Exclude<Parameters<Page['goto']>[1], null | undefined>
 {
 	/**
 	 * Referer header value. If provided it will take preference over the referer header value set by
@@ -56,6 +57,11 @@ export interface IPlaywrightGotoOptions
 	waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
 }
 
+export type IGotoOptionsInput = ITSOverwrite<IPlaywrightGotoOptions, {
+	/** 是否使用 referer */
+	referer?: IPlaywrightGotoOptions['referer'] | boolean;
+}>;
+
 /**
  * goto 導航選項
  *
@@ -70,10 +76,7 @@ export interface IGotoOptions
 	/** true 或 `{ href: true }` 時比對目前網址，相同則略過導航 */
 	checkExists?: boolean | IGotoCheckExists;
 	/** Playwright 導航選項 */
-	gotoOptions?: IPlaywrightGotoOptions & {
-		/** 是否使用 referer */
-		referer?: boolean;
-	};
+	gotoOptions?: IGotoOptionsInput;
 }
 
 /** goto 導航結果 */
@@ -93,6 +96,25 @@ export function _handleGotoOptionsCheckExists(checkExists?: boolean | IGotoCheck
 	}
 
 	return checkExists ?? {};
+}
+
+export function _handleGotoOptionsInput(runtime: {
+	currentPageUrl: string;
+}, gotoOptions?: IGotoOptionsInput): IPlaywrightGotoOptions
+{
+	if (typeof gotoOptions?.referer === 'boolean')
+	{
+		if (gotoOptions.referer)
+		{
+			gotoOptions.referer = runtime.currentPageUrl;
+		}
+		else
+		{
+			delete gotoOptions.referer;
+		}
+	}
+
+	return gotoOptions as IPlaywrightGotoOptions;
 }
 
 export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, checkExists?: boolean | IGotoCheckExists)
@@ -147,20 +169,9 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions):
 	}
 	else
 	{
-		if (typeof options?.gotoOptions?.referer === 'boolean')
-		{
-			if (options.gotoOptions.referer)
-			{
-				// @ts-ignore
-				options.gotoOptions.referer = currentPageUrl;
-			}
-			else
-			{
-				delete options.gotoOptions.referer;
-			}
-		}
+		const gotoOptions = _handleGotoOptionsInput({ currentPageUrl }, options?.gotoOptions);
 
-		await page.goto(url, options?.gotoOptions as IPlaywrightGotoOptions);
+		await page.goto(url, gotoOptions);
 		didGoto = true;
 	}
 

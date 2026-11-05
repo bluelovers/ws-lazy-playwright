@@ -28,7 +28,7 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 		return this._options.module ?? DEFAULT_PLAYWRIGHT_MODULE_ID;
 	}
 
-	protected async _handleLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
+	protected async _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
 	{
 		const { args, ...baseOptions } = options;
 

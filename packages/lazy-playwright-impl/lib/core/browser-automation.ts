@@ -6,7 +6,7 @@ import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind }
 import { EnumLogLabel } from '../logger';
 import { closeBrowserSafely, closeContextSafely } from '../playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from '../playwright/event';
-import { gotoPage, type IGotoOptions, type IGotoResult } from '../playwright/goto-util';
+import { gotoPage, type IGotoOptions, type IGotoResult } from '../playwright/page/goto-util';
 import { isPageLike } from '../playwright/type-guard';
 import { BrowserStorageManager } from '../storage';
 import type {
@@ -16,6 +16,7 @@ import type {
 	ILaunchOptions,
 	INullable,
 } from '../types/types';
+import { createNewPage, ICreateNewPageOptions } from '../playwright/page/open-new-util';
 
 /**
  * 實例狀態 (Automation State)
@@ -35,7 +36,7 @@ export enum EnumAutomationState
  * 提供共用的生命週期 (Lifecycle)、分頁追蹤與 Cookie / Session 儲存存取；
  * 子類別只需實作兩個鉤子 (Hook)：
  *
- * - `_handleLaunchOptions`：轉換或疊加引擎專屬的啟動設定
+ * - `_handleBrowserLaunchOptions`：轉換或疊加引擎專屬的啟動設定
  * - `_initializeBrowser`：以處理後的選項建立瀏覽器實例
  */
 export abstract class AbstractBrowserAutomation implements IBrowserAutomation
@@ -138,7 +139,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	}
 
 	/** 將輸入選項轉為 Playwright 的啟動選項，子類別可於此疊加引擎專屬設定 */
-	protected abstract _handleLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>;
+	protected abstract _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>;
 
 	/** 以處理後的選項建立瀏覽器實例，子類別決定實際使用的 browser type */
 	protected abstract _initializeBrowser(options: LaunchOptions): Promise<Browser>;
@@ -151,7 +152,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			return this._browser;
 		}
 
-		const launchOptions = await this._handleLaunchOptions({
+		const launchOptions = await this._handleBrowserLaunchOptions({
 			...this._options.launch,
 			...options,
 		});
@@ -170,20 +171,35 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return this._browser;
 	}
 
-	async newContext(options: BrowserContextOptions = {}): Promise<BrowserContext>
+	protected _handleContextOptions(options: BrowserContextOptions = {})
 	{
-		const browser = await this.launch();
+		options = {
+			...this._options.context,
+			...options,
+		};
+		return options;
+	}
 
+	protected async _newContext(options?: BrowserContextOptions, autoLaunchBrowser?: boolean)
+	{
+		if (autoLaunchBrowser)
+		{
+			await this.launch();
+		}
+
+		const context = await this.browser.newContext(this._handleContextOptions(options));
+		return context;
+	}
+
+	async newContext(options?: BrowserContextOptions): Promise<BrowserContext>
+	{
 		/** 鎖定狀態下維持單一 context；準備期允許臨時 context 共存 */
 		if (this._state === EnumAutomationState.Locked)
 		{
 			await this._releaseContext();
 		}
 
-		const context = await browser.newContext({
-			...this._options.context,
-			...options,
-		});
+		const context = await this._newContext(options, true);
 
 		try
 		{
@@ -199,11 +215,15 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return context;
 	}
 
-	async newPage(options: BrowserContextOptions = {}): Promise<Page>
+	async getContext(optionsContext?: BrowserContextOptions)
 	{
-		const context = this._context ?? await this.newContext(options);
+		return this._context ?? await this.newContext(optionsContext);
+	}
 
-		const page = await context.newPage();
+	async newPage(options?: ICreateNewPageOptions): Promise<Page>
+	{
+		const page = await createNewPage(this, options);
+
 		this._bindPage(page);
 
 		return page;
@@ -219,12 +239,20 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	 * @param options - 導航選項
 	 * @returns 導航分頁與是否有發生 goto 行為
 	 */
-	async goto(url: string, options: IGotoOptions = {}): Promise<IGotoResult>
+	async goto(url: string, options: IGotoOptions & ICreateNewPageOptions = {}): Promise<IGotoResult>
 	{
 		/** `page` 未提供時，由 `newPage` 決定建立新分頁或沿用主分頁 */
-		const page = options.page ?? (options.newPage ? await this.newPage() : this.page);
+		const page = options.page ?? (options.newPage ? await this.newPage(options) : this.page);
 
 		return gotoPage(page, url, options);
+	}
+
+	async gotoNewPage(url: string, options: IGotoOptions & ICreateNewPageOptions = {}): Promise<IGotoResult>
+	{
+		return this.goto(url, {
+			...options,
+			newPage: true,
+		});
 	}
 
 	async close(): Promise<void>
@@ -292,12 +320,9 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			throw new Error('temporary context is only available while preparing');
 		}
 
-		const browser = await this.launch();
+		const context = await this._newContext(options, true);
 
-		return browser.newContext({
-			...this._options.context,
-			...options,
-		});
+		return context;
 	}
 
 	/**

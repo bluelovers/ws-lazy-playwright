@@ -3,6 +3,7 @@ import type { IBrowserBridge, IBrowserCtx, IBridgeOptions } from '../bridge/type
 import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
 import type { IPlaywrightModule, IPlaywrightModuleId } from '../core/module-registry';
 import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
+import { ICreateNewPageOptions } from '../playwright/page/open-new-util';
 
 /** 可空值 (Nullable)：統一 `undefined` 與 `null` 的表達 */
 export type INullable<T> = T | null | undefined;
@@ -57,7 +58,7 @@ export interface IBrowserAutomation extends IBrowserCtx
 
 	launch(options?: ILaunchOptions): Promise<Browser>;
 	newContext(options?: BrowserContextOptions): Promise<BrowserContext>;
-	newPage(options?: BrowserContextOptions): Promise<Page>;
+	newPage(options?: ICreateNewPageOptions): Promise<Page>;
 
 	/**
 	 * 註冊分頁建立監聽 (Page Listener)
