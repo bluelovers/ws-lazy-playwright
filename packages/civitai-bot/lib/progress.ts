@@ -52,7 +52,7 @@ interface IProgressFile
  *
  * 供中斷或失敗後接續：`done` 於執行前比對新增檔案，
  * `saveCheckpoint` 於每批確認發布後保存實際進度，`mark` 於單位完成後記錄完成邊界並清除其檢查點；
- * `seed` 於進度遺失時由外部紀錄（完成紀錄）批量重建完成邊界。
+ * `seed` 由外部紀錄（完成紀錄）批量補齊進度缺漏的完成邊界。
  */
 export interface ITaskProgress
 {
@@ -68,7 +68,7 @@ export interface ITaskProgress
 	saveCheckpoint(state: ITaskCheckpoint): Promise<void>;
 	/** 標記執行單位完成：記錄完成邊界、清除其檢查點並寫入進度檔 */
 	mark(path: string, boundary: IDoneBoundary): Promise<void>;
-	/** 批量補入完成邊界（僅補進度缺少的路徑，單次落盤）：進度遺失時由完成紀錄重建 */
+	/** 批量補入完成邊界（僅補進度缺少的路徑，單次落盤）：由完成紀錄補齊進度缺漏 */
 	seed(entries: readonly IDoneEntry[]): Promise<void>;
 }
 

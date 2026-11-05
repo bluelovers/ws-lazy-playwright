@@ -31,8 +31,8 @@ import { globStream, async as globAsync } from 'fast-glob';
  *
  * - `--task-base <path>`：任務基準路徑（預設為單日目錄常數；見 {@link TASK_BASE}）
  * - `--max-tasks <n>`：最大任務數（覆寫 {@link TASK_RANGE}.maxTasks）
- * - `--from-last-publish`：無可接續紀錄時，以完成紀錄重建續跑狀態（完成邊界寫入進度）
- *   並找尋新任務起始點（覆寫 startDay / startTask）
+ * - `--from-last-publish`：以完成紀錄補齊進度缺漏的完成邊界（已完成任務不重發）；
+ *   另於無可接續紀錄時找尋新任務起始點（覆寫 startDay / startTask）
  * - `--publish`：解除發布停用（預設停用；絕不按 save 的安全規則不變）
  * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告）
  * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
@@ -82,7 +82,7 @@ function _argInt(name: string): number | undefined
 /** 是否於執行結束後關閉瀏覽器 */
 const CLOSE_AFTER = CLI_ARGS.has('--close');
 
-/** 是否以完成紀錄重建續跑狀態並找尋新任務起始點（僅無可接續紀錄時生效） */
+/** 是否以完成紀錄重建續跑狀態：補齊進度缺漏的完成邊界；起始點僅於無可接續紀錄時套用 */
 const FROM_LAST_PUBLISH = CLI_ARGS.has('--from-last-publish');
 
 /** 執行設定：僅在明確指定時覆寫預設值 */
@@ -118,7 +118,7 @@ const STORAGE_BASE_DIR = __TEST_TEMP_STORAGE;
  *
  * CLI `--task-base <path>` 可覆寫。
  */
-const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\txt2img-grids\\2026-11-04';
+const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\txt2img-images\\2026-11-05';
 
 /** CLI `--max-tasks <n>`：最大任務數；未指定或非正整數時不覆寫 */
 const MAX_TASKS = _argInt('--max-tasks');
@@ -158,8 +158,9 @@ consoleLogger.info(
 /**
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
- * 流程：載入任務進度（{@link loadTaskProgress}） → 無可接續紀錄且指定 `--from-last-publish` 時，
- * 以完成紀錄重建續跑狀態——完成邊界寫入進度、起始點覆寫範圍（{@link findStartAfterLastPublish}） →
+ * 流程：載入任務進度（{@link loadTaskProgress}） → 指定 `--from-last-publish` 時，
+ * 以完成紀錄補齊進度缺漏的完成邊界；無可接續紀錄時另覆寫掃描起始點
+ * （{@link findStartAfterLastPublish}） →
  * 串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） →
  * 還原登入狀態、建立完成紀錄（{@link createCompletionRecord}） → 開啟建立貼文頁（{@link createPostPage}） →
  * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
@@ -186,20 +187,30 @@ export async function autoUploadDemo(
 	/** 掃描起始點：預設沿用 `range`；無可接續紀錄時改以完成紀錄推導 */
 	let scanRange = range;
 
-	/** 無可接續紀錄（無完成任務、無中斷檢查點）時，以完成紀錄重建續跑狀態 */
-	if (FROM_LAST_PUBLISH && progress.size === 0 && !progress.hasCheckpoint)
+	/** 以完成紀錄重建續跑狀態：補齊進度缺漏的完成邊界（僅旗標指定時執行） */
+	if (FROM_LAST_PUBLISH)
 	{
+		/** 是否有可接續紀錄：有即以進度為準，僅補缺漏、不覆寫掃描起始點 */
+		const resumable = progress.size > 0 || progress.hasCheckpoint;
+
 		const resume = await findStartAfterLastPublish(RECORD_DIR, options);
 
 		if (resume)
 		{
-			/** 起始點：含最後發布任務本身，由完成邊界比對其新增檔案 */
-			if (resume.start)
+			/** 起始點：僅無可接續紀錄時套用（含最後發布任務本身，由完成邊界比對其新增檔案） */
+			if (resume.start && !resumable)
 			{
 				scanRange = { ...range, ...resume.start };
 			}
+			else if (resume.start)
+			{
+				consoleLogger.debug(
+					EnumLogLabel.CivitaiBot,
+					'[auto-post] start point from completion ignored (progress resumable)',
+				);
+			}
 
-			/** 完成邊界寫入進度：已完成任務比對新增檔案，不重發已完成者 */
+			/** 完成邊界寫入進度（僅補缺漏路徑、不覆寫既有）：已完成任務不重發 */
 			await progress.seed(resume.done);
 		}
 	}
