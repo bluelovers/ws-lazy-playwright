@@ -1,18 +1,32 @@
-import { chromium, firefox, webkit, type Browser, type LaunchOptions } from 'playwright';
+import { type Browser, type LaunchOptions } from 'playwright';
 import { AbstractBrowserAutomation } from './core/browser-automation';
 import { EnumAutomationEngine, EnumBrowserKind } from './types/engine';
 import { _playwrightArgsDisableFeatures } from './playwright/config';
+import {
+	DEFAULT_PLAYWRIGHT_MODULE_ID,
+	playwrightModuleRegistry,
+	resolveBrowserType,
+	type IPlaywrightModule,
+} from './core/module-registry';
 import type { ILaunchOptions } from './types/types';
 
 /**
  * Playwright 瀏覽器自動化實作
  *
  * 以 {@link EnumBrowserKind} 決定實際啟動的 browser type；
+ * 底層啟動改由可插拔的 Playwright 相容模組提供（預設 `playwright`，
+ * 可註冊切換 patchright 等反偵測分支，或由外部邏輯組裝的類 Playwright API），
  * Camoufox 實作繼承此類別並覆寫兩個鉤子 (Hook)。
  */
 export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 {
 	readonly engine: EnumAutomationEngine = EnumAutomationEngine.Playwright;
+
+	/** 目前使用的相容模組；`options.module` 未提供時使用預設 `playwright` */
+	protected get _moduleTarget(): string | IPlaywrightModule
+	{
+		return this._options.module ?? DEFAULT_PLAYWRIGHT_MODULE_ID;
+	}
 
 	protected async _handleLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
 	{
@@ -49,19 +63,21 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 		};
 	}
 
+	/**
+	 * 由註冊表解析相容模組，並以其宣告的啟動入口建立瀏覽器
+	 *
+	 * Chrome 走 chromium 入口並以 channel 啟動；模組不支援該瀏覽器種類時直接拋錯。
+	 */
 	protected async _initializeBrowser(options: LaunchOptions): Promise<Browser>
 	{
-		switch (this.browserKind)
+		const module = playwrightModuleRegistry.resolve(this._moduleTarget, this.browserKind);
+		const browserType = resolveBrowserType(module, this.browserKind);
+
+		if (this.browserKind === EnumBrowserKind.Chrome)
 		{
-			case EnumBrowserKind.Chrome:
-				return chromium.launch({ ...options, channel: 'chrome' });
-			case EnumBrowserKind.Firefox:
-				return firefox.launch(options);
-			case EnumBrowserKind.Webkit:
-				return webkit.launch(options);
-			case EnumBrowserKind.Chromium:
-			default:
-				return chromium.launch(options);
+			return browserType.launch({ ...options, channel: 'chrome' });
 		}
+
+		return browserType.launch(options);
 	}
 }

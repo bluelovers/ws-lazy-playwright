@@ -1,6 +1,7 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
 import type { IBrowserBridge, IBrowserCtx, IBridgeOptions } from '../bridge/types';
 import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
+import type { IPlaywrightModule } from '../core/module-registry';
 import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 
 /** 可空值 (Nullable)：統一 `undefined` 與 `null` 的表達 */
@@ -17,6 +18,11 @@ export interface ICreateBrowserAutomationOptions
 {
 	/** 自動化引擎，決定實作類別；未提供時使用 {@link DEFAULT_AUTOMATION_ENGINE} */
 	engine?: EnumAutomationEngine | null;
+	/**
+	 * Playwright 相容模組：註冊的模組 id，或直接提供的模組描述；
+	 * 未提供時使用預設 `playwright`（僅 Playwright 引擎類別使用）
+	 */
+	module?: string | IPlaywrightModule;
 	/** 底層瀏覽器種類，決定實際啟動的瀏覽器 */
 	browser?: EnumBrowserKind;
 	/** 啟動選項 */
