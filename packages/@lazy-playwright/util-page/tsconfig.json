@@ -1,9 +1,18 @@
 {
-  "extends": "@bluelovers/tsconfig/tsdx/index.json",
+  "extends": "@bluelovers/tsconfig/esm/mapfile.json",
   "compilerOptions": {
+    "module": "node16",
+    "moduleResolution": "node16",
     "importHelpers": true,
-    "moduleResolution": "bundler",
-    "rootDir": "src"
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "#/*": ["./*"]
+    },
+    "types": [
+      "jest",
+      "node"
+    ]
   },
   "exclude": [
     "dist",
