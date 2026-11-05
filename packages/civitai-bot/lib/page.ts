@@ -220,7 +220,7 @@ async function _waitPublishReady(
 
 			if (printNotReady)
 			{
-				_logPhase(EnumPostPhase.Publish, options, 'waiting: publish button not ready', 'warn');
+				_logPhase(EnumPostPhase.Publish, options, `waiting: publish button not ready: ${JSON.stringify(state)}`, 'warn');
 				printNotReady = false;
 			}
 		}
