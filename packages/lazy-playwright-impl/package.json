@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@lazy-playwright/shared-types": "^1.0.0",
+    "@lazy-playwright/util-page": "^1.0.0",
     "array-hyper-unique": "^2.1.10",
     "bluebird": "^3.7.2",
     "bluebird-allsettled": "^1.0.8",

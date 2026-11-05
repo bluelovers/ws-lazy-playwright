@@ -3,7 +3,7 @@ import type { IBrowserBridge, IBridgeOptions } from '../bridge/types';
 import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
 import type { IPlaywrightModule, IPlaywrightModuleId } from '../core/module-registry';
 import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
-import { ICreateNewPageOptions } from '../playwright/page/open-new-util';
+import { ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 import { ITSRequiredWith } from 'ts-type';
 

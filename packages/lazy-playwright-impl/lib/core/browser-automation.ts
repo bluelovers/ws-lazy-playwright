@@ -6,7 +6,7 @@ import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind }
 import { EnumLogLabel } from '../logger';
 import { closeBrowserSafely, closeContextSafely } from '../playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from '../playwright/event';
-import { gotoPage, type IGotoOptions, type IGotoResult } from '../playwright/page/goto-util';
+import { gotoPage, type IGotoOptions, type IGotoResult } from '@lazy-playwright/util-page/lib/goto-util';
 import { isPageLike } from '../playwright/type-guard';
 import { BrowserStorageManager } from '../storage';
 import type {
@@ -16,7 +16,7 @@ import type {
 	ILaunchOptions,
 	INullable,
 } from '../types/types';
-import { createNewPage, ICreateNewPageOptions } from '../playwright/page/open-new-util';
+import { createNewPage, ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 
 /**
  * 實例狀態 (Automation State)

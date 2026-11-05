@@ -11,24 +11,11 @@
   "author": "",
   "sideEffects": false,
   "type": "commonjs",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs",
-      "import": "./dist/index.esm.mjs"
-    },
-    "./package.json": "./package.json",
-    "./src/*": "./src/*"
-  },
-  "main": "dist/index.cjs",
-  "unpkg": "dist/index.umd.production.min.cjs",
-  "module": "dist/index.esm.mjs",
-  "types": "dist/index.d.ts",
-  "typings": "dist/index.d.ts",
+  "main": "index.js",
   "scripts": {
     "coverage": "pnpm run test --coverage",
     "pretest": "echo pretest",
-    "test": "node --run test:node:bin -- **/*.node-spec.ts **/*.node-test.ts **/*.spec.ts **/*.test.ts",
+    "test": "echo \"Error: no test specified\"",
     "test:jest": "jest --passWithNoTests",
     "test:jest:coverage": "node --run test:jest -- --coverage",
     "test:jest:snapshot": "node --run test:jest -- -u",
@@ -43,8 +30,6 @@
     "test:tsc:sub": "cd test && tsc --noEmit & echo Type checking completed (test)",
     "test:tsd": "ynpx tsd",
     "test:tsdx": "ynpx @bluelovers/tsdx test --passWithNoTests",
-    "posttest": "pnpm run build",
-    "build": "node --run build:tsdx && node --run build:dts:bundle",
     "build:dts:bundle": "ynpx @bluelovers/dts-bundle-generator -o ./dist/index.d.ts ./src/index.ts --no-banner --inline-declare-global & echo build:dts:bundle",
     "build:dts:copy": "copy .\\src\\index.d.ts .\\dist\\index.d.ts & echo build:dts",
     "build:dts:tsc": "node --run build:dts:tsc:emit & node --run build:dts:copy",
@@ -64,11 +49,14 @@
     "tsc:showConfig": "ynpx get-current-tsconfig -p"
   },
   "dependencies": {
-    "playwright": "^1.64.1",
+    "@lazy-playwright/shared-types": "^1.0.0",
     "ts-type": "^3.0.18",
     "tslib": ">=2.9.1"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1"
   }
 }
