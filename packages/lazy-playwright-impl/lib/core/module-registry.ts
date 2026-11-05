@@ -39,7 +39,7 @@ export interface IPlaywrightCompatibleApi
 export interface IPlaywrightModule
 {
 	/** 模組識別碼：註冊與依參數切換的依據 */
-	id: string;
+	id: IPlaywrightModuleId;
 	/** 類 Playwright 的啟動 API */
 	api: IPlaywrightCompatibleApi;
 	/** 明確宣告支援的瀏覽器種類；省略時以 api 具備的入口判定 */
@@ -50,6 +50,8 @@ export interface IPlaywrightModule
 
 /** 預設相容模組識別碼 */
 export const DEFAULT_PLAYWRIGHT_MODULE_ID = 'playwright';
+
+export type IPlaywrightModuleId = typeof DEFAULT_PLAYWRIGHT_MODULE_ID | (string & {});
 
 /** 瀏覽器種類 → api 欄位的單一事實對應（Chrome 為 chromium 的 channel 變體） */
 const _browserKindApiKeyMap: Readonly<Record<EnumBrowserKind, keyof IPlaywrightCompatibleApi>> = {
