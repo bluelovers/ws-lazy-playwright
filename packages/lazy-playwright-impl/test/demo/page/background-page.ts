@@ -12,7 +12,7 @@ async function main()
 
 	let result = await automation.gotoNewPage('https://playwright.dev/docs/pages', {
 		background: true,
-		checkExists: true,
+		checkMatch: true,
 	});
 
 	console.dir({
@@ -22,7 +22,7 @@ async function main()
 
 	result = await automation.goto('https://playwright.dev/docs/pages', {
 		page: result.page,
-		checkExists: true,
+		checkMatch: true,
 	});
 
 	console.dir({

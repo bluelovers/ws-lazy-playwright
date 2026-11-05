@@ -271,7 +271,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	 * 導航至目標網址
 	 *
 	 * `page` 未提供時，依 `newPage` 決定建立新分頁或沿用主分頁；
-	 * `checkExists` 啟用且目前網址已等於目標網址時略過導航。
+	 * `checkMatch` 啟用且目前網址已等於目標網址時略過導航。
 	 *
 	 * @param url - 目標網址
 	 * @param options - 導航選項；含 `newPage` 與 background 等分頁建立選項

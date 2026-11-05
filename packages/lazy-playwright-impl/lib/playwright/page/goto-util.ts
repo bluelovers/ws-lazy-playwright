@@ -2,11 +2,11 @@ import type { Page } from 'playwright';
 import type { ITSOverwrite } from 'ts-type';
 
 /**
- * checkExists 的物件形式
+ * checkMatch 的物件形式
  *
  * 以 `href` 決定是否比對目前網址與目標網址。
  */
-export interface IGotoCheckExists
+export interface IGotoCheckMatch
 {
 	/** 為 true 時比對目前網址與目標網址，相同則略過導航 */
 	href?: boolean;
@@ -79,7 +79,7 @@ export interface IGotoOptions
 	/** `page` 未提供時，true 建立新分頁、false 使用主分頁 */
 	newPage?: boolean;
 	/** true 或 `{ href: true }` 時比對目前網址，相同則略過導航 */
-	checkExists?: boolean | IGotoCheckExists;
+	checkMatch?: boolean | IGotoCheckMatch;
 	/** Playwright 導航選項 */
 	gotoOptions?: IGotoOptionsInput;
 }
@@ -93,22 +93,30 @@ export interface IGotoResult
 	didGoto: boolean;
 }
 
+export interface ICheckShouldGotoResult
+{
+	/** 目前網址是否已等於目標網址 */
+	isSameUrl: boolean;
+	/** 是否需要執行導航 */
+	shouldGoto: boolean;
+}
+
 /**
- * 將 `checkExists` 的布林 / 物件輸入正規化為物件形式
+ * 將 `checkMatch` 的布林 / 物件輸入正規化為物件形式
  *
- * @param checkExists - 布林、物件或未提供
+ * @param checkMatch - 布林、物件或未提供
  * @returns 物件形式；`null` 以空物件替代
  */
-export function _handleGotoOptionsCheckExists(checkExists?: boolean | IGotoCheckExists): IGotoCheckExists
+export function _handleGotoOptionsCheckMatch(checkMatch?: boolean | IGotoCheckMatch): IGotoCheckMatch
 {
-	if (typeof checkExists !== 'object')
+	if (typeof checkMatch !== 'object')
 	{
 		/** 布林（含未提供）收斂為 `{ href }`，統一後續判斷入口 */
-		checkExists = { href: checkExists };
+		checkMatch = { href: checkMatch };
 	}
 
 	/** `null` 的 typeof 亦為 `object`，依回傳契約以空物件替代 */
-	return checkExists ?? {};
+	return checkMatch ?? {};
 }
 
 /**
@@ -144,17 +152,17 @@ export function _handleGotoOptionsInput(runtime: {
 /**
  * 判定是否需要執行導航
  *
- * 僅在啟用 `checkExists` 且目前網址已等於目標網址時略過導航；
- * 未啟用 `checkExists` 時一律導航（相同網址亦重新導航）。
+ * 僅在啟用 `checkMatch` 且目前網址已等於目標網址時略過導航；
+ * 未啟用 `checkMatch` 時一律導航（相同網址亦重新導航）。
  *
  * @param targetUrl - 目標網址
  * @param currentPageUrl - 目前網址
- * @param checkExists - 是否比對目前網址與目標網址
+ * @param checkMatch - 是否比對目前網址與目標網址
  * @returns `isSameUrl` 目前網址是否已等於目標網址；`shouldGoto` 是否需要執行導航
  */
-export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, checkExists?: boolean | IGotoCheckExists)
+export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, checkMatch?: boolean | IGotoCheckMatch): ICheckShouldGotoResult
 {
-	const checkExistsObj = _handleGotoOptionsCheckExists(checkExists);
+	const checkMatchOptions = _handleGotoOptionsCheckMatch(checkMatch);
 
 	const isSameUrl = currentPageUrl === targetUrl;
 
@@ -163,8 +171,8 @@ export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, c
 	/** 已在目標網址時才需要判斷是否重複導航 */
 	if (isSameUrl)
 	{
-		/** 僅在 checkExists 啟用時才略過導航 */
-		if (checkExistsObj.href)
+		/** 僅在 checkMatch 啟用時才略過導航 */
+		if (checkMatchOptions.href)
 		{
 			shouldGoto = false;
 		}
@@ -181,21 +189,21 @@ export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, c
 /**
  * 導航至目標網址
  *
- * `checkExists` 為 true 或 `checkExists.href` 為 true 時，
+ * `checkMatch` 為 true 或 `checkMatch.href` 為 true 時，
  * 比對目前網址與目標網址，相同則不執行導航；未啟用時一律導航。
  *
  * @param page - 導航分頁
  * @param url - 目標網址
- * @param options - 導航選項（分頁來源、`checkExists` 與 Playwright 導航選項）
+ * @param options - 導航選項（分頁來源、`checkMatch` 與 Playwright 導航選項）
  * @returns 導航分頁與是否有發生 goto 行為
  */
 export async function gotoPage(page: Page, url: string, options?: IGotoOptions): Promise<IGotoResult>
 {
-	const checkExistsObj = _handleGotoOptionsCheckExists(options?.checkExists);
+	const checkMatchOptions = _handleGotoOptionsCheckMatch(options?.checkMatch);
 
 	const currentPageUrl = page.url();
 
-	const { shouldGoto } = _checkShouldGotoUrl(url, currentPageUrl, checkExistsObj);
+	const { shouldGoto } = _checkShouldGotoUrl(url, currentPageUrl, checkMatchOptions);
 
 	let didGoto = false;
 
