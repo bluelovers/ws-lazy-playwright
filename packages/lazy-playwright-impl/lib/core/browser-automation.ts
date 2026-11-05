@@ -2,7 +2,7 @@ import { console } from 'debug-color2';
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
 import { PageBridge } from '../bridge/index';
 import { createDefaultBridgeCommands } from '../bridge/default-commands';
-import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from '../types/engine';
+import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from '@lazy-playwright/shared-types';
 import { EnumLogLabel } from '../logger';
 import { closeBrowserSafely, closeContextSafely } from '../playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from '../playwright/event';

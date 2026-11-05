@@ -2,7 +2,7 @@
 
 import { join } from 'node:path';
 import { console } from 'debug-color2';
-import { EnumAutomationEngine } from 'lazy-playwright-impl/lib/types/engine';
+import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';
 import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__root';
 import { createPostPage, LimitReachedError } from '#/lib/page';
@@ -98,7 +98,7 @@ export async function autoUploadDemo(
 	}
 
 	const automation = await createBrowserAutomation({
-		engine: EnumAutomationEngine.Playwright,
+		// engine: EnumAutomationEngine.Playwright,
 		storage: {
 			file: { baseDir: STORAGE_BASE_DIR },
 		},

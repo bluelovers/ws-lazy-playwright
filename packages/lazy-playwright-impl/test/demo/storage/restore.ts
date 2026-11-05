@@ -1,7 +1,7 @@
 /// <reference types="node" />
 
 import { console } from 'debug-color2';
-import { EnumAutomationEngine } from '#/lib/engine';
+import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { createBrowserAutomation } from '#/lib/index';
 import { EnumLogLabel } from '#/lib/logger';
 import { __TEST_TEMP_STORAGE } from '#/test/__root';

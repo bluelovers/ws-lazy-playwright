@@ -1,4 +1,4 @@
-import { DEFAULT_AUTOMATION_ENGINE, EnumAutomationEngine } from './types/engine';
+import { DEFAULT_AUTOMATION_ENGINE, EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import type { ICamoufoxBrowserAutomationOptions } from './camoufox-options';
 import type { ICreateBrowserAutomationOptions } from './types/types';
 

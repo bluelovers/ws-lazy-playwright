@@ -1,5 +1,5 @@
 import { chromium, firefox, webkit, type BrowserType } from 'playwright';
-import { EnumBrowserKind } from '../types/engine';
+import { EnumBrowserKind } from '@lazy-playwright/shared-types';
 import { ITSPickExtra } from 'ts-type';
 
 /**

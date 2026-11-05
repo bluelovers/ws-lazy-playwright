@@ -1,15 +1,10 @@
 /// <reference types="node" />
 
 import { console } from 'debug-color2';
-// @ts-ignore
-import { EnumAutomationEngine } from '#/lib/engine';
-// @ts-ignore
+import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { createBrowserAutomation } from '#/lib/index';
-// @ts-ignore
 import { EnumLogLabel } from '#/lib/logger';
-// @ts-ignore
 import { BRIDGE_CONSOLE_EVENT, BRIDGE_CONSOLE_PREFIX } from '#/lib/bridge/const';
-// @ts-ignore
 import { __TEST_TEMP_STORAGE } from '#/test/__root';
 
 /**

@@ -1,11 +1,8 @@
 /// <reference types="node" />
 
 import { console } from 'debug-color2';
-// @ts-ignore
-import { EnumAutomationEngine } from '#/lib/engine';
-// @ts-ignore
+import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { createBrowserAutomation } from '#/lib/index';
-// @ts-ignore
 import { EnumLogLabel } from '#/lib/logger';
 import { __TEST_TEMP_STORAGE } from '../../__root';
 

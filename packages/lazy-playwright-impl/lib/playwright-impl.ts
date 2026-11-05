@@ -1,6 +1,6 @@
 import { type Browser, type LaunchOptions } from 'playwright';
 import { AbstractBrowserAutomation } from './core/browser-automation';
-import { EnumAutomationEngine, EnumBrowserKind } from './types/engine';
+import { EnumAutomationEngine, EnumBrowserKind } from '@lazy-playwright/shared-types';
 import { _playwrightArgsDisableFeatures } from './playwright/config';
 import {
 	DEFAULT_PLAYWRIGHT_MODULE_ID,
