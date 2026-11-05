@@ -280,6 +280,7 @@ export async function autoPost(
 							EnumPostPhase.Publish,
 							message,
 							`publish limit ${agsPublishLimit} reached: ${queue.length} left ignored (${unit.path})`,
+							'info',
 						);
 						break;
 					}

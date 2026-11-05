@@ -25,7 +25,7 @@ export type ILogMethod = keyof Pick<Console2, 'log' | 'debug' | 'success' | 'war
  * 以指定階段名義輸出訊息；內容自動反映實際數量，不硬編碼
  *
  * 訊息屬邏輯的一部分：函式被重複使用或組合時依然存在，
- * 僅在需要隱藏時以 {@link IMessageOptions.verbose} 停用。
+ * 僅在需要隱藏時以 {@link IMessageOptions} 停用。
  */
 export function _logPhase(
 	phase: EnumPostPhase,

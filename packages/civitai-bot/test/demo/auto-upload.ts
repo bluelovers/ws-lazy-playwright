@@ -2,25 +2,15 @@
 
 import { join } from 'node:path';
 import { console } from 'debug-color2';
-// @ts-ignore
-import { EnumAutomationEngine } from 'lazy-playwright-impl/lib/engine';
-// @ts-ignore
+import { EnumAutomationEngine } from 'lazy-playwright-impl/lib/types/engine';
 import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';
-// @ts-ignore
 import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__root';
-// @ts-ignore
 import { createPostPage, LimitReachedError } from '#/lib/page';
-// @ts-ignore
 import { EnumLogLabel, consoleLogger } from '#/lib/logger';
-// @ts-ignore
 import { autoPost, collectFolders, startFolderStream } from '#/lib/auto-post';
-// @ts-ignore
 import { loadTaskProgress } from '#/lib/progress';
-// @ts-ignore
 import { createCompletionRecord, resumeFromCompletion } from '#/lib/record';
-// @ts-ignore
 import { parseAutoPostCli } from '#/lib/cli';
-// @ts-ignore
 import type { IFolderInput, IMessageOptions, ITaskRangeOptions } from '#/lib/types';
 import { globStream, async as globAsync } from 'fast-glob';
 
