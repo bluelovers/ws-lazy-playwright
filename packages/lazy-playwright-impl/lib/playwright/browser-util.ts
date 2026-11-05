@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, Page } from 'playwright';
-import type { INullable } from '../types';
+import type { INullable } from '../types/types';
 
 /**
  * 安全關閉 page → context → browser

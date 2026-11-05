@@ -1,5 +1,5 @@
-import { BRIDGE_PARAM_ARGS, BRIDGE_PARAM_CMD } from './const';
-import { buildBridgeEndpoint } from './protocol';
+import { BRIDGE_PARAM_ARGS, BRIDGE_PARAM_CMD } from '../const';
+import { buildBridgeEndpoint } from '../protocol';
 
 /** 產生頁面端腳本所需的設定 */
 export interface IBridgeClientScriptOptions

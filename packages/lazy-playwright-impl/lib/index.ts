@@ -1,6 +1,6 @@
-import { DEFAULT_AUTOMATION_ENGINE, EnumAutomationEngine } from './engine';
+import { DEFAULT_AUTOMATION_ENGINE, EnumAutomationEngine } from './types/engine';
 import type { ICamoufoxBrowserAutomationOptions } from './camoufox-options';
-import type { ICreateBrowserAutomationOptions } from './types';
+import type { ICreateBrowserAutomationOptions } from './types/types';
 
 /**
  * 依 `options.engine` 建立對應的自動化實作

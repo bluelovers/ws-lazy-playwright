@@ -1,11 +1,11 @@
 import { launchOptions } from 'camoufox-js';
 import { firefox, type Browser, type LaunchOptions } from 'playwright';
 import type { ICamoufoxBrowserAutomationOptions, ICamoufoxLaunchOptions, EnumCamoufoxOs } from './camoufox-options';
-import { EnumAutomationEngine, EnumBrowserKind } from './engine';
+import { EnumAutomationEngine, EnumBrowserKind } from './types/engine';
 import { getCamoufoxFirefoxUserPrefs } from './playwright/camoufox-prefs';
 import { _filterUnsupportedFirefoxCliArgs } from './playwright/camoufox-utils';
 import { PlaywrightBrowserAutomation } from './playwright-impl';
-import type { ILaunchOptions } from './types';
+import type { ILaunchOptions } from './types/types';
 
 /**
  * Camoufox 瀏覽器自動化實作

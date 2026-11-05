@@ -1,4 +1,4 @@
-import { buildBridgeEndpoint } from './protocol';
+import { buildBridgeEndpoint } from '../protocol';
 
 /**
  * 產生可互動的 API 控制台頁面
@@ -34,15 +34,15 @@ code { color: #555; }
 <h1>Bridge Console</h1>
 <p><code id="endpoint"></code></p>
 
-<label for="cmd">指令 / Command</label>
+<label for="cmd">Command</label>
 <select id="cmd"></select>
 
-<label for="args">參數 / Arguments（JSON 陣列）</label>
+<label for="args">Arguments (JSON array)</label>
 <textarea id="args">[]</textarea>
 
-<button id="run">執行 / Run</button>
+<button id="run">Run</button>
 
-<h2>結果 / Result</h2>
+<h2>Result</h2>
 <pre id="out">-</pre>
 
 <script>

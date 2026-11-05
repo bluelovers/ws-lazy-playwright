@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from 'playwright';
-import type { INullable, IPageListener } from '../types';
+import type { INullable, IPageListener } from '../types/types';
 
 /**
  * 監聽 context 新增的分頁

@@ -1,5 +1,5 @@
 import type { launchOptions } from 'camoufox-js';
-import type { ICreateBrowserAutomationOptions } from './types';
+import type { ICreateBrowserAutomationOptions } from './types/types';
 
 /**
  * `camoufox-js` 的啟動選項型別

@@ -1,7 +1,7 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
-import type { IBrowserBridge, IBrowserCtx, IBridgeOptions } from './bridge/types';
+import type { IBrowserBridge, IBrowserCtx, IBridgeOptions } from '../bridge/types';
 import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
-import type { IBrowserStorageManager, IStorageOptions } from './storage/types';
+import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 
 /** 可空值 (Nullable)：統一 `undefined` 與 `null` 的表達 */
 export type INullable<T> = T | null | undefined;

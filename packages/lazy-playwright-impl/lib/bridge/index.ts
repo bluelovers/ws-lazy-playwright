@@ -6,16 +6,16 @@ import {
 	BRIDGE_CORS_HEADERS,
 	BRIDGE_CONSOLE_EVENT,
 } from './const';
-import { buildBridgeClientScript } from './client-script';
-import { buildBridgeConsolePage } from './console';
-import { buildBridgeConsoleScript, parseBridgeConsoleMessage, type IBridgeConsoleResponse } from './console-channel';
+import { buildBridgeClientScript } from './script-api/client-script';
+import { buildBridgeConsolePage } from './ui/console';
+import { buildBridgeConsoleScript, parseBridgeConsoleMessage, type IBridgeConsoleResponse } from './script-api/console-channel';
 import { consoleLogger } from '../logger';
 import {
-	buildBridgeHtmlPage,
 	buildBridgeRoutePattern,
 	parseBridgeRequest,
 	serializeBridgeResponse,
 } from './protocol';
+import { buildBridgeHtmlPage } from './ui/endpoint';
 import type {
 	IBridgeCommandHandler,
 	IBridgeCommandHost,
@@ -25,7 +25,7 @@ import type {
 	IBrowserBridge,
 	IBrowserCtx,
 } from './types';
-import type { INullable } from '../types';
+import type { INullable } from '../types/types';
 import { EnumLogLabel } from '../logger';
 
 /**

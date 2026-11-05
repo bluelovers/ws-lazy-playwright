@@ -1,8 +1,8 @@
 import { chromium, firefox, webkit, type Browser, type LaunchOptions } from 'playwright';
-import { AbstractBrowserAutomation } from './browser-automation';
-import { EnumAutomationEngine, EnumBrowserKind } from './engine';
+import { AbstractBrowserAutomation } from './core/browser-automation';
+import { EnumAutomationEngine, EnumBrowserKind } from './types/engine';
 import { _playwrightArgsDisableFeatures } from './playwright/config';
-import type { ILaunchOptions } from './types';
+import type { ILaunchOptions } from './types/types';
 
 /**
  * Playwright 瀏覽器自動化實作

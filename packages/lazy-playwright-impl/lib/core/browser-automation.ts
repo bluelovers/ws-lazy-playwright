@@ -1,21 +1,21 @@
 import { console } from 'debug-color2';
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
-import { PageBridge } from './bridge/index';
-import { createDefaultBridgeCommands } from './bridge/default-commands';
-import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from './engine';
-import { EnumLogLabel } from './logger';
-import { closeBrowserSafely, closeContextSafely } from './playwright/browser-util';
-import { pageLiveOn as _pageLiveOn } from './playwright/event';
-import { gotoPage, type IGotoOptions, type IGotoResult } from './playwright/goto-util';
-import { isPageLike } from './playwright/type-guard';
-import { BrowserStorageManager } from './storage';
+import { PageBridge } from '../bridge/index';
+import { createDefaultBridgeCommands } from '../bridge/default-commands';
+import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from '../types/engine';
+import { EnumLogLabel } from '../logger';
+import { closeBrowserSafely, closeContextSafely } from '../playwright/browser-util';
+import { pageLiveOn as _pageLiveOn } from '../playwright/event';
+import { gotoPage, type IGotoOptions, type IGotoResult } from '../playwright/goto-util';
+import { isPageLike } from '../playwright/type-guard';
+import { BrowserStorageManager } from '../storage';
 import type {
 	IPageListener,
 	IBrowserAutomation,
 	ICreateBrowserAutomationOptions,
 	ILaunchOptions,
 	INullable,
-} from './types';
+} from '../types/types';
 
 /**
  * 實例狀態 (Automation State)

@@ -1,6 +1,6 @@
 import type { ConsoleMessage } from 'playwright';
-import { BRIDGE_CONSOLE_EVENT, BRIDGE_CONSOLE_PREFIX, DEFAULT_BRIDGE_CONSOLE_GLOBAL_NAME } from './const';
-import type { IBridgeConsoleRequest, IBridgeResponse } from './types';
+import { BRIDGE_CONSOLE_EVENT, BRIDGE_CONSOLE_PREFIX, DEFAULT_BRIDGE_CONSOLE_GLOBAL_NAME } from '../const';
+import type { IBridgeConsoleRequest, IBridgeResponse } from '../types';
 
 /** console 通道的回應；`id` 用於配對頁面端的掛起請求 */
 export interface IBridgeConsoleResponse extends IBridgeResponse

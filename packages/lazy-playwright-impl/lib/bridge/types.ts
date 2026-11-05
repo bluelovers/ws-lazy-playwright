@@ -1,7 +1,7 @@
 import type { BrowserContext, Page } from 'playwright';
-import type { EnumAutomationEngine, EnumBrowserKind } from '../engine';
+import type { EnumAutomationEngine, EnumBrowserKind } from '../types/engine';
 import type { IBrowserStorageManager } from '../storage/types';
-import type { INullable } from '../types';
+import type { INullable } from '../types/types';
 
 /** 命令執行時的上下文 (Context)；`IBrowserAutomation` 亦繼承此介面 */
 export interface IBrowserCtx
