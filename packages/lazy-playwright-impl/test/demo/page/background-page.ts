@@ -10,9 +10,27 @@ async function main()
 
 	await automation.gotoNewPage('https://example.com');
 
-	await automation.gotoNewPage('https://playwright.dev/docs/pages', {
+	let result = await automation.gotoNewPage('https://playwright.dev/docs/pages', {
 		background: true,
+		checkExists: true,
 	});
+
+	console.dir({
+		...result,
+		page: result.page?.url(),
+	}, { depth: null });
+
+	result = await automation.goto('https://playwright.dev/docs/pages', {
+		page: result.page,
+		checkExists: true,
+	});
+
+	console.dir({
+		...result,
+		page: result.page?.url(),
+	}, { depth: null });
+
+	await automation.close();
 }
 
 main();

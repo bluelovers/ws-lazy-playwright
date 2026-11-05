@@ -43,11 +43,16 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 {
 	abstract readonly engine: EnumAutomationEngine;
 
+	/** 底層瀏覽器種類，決定實際啟動的瀏覽器 */
 	readonly browserKind: EnumBrowserKind;
+	/** Cookie / Session 儲存管理 */
 	readonly storage: BrowserStorageManager;
+	/** 頁面通訊協定 (Bridge)，負責 context / 分頁的命令收發 */
 	readonly bridge: PageBridge;
 
+	/** 建立時的選項快取，供啟動與 context 建立時合併 */
 	protected readonly _options: ICreateBrowserAutomationOptions;
+	/** 已追蹤的分頁集合 */
 	protected readonly _pages = new Set<Page>();
 
 	/**
@@ -67,7 +72,9 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/** 釋放舊 context 期間暫停「無分頁即關閉瀏覽器」的判定，避免交換瞬間誤關 */
 	protected _suspendAutoClose = false;
 
+	/** 目前瀏覽器實例；未啟動時為空 */
 	protected _browser: INullable<Browser>;
+	/** 目前主 context；未建立時為空 */
 	protected _context: INullable<BrowserContext>;
 
 	/** 主頁面 (Main Page) */
@@ -76,6 +83,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/** 目前狀態；預設為準備期，於 context 決定後由 {@link _lockContext} 鎖定 */
 	protected _state: EnumAutomationState = EnumAutomationState.Preparing;
 
+	/** 依選項建立儲存管理器與通訊橋，並掛上預設通訊命令 */
 	constructor(options: ICreateBrowserAutomationOptions = {})
 	{
 		this._options = options;
@@ -85,6 +93,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this.bridge.registerAll(createDefaultBridgeCommands());
 	}
 
+	/** 目前瀏覽器實例；啟動前存取為 undefined（內部一律以 `_browser` 判空） */
 	get browser(): Browser
 	{
 		return this._browser!;
@@ -133,6 +142,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return this._state;
 	}
 
+	/** 目前追蹤中的所有分頁（快照） */
 	get pages(): readonly Page[]
 	{
 		return [...this._pages];
@@ -144,6 +154,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/** 以處理後的選項建立瀏覽器實例，子類別決定實際使用的 browser type */
 	protected abstract _initializeBrowser(options: LaunchOptions): Promise<Browser>;
 
+	/**
+	 * 啟動瀏覽器
+	 *
+	 * @param options - 啟動選項
+	 * @returns 已連線的瀏覽器實例
+	 */
 	async launch(options: ILaunchOptions = {}): Promise<Browser>
 	{
 		/** 已連線時直接重用，避免重複啟動程序 */
@@ -171,6 +187,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return this._browser;
 	}
 
+	/** 合併建立時的 context 選項與本次輸入，本次輸入優先 */
 	protected _handleContextOptions(options: BrowserContextOptions = {})
 	{
 		options = {
@@ -180,8 +197,16 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return options;
 	}
 
+	/**
+	 * 以處理後的選項建立 context
+	 *
+	 * @param options - context 建立選項
+	 * @param autoLaunchBrowser - 建立前先確保瀏覽器已啟動
+	 * @returns 建立的 context
+	 */
 	protected async _newContext(options?: BrowserContextOptions, autoLaunchBrowser?: boolean)
 	{
+		/** 確保瀏覽器已啟動，後續 `this.browser` 才非空 */
 		if (autoLaunchBrowser)
 		{
 			await this.launch();
@@ -191,6 +216,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return context;
 	}
 
+	/**
+	 * 建立新 context 並鎖定為主 context；鎖定狀態下以新 context 取代原主 context
+	 *
+	 * @param options - context 建立選項
+	 * @returns 建立的 context
+	 */
 	async newContext(options?: BrowserContextOptions): Promise<BrowserContext>
 	{
 		/** 鎖定狀態下維持單一 context；準備期允許臨時 context 共存 */
@@ -215,11 +246,18 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return context;
 	}
 
+	/** 取得目前主 context；尚無時建立一個 */
 	async getContext(optionsContext?: BrowserContextOptions)
 	{
 		return this._context ?? await this.newContext(optionsContext);
 	}
 
+	/**
+	 * 建立新分頁並納入追蹤
+	 *
+	 * @param options - 建立選項，可指定 background 模式（見 {@link ICreateNewPageOptions}）
+	 * @returns 新建立的分頁
+	 */
 	async newPage(options?: ICreateNewPageOptions): Promise<Page>
 	{
 		const page = await createNewPage(this, options);
@@ -236,7 +274,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	 * `checkExists` 啟用且目前網址已等於目標網址時略過導航。
 	 *
 	 * @param url - 目標網址
-	 * @param options - 導航選項
+	 * @param options - 導航選項；含 `newPage` 與 background 等分頁建立選項
 	 * @returns 導航分頁與是否有發生 goto 行為
 	 */
 	async goto(url: string, options: IGotoOptions & ICreateNewPageOptions = {}): Promise<IGotoResult>
@@ -247,6 +285,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return gotoPage(page, url, options);
 	}
 
+	/** 強制以新分頁導航（等同 `goto` 且 `newPage: true`） */
 	async gotoNewPage(url: string, options: IGotoOptions & ICreateNewPageOptions = {}): Promise<IGotoResult>
 	{
 		return this.goto(url, {
@@ -255,12 +294,14 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		});
 	}
 
+	/** 關閉瀏覽器與所有 context，並清空全部追蹤狀態 */
 	async close(): Promise<void>
 	{
 		const pages = this.pages;
 		const context = this._context;
 		const browser = this._browser;
 
+		/** 同步清空追蹤狀態，關閉期間觸發的 close 事件才不會重複進入關閉流程 */
 		this._browser = undefined;
 		this._context = undefined;
 		this._page = undefined;
@@ -373,8 +414,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			/**
 			 * 鎖定後：以第一個追蹤的頁面為主頁面，否則由之後新開的頁面接任
 			 *
-			 * 清除主頁面引用，觸發 getter 重新選取
-			 * 強制重新計算主頁面
+			 * 清除主頁面引用，觸發 getter 重新計算主頁面
 			 */
 			this._page = null;
 			void this.page;
@@ -417,6 +457,8 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this._context = context;
 
 		context.on('page', page => this._bindPage(page));
+
+		/** 主 context 關閉時釋放引用，避免持有已關閉的 context */
 		context.on('close', () =>
 		{
 			if (this._context === context)
@@ -425,6 +467,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			}
 		});
 
+		/** 掛載頁面通訊協定 (Bridge)，讓分頁可收發橋接命令 */
 		await this.bridge.install(context);
 		this._wirePageLiveOnOnContext(context);
 	}
@@ -446,10 +489,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			/** 主頁面關閉後，由下一個頁面自動繼承 */
 			if (this._page === page)
 			{
-				/**
-				 * 清除主頁面引用，觸發 getter 重新選取
-				 * 強制重新計算主頁面
-				 */
+				/** 清除主頁面引用，觸發 getter 重新計算主頁面 */
 				this._page = null;
 				void this.page;
 			}

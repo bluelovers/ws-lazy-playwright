@@ -57,8 +57,13 @@ export interface IPlaywrightGotoOptions extends Exclude<Parameters<Page['goto']>
 	waitUntil?: "load" | "domcontentloaded" | "networkidle" | "commit";
 }
 
+/**
+ * `gotoOptions` 的輸入形式
+ *
+ * `referer` 允許以布林表達「沿用目前網址 / 不送出」，於正規化時收斂為字串或移除。
+ */
 export type IGotoOptionsInput = ITSOverwrite<IPlaywrightGotoOptions, {
-	/** 是否使用 referer */
+	/** true 以目前網址作為 referer、false 移除該選項 */
 	referer?: IPlaywrightGotoOptions['referer'] | boolean;
 }>;
 
@@ -88,16 +93,33 @@ export interface IGotoResult
 	didGoto: boolean;
 }
 
+/**
+ * 將 `checkExists` 的布林 / 物件輸入正規化為物件形式
+ *
+ * @param checkExists - 布林、物件或未提供
+ * @returns 物件形式；`null` 以空物件替代
+ */
 export function _handleGotoOptionsCheckExists(checkExists?: boolean | IGotoCheckExists): IGotoCheckExists
 {
 	if (typeof checkExists !== 'object')
 	{
+		/** 布林（含未提供）收斂為 `{ href }`，統一後續判斷入口 */
 		checkExists = { href: checkExists };
 	}
 
+	/** `null` 的 typeof 亦為 `object`，依回傳契約以空物件替代 */
 	return checkExists ?? {};
 }
 
+/**
+ * 正規化 `gotoOptions.referer` 的布林輸入後轉為 Playwright 導航選項
+ *
+ * `IPlaywrightGotoOptions.referer` 只接受字串，布林形式需在此收斂。
+ *
+ * @param runtime - 目前分頁網址，供 `referer: true` 沿用
+ * @param gotoOptions - 使用者輸入的導航選項
+ * @returns 可直接傳入 `page.goto` 的導航選項
+ */
 export function _handleGotoOptionsInput(runtime: {
 	currentPageUrl: string;
 }, gotoOptions?: IGotoOptionsInput): IPlaywrightGotoOptions
@@ -106,10 +128,12 @@ export function _handleGotoOptionsInput(runtime: {
 	{
 		if (gotoOptions.referer)
 		{
+			/** 以目前網址作為 referer，保留來源脈絡 */
 			gotoOptions.referer = runtime.currentPageUrl;
 		}
 		else
 		{
+			/** false 代表不送出 referer：移除後交由 Playwright 決定預設行為 */
 			delete gotoOptions.referer;
 		}
 	}
@@ -117,6 +141,17 @@ export function _handleGotoOptionsInput(runtime: {
 	return gotoOptions as IPlaywrightGotoOptions;
 }
 
+/**
+ * 判定是否需要執行導航
+ *
+ * 僅在啟用 `checkExists` 且目前網址已等於目標網址時略過導航；
+ * 未啟用 `checkExists` 時一律導航（相同網址亦重新導航）。
+ *
+ * @param targetUrl - 目標網址
+ * @param currentPageUrl - 目前網址
+ * @param checkExists - 是否比對目前網址與目標網址
+ * @returns `isSameUrl` 目前網址是否已等於目標網址；`shouldGoto` 是否需要執行導航
+ */
 export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, checkExists?: boolean | IGotoCheckExists)
 {
 	const checkExistsObj = _handleGotoOptionsCheckExists(checkExists);
@@ -125,10 +160,10 @@ export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, c
 
 	let shouldGoto = true;
 
-	/** 已在目標網址時不重複導航 */
-	if (!isSameUrl)
+	/** 已在目標網址時才需要判斷是否重複導航 */
+	if (isSameUrl)
 	{
-		/** 檢查是否需要導航 */
+		/** 僅在 checkExists 啟用時才略過導航 */
 		if (checkExistsObj.href)
 		{
 			shouldGoto = false;
@@ -136,20 +171,22 @@ export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, c
 	}
 
 	return {
+		/** 目前網址是否已等於目標網址 */
 		isSameUrl,
+		/** 是否需要執行導航 */
 		shouldGoto,
 	};
 }
 
 /**
- * 導航至目標網址，已在目標網址時略過導航
-*
+ * 導航至目標網址
+ *
  * `checkExists` 為 true 或 `checkExists.href` 為 true 時，
- * 比對 `page.url()` 與目標網址，相同則不執行導航。
+ * 比對目前網址與目標網址，相同則不執行導航；未啟用時一律導航。
  *
  * @param page - 導航分頁
  * @param url - 目標網址
- * @param checkExists - 是否比對目前網址與目標網址
+ * @param options - 導航選項（分頁來源、`checkExists` 與 Playwright 導航選項）
  * @returns 導航分頁與是否有發生 goto 行為
  */
 export async function gotoPage(page: Page, url: string, options?: IGotoOptions): Promise<IGotoResult>
@@ -162,13 +199,14 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions):
 
 	let didGoto = false;
 
-	/** 已在目標網址時不重複導航 */
+	/** 略過導航時 `didGoto` 維持 false，僅回傳目前分頁 */
 	if (!shouldGoto)
 	{
 		didGoto = false;
 	}
 	else
 	{
+		/** 收斂 `referer` 布林輸入後交由 Playwright 導航 */
 		const gotoOptions = _handleGotoOptionsInput({ currentPageUrl }, options?.gotoOptions);
 
 		await page.goto(url, gotoOptions);
