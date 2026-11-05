@@ -243,7 +243,7 @@ async function _waitPublishReady(
 			_logPhase(
 				EnumPostPhase.Publish,
 				options,
-				`publish button not ready within ${timeout / 1000}s (loading/disabled persists): ${PUBLISH_SELECTOR}`,
+				`publish button not ready within ${timeout / 1000}s (loading/disabled persists): ${PUBLISH_SELECTOR}: ${JSON.stringify(state)}`,
 				'error',
 			);
 			return false;
@@ -323,7 +323,7 @@ export async function checkNotifications(
 
 	if (!notifications.length)
 	{
-		_logPhase(phase, options, `notification check (${moment}): none`, 'debug');
+		// _logPhase(phase, options, `notification check (${moment}): none`, 'debug');
 		return;
 	}
 
@@ -387,6 +387,8 @@ export async function publishPost(
 
 	/** 發布按鈕在上載完成後才渲染；以等待取代猜測點擊目標 */
 	await publishBtn.waitFor({ state: 'visible', timeout: 30_000 });
+
+	await page.waitForTimeout(2000);
 
 	/** 按鈕可見不代表可點：讀取中或停用狀態消失前絕不點擊 */
 	if (!await _waitPublishReady(page, options))

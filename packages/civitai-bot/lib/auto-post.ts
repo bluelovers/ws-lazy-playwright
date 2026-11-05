@@ -135,11 +135,11 @@ export async function autoPost(
 			{
 				if (!added?.length)
 				{
-					_logPhase(EnumPostPhase.AutoPost, options, `skipped by progress: no new files (${unit.path})`);
+					_logPhase(EnumPostPhase.AutoPost, options, `skipped by progress: no new files (${unit.path})`, 'warn');
 					continue;
 				}
 
-				_logPhase(EnumPostPhase.AutoPost, options, `new files after completion: ${added.length} (${unit.path})`);
+				_logPhase(EnumPostPhase.AutoPost, options, `new files after completion: ${added.length} (${unit.path})`, 'info');
 			}
 
 			/**
