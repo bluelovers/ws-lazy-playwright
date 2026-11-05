@@ -1,6 +1,7 @@
 {
   "packages": [
-    "packages/*"
+    "packages/*",
+    "packages/@lazy-playwright/*"
   ],
   "command": {
     "publish": {

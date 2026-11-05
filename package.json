@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "keywords": [
+    "playwright",
     "create-by-yarn-tool"
   ],
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/@lazy-playwright/*"
   ],
   "scripts": {
     "review:all": "yarn-tool ws run review --concurrency 1",
