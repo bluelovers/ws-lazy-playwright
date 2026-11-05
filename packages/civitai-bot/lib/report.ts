@@ -34,7 +34,7 @@ export function packBySize<T extends { size: number }>(items: readonly T[], maxB
 /**
  * 以上傳階段名義以終端輸出報告單一批次
  *
- * 僅輸出批次序號與各類型數量，不列出檔名清單。
+ * 輸出批次序號、各類型數量與批次的起始 / 結束檔案（批次邊界，空批次略過邊界）。
  */
 export function reportBatch(batchNo: number, files: readonly string[], note: string, options?: IMessageOptions): void
 {
@@ -50,6 +50,11 @@ export function reportBatch(batchNo: number, files: readonly string[], note: str
 		counts.set(kind, (counts.get(kind) ?? 0) + 1);
 	}
 
+	/** 批次邊界：起始與結束檔案（單檔批次兩者相同） */
+	const boundary = files.length
+		? `起始: ${files[0]}, 結束: ${files[files.length - 1]}`
+		: '';
+
 	_logPhase(
 		EnumPostPhase.Upload,
 		{ ...options, batchNo },
@@ -57,6 +62,12 @@ export function reportBatch(batchNo: number, files: readonly string[], note: str
 		+ ` xyz_grid-: ${counts.get(EnumUploadKind.XyzGrid)}`
 		+ `, grid-: ${counts.get(EnumUploadKind.Grid)}`
 		+ `, 其他: ${counts.get(EnumUploadKind.Other)}`
-		+ `, total: ${files.length}`,
+		+ `, total: ${files.length}`
+	);
+	boundary && _logPhase(
+		EnumPostPhase.Upload,
+		{ ...options, batchNo },
+		`[${note}]`
+		+ boundary,
 	);
 }
