@@ -1,4 +1,4 @@
-import { IBrowserCtx } from '#/lib/bridge/types';
+import { IBrowserCtx } from '@lazy-playwright/shared-types';
 
 /**
  * 建立新分頁的選項

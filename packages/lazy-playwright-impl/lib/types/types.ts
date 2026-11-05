@@ -1,9 +1,10 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
-import type { IBrowserBridge, IBrowserCtx, IBridgeOptions } from '../bridge/types';
+import type { IBrowserBridge, IBridgeOptions } from '../bridge/types';
 import type { EnumAutomationEngine, EnumBrowserKind } from './engine';
 import type { IPlaywrightModule, IPlaywrightModuleId } from '../core/module-registry';
 import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 import { ICreateNewPageOptions } from '../playwright/page/open-new-util';
+import { IBrowserCtx } from '@lazy-playwright/shared-types';
 
 /** 可空值 (Nullable)：統一 `undefined` 與 `null` 的表達 */
 export type INullable<T> = T | null | undefined;

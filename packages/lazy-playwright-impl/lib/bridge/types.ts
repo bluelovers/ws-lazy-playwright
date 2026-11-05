@@ -2,15 +2,7 @@ import type { BrowserContext, Page } from 'playwright';
 import type { EnumAutomationEngine, EnumBrowserKind } from '../types/engine';
 import type { IBrowserStorageManager } from '../storage/types';
 import type { INullable } from '../types/types';
-
-/** 命令執行時的上下文 (Context)；`IBrowserAutomation` 亦繼承此介面 */
-export interface IBrowserCtx
-{
-	/** 瀏覽器上下文 / Browser context */
-	context: BrowserContext;
-	/** 主頁面 (Main Page)；可能與發出請求的頁面不同 */
-	page?: Page;
-}
+import { IBrowserCtx } from '@lazy-playwright/shared-types';
 
 /** 命令處理器的宿主 (Host)：由 `IBrowserAutomation` 實例傳入 */
 export interface IBridgeCommandHost extends IBrowserCtx

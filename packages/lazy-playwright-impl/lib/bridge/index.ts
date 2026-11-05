@@ -23,10 +23,10 @@ import type {
 	IBridgeRequest,
 	IBridgeResponse,
 	IBrowserBridge,
-	IBrowserCtx,
 } from './types';
 import type { INullable } from '../types/types';
 import { EnumLogLabel } from '../logger';
+import { IBrowserCtx } from '@lazy-playwright/shared-types';
 
 /**
  * 頁面通訊協議 (Page Bridge)
