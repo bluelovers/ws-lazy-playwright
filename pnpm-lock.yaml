@@ -34,6 +34,20 @@ importers:
         specifier: ^1.0.26
         version: 1.0.26(ts-toolbelt@9.6.0)
 
+  packages/@lazy-playwright/shared-types:
+    dependencies:
+      playwright:
+        specifier: ^1.64.1
+        version: 1.64.1
+      ts-type:
+        specifier: ^3.0.18
+        version: 3.0.18(ts-toolbelt@9.6.0)
+      tslib:
+        specifier: '>=2.8.1'
+        version: 2.9.1
+
+  packages/@lazy-playwright/util-page: {}
+
   packages/civitai-bot:
     dependencies:
       '@bluelovers/string-natural-compare':
@@ -66,6 +80,9 @@ importers:
 
   packages/lazy-playwright-impl:
     dependencies:
+      '@lazy-playwright/shared-types':
+        specifier: ^1.0.0
+        version: link:../@lazy-playwright/shared-types
       array-hyper-unique:
         specifier: ^2.1.10
         version: 2.1.10(ts-toolbelt@9.6.0)
