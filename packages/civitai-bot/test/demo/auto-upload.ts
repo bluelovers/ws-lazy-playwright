@@ -13,96 +13,41 @@ import { createPostPage, LimitReachedError } from '#/lib/page';
 // @ts-ignore
 import { EnumLogLabel, consoleLogger } from '#/lib/logger';
 // @ts-ignore
-import { autoPost, collectFolders } from '#/lib/auto-post';
+import { autoPost, collectFolders, startFolderStream } from '#/lib/auto-post';
 // @ts-ignore
 import { loadTaskProgress } from '#/lib/progress';
 // @ts-ignore
-import { createCompletionRecord, findStartAfterLastPublish } from '#/lib/record';
+import { createCompletionRecord, resumeFromCompletion } from '#/lib/record';
 // @ts-ignore
-import { prependFolder } from '#/lib/source';
+import { parseAutoPostCli } from '#/lib/cli';
 // @ts-ignore
-import type { IFolderInput, IMessageOptions, IRunSwitches, ITaskRangeOptions } from '#/lib/types';
+import type { IFolderInput, IMessageOptions, ITaskRangeOptions } from '#/lib/types';
 import { globStream, async as globAsync } from 'fast-glob';
 
-/**
- * CLI 參數（`process.argv`）：
- *
- * 通用：
- *
- * - `--task-base <path>`：任務基準路徑（預設為單日目錄常數；見 {@link TASK_BASE}）
- * - `--max-tasks <n>`：最大任務數（覆寫 {@link TASK_RANGE}.maxTasks）
- * - `--from-last-publish`：以完成紀錄補齊進度缺漏的完成邊界（已完成任務不重發）；
- *   另於無可接續紀錄時找尋新任務起始點（覆寫 startDay / startTask）
- * - `--publish`：解除發布停用（預設停用；絕不按 save 的安全規則不變）
- * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告）
- * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
- * - `--create-url <url>`：變更上傳（建立貼文）頁面網址（預設 `CREATE_URL`）
- *
- * agent-scheduler 專用（`--ags-` prefix）：
- *
- * - `--ags-max-publish <n>`：任務的發布次數上限，達上限即忽略剩餘圖片（僅任務模式生效，預設不限制）
- */
-const ARGV = process.argv.slice(2);
-
-/** CLI 參數集合：布林旗標判定用 */
-const CLI_ARGS = new Set(ARGV);
+/** 任務範圍預設值：可在此指定起始天 / 結束天 / 起始任務 / 最大任務天數；`--max-tasks <n>` 由 CLI 合併 */
+const TASK_RANGE: ITaskRangeOptions = {
+	// startDay: '2026-09-13',
+	// endDay: '2026-09-20',
+	// startTask: '14-41-51_task(7gysqd604e7jv3m)',
+	// maxTasks: 5,
+	// maxDays: 3,
+};
 
 /**
- * 取得 CLI 字串參數值：支援 `--name value` 與 `--name=value`
+ * 任務基準路徑預設值：
  *
- * 未指定、缺少值、或下一個 token 為旗標（以 `--` 開頭）時回傳 `undefined`
+ * - 單日目錄（`...\\2026-11-05`）：起始天即該日，可選 `range.endDay` 續掃後續天
+ * - 根目錄（`...\\`）：需以 `range.startDay` 指定起始天
+ *
+ * CLI `--task-base <path>` 可覆寫。
  */
-function _argValue(name: string): string | undefined
-{
-	const prefix = `${name}=`;
-	const inline = ARGV.find(arg => arg.startsWith(prefix));
+const DEFAULT_TASK_BASE = 'D:\\sd-forge\\output\\txt2img-images\\2026-11-05';
 
-	if (inline !== undefined)
-	{
-		return inline.slice(prefix.length) || undefined;
-	}
-
-	const index = ARGV.indexOf(name);
-	const value = index >= 0 ? ARGV[index + 1] : undefined;
-
-	return value !== undefined && !value.startsWith('--') ? value : undefined;
-}
-
-/**
- * 取得 CLI 整數參數值：非正整數或未指定時回傳 `undefined`
- */
-function _argInt(name: string): number | undefined
-{
-	const value = _argValue(name);
-	const parsed = value === undefined ? Number.NaN : Number(value);
-
-	return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-/** 是否於執行結束後關閉瀏覽器 */
-const CLOSE_AFTER = CLI_ARGS.has('--close');
-
-/** 是否以完成紀錄重建續跑狀態：補齊進度缺漏的完成邊界；起始點僅於無可接續紀錄時套用 */
-const FROM_LAST_PUBLISH = CLI_ARGS.has('--from-last-publish');
-
-/** 執行設定：僅在明確指定時覆寫預設值 */
-const SWITCHES: IRunSwitches = {};
-
-if (CLI_ARGS.has('--publish'))
-{
-	SWITCHES.enablePublish = true;
-}
-
-if (CLI_ARGS.has('--no-dry-run'))
-{
-	SWITCHES.disableDryRun = true;
-}
-
-/** 建立貼文頁（上傳頁面）網址：CLI `--create-url <url>` 指定；未指定時沿用 `CREATE_URL` 預設 */
-SWITCHES.createUrl = _argValue('--create-url');
-
-/** agent-scheduler 任務發布次數上限：CLI `--ags-max-publish <n>`；未指定或無效值不設限 */
-SWITCHES.agsMaxPublish = _argInt('--ags-max-publish');
+/** CLI 參數（旗標語意見 {@link parseAutoPostCli}） */
+const CLI = parseAutoPostCli(process.argv.slice(2), {
+	taskBase: DEFAULT_TASK_BASE,
+	range: TASK_RANGE,
+});
 
 /** 登入狀態的儲存 id：先以 storage/save 寫入 civitai.red 的登入狀態 */
 const STORAGE_ID = 'default';
@@ -110,120 +55,55 @@ const STORAGE_ID = 'default';
 /** 儲存目錄（Cookie / Session） */
 const STORAGE_BASE_DIR = __TEST_TEMP_STORAGE;
 
-/**
- * 任務基準路徑：
- *
- * - 單日目錄（`...\\agent-scheduler\\2026-09-13`）：起始天即該日，可選 {@link TASK_RANGE}.endDay 續掃後續天
- * - 根目錄（`...\\agent-scheduler\\`）：需以 {@link TASK_RANGE}.startDay 指定起始天
- *
- * CLI `--task-base <path>` 可覆寫。
- */
-const TASK_BASE = _argValue('--task-base') ?? 'D:\\sd-forge\\output\\txt2img-images\\2026-11-05';
-
-/** CLI `--max-tasks <n>`：最大任務數；未指定或非正整數時不覆寫 */
-const MAX_TASKS = _argInt('--max-tasks');
-
-/** 任務範圍：起始天 / 結束天 / 起始任務 / 最大任務數 / 最大任務天數（皆可選）；`--max-tasks <n>` 於此合併 */
-const TASK_RANGE: ITaskRangeOptions = {
-	// startDay: '2026-09-13',
-	// endDay: '2026-09-20',
-	// startTask: '14-41-51_task(7gysqd604e7jv3m)',
-	// maxTasks: 5,
-	// maxDays: 3,
-	...(MAX_TASKS !== undefined && { maxTasks: MAX_TASKS }),
-};
-
 /** 任務進度檔：記錄已完成任務；中斷後由該檔接續，需完全重跑時刪除該檔 */
 const PROGRESS_FILE = join(__TEST_TEMP, 'civitai-bot', 'auto-post.progress.json');
 
 /** 完成紀錄目錄：完成任務依發布日期分檔保存（`YYYY-MM-DD.json`，含發布網址） */
 const RECORD_DIR = join(__TEST_TEMP, 'civitai-bot', 'completion');
 
-consoleLogger.debug(
-	EnumLogLabel.CivitaiBot,
-	`[auto-post] cli: publish=${SWITCHES.enablePublish === true}`
-	+ `, dryRun=${SWITCHES.disableDryRun === true ? 'off' : 'on'}`
-	+ `, close=${CLOSE_AFTER}`
-	+ `, createUrl=${SWITCHES.createUrl ?? 'default'}`
-	+ `, agsMaxPublish=${SWITCHES.agsMaxPublish ?? 'none'}`,
-);
-
-consoleLogger.info(
-	EnumLogLabel.CivitaiBot,
-	`[auto-post] cli scan: taskBase=${TASK_BASE}`
-	+ `, maxTasks=${TASK_RANGE.maxTasks ?? 'none'}`
-	+ `, fromLastPublish=${FROM_LAST_PUBLISH}`,
-);
-
 /**
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
- * 流程：載入任務進度（{@link loadTaskProgress}） → 指定 `--from-last-publish` 時，
- * 以完成紀錄補齊進度缺漏的完成邊界；無可接續紀錄時另覆寫掃描起始點
- * （{@link findStartAfterLastPublish}） →
- * 串接來源串流（{@link collectFolders}，以 `next()` 探測首項判定空否） →
- * 還原登入狀態、建立完成紀錄（{@link createCompletionRecord}） → 開啟建立貼文頁（{@link createPostPage}） →
- * 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次、發布開關檢查）。
+ * 僅負責組裝 lib 流程：
+ *
+ * 1. 載入任務進度（{@link loadTaskProgress}）
+ * 2. 指定 `--from-last-publish` 時以完成紀錄重建續跑狀態——完成邊界補齊進度、
+ *    無可接續紀錄時覆寫掃描起始點（{@link resumeFromCompletion}）
+ * 3. 串接來源串流並探測首項（{@link collectFolders} + {@link startFolderStream}，
+ *    空清單提前中止、不啟動瀏覽器）
+ * 4. 還原登入狀態、建立完成紀錄（{@link createCompletionRecord}）、開啟建立貼文頁（{@link createPostPage}）
+ * 5. 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次）
+ *
  * 系統提示顯示已達上限（{@link LimitReachedError}）時停止任務。
  *
  * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
- * CLI 參數（{@link CLI_ARGS}）可覆寫任務基準路徑、最大任務數與上傳頁面網址，
- * 解除發布停用與 dry run，以完成紀錄重建續跑狀態並找尋起始點，並於結束後關閉瀏覽器。
+ * CLI 參數（{@link parseAutoPostCli}）可覆寫任務基準路徑、最大任務數與上傳頁面網址，
+ * 解除發布停用與 dry run，以完成紀錄重建續跑狀態，並於結束後關閉瀏覽器。
  *
  * @param options 訊息控制（獨立物件，不併入其他參數）
- * @param range 任務範圍（獨立物件；僅於未指定 `source` 的掃描模式生效）
+ * @param range 任務範圍（獨立物件；預設取 CLI 解析結果 `range`；僅於未指定 `source` 的掃描模式生效）
  * @param source 來源輸入模式：globStream / globAsync / Iterable / Generator / 構建函式（獨立物件）；
- *   指定時取代 `TASK_BASE` + `range` 掃描
+ *   指定時取代 `taskBase` + `range` 掃描
  */
 export async function autoUploadDemo(
 	options?: IMessageOptions,
-	range: ITaskRangeOptions = TASK_RANGE,
+	range: ITaskRangeOptions = CLI.range,
 	source?: IFolderInput,
 )
 {
 	/** 任務進度：載入完成任務與中斷檢查點，供中斷後接續 */
-	const progress = await loadTaskProgress(PROGRESS_FILE, TASK_BASE, options);
+	const progress = await loadTaskProgress(PROGRESS_FILE, CLI.taskBase, options);
 
-	/** 掃描起始點：預設沿用 `range`；無可接續紀錄時改以完成紀錄推導 */
-	let scanRange = range;
+	/** 掃描範圍：指定 `--from-last-publish` 時以完成紀錄重建續跑狀態，否則沿用 `range` */
+	const scanRange = CLI.fromLastPublish
+		? await resumeFromCompletion(progress, range, RECORD_DIR, options)
+		: range;
 
-	/** 以完成紀錄重建續跑狀態：補齊進度缺漏的完成邊界（僅旗標指定時執行） */
-	if (FROM_LAST_PUBLISH)
+	/** 來源串流：探測首項，空清單即提前中止（不啟動瀏覽器） */
+	const stream = await startFolderStream(collectFolders(CLI.taskBase, scanRange, options, source), options);
+
+	if (!stream)
 	{
-		/** 是否有可接續紀錄：有即以進度為準，僅補缺漏、不覆寫掃描起始點 */
-		const resumable = progress.size > 0 || progress.hasCheckpoint;
-
-		const resume = await findStartAfterLastPublish(RECORD_DIR, options);
-
-		if (resume)
-		{
-			/** 起始點：僅無可接續紀錄時套用（含最後發布任務本身，由完成邊界比對其新增檔案） */
-			if (resume.start && !resumable)
-			{
-				scanRange = { ...range, ...resume.start };
-			}
-			else if (resume.start)
-			{
-				consoleLogger.debug(
-					EnumLogLabel.CivitaiBot,
-					'[auto-post] start point from completion ignored (progress resumable)',
-				);
-			}
-
-			/** 完成邊界寫入進度（僅補缺漏路徑、不覆寫既有）：已完成任務不重發 */
-			await progress.seed(resume.done);
-		}
-	}
-
-	/** 來源串流 (Folder Stream)：生成器逐項產出，大量目錄時不建立中間陣列 */
-	const folders = collectFolders(TASK_BASE, scanRange, options, source);
-
-	/** 探測首項：空清單即提前中止（不啟動瀏覽器），首項稍後接回串流 */
-	const head = await folders.next();
-
-	if (head.done)
-	{
-		consoleLogger.log(EnumLogLabel.CivitaiBot, '[auto-post] no folders to run');
 		return;
 	}
 
@@ -248,9 +128,9 @@ export async function autoUploadDemo(
 		/** 完成紀錄：完成任務依發布日期分檔保存 */
 		const record = createCompletionRecord(RECORD_DIR, options);
 
-		const page = await createPostPage(context, SWITCHES.createUrl);
+		const page = await createPostPage(context, CLI.switches.createUrl);
 
-		await autoPost(page, prependFolder(head.value, folders), options, progress, SWITCHES, record);
+		await autoPost(page, stream, options, progress, CLI.switches, record);
 	}
 	catch (error)
 	{
@@ -264,7 +144,7 @@ export async function autoUploadDemo(
 	}
 	finally
 	{
-		if (CLOSE_AFTER)
+		if (CLI.closeAfter)
 		{
 			await automation.close();
 		}

@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { DAY_DIR_RE, TASK_DIR_RE } from './const';
 import { _logPhase } from './logger';
-import type { IDoneBoundary, IDoneEntry } from './progress';
+import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types';
 
 /**
@@ -259,4 +259,50 @@ export async function findStartAfterLastPublish(
 	}
 
 	return { start, done };
+}
+
+/**
+ * 完整階段：以完成紀錄重建續跑狀態，回傳掃描用任務範圍
+ *
+ * - 完成邊界寫入進度（{@link ITaskProgress.seed}：僅補缺漏路徑、不覆寫既有）→ 已完成任務不重發
+ * - 起始點僅於「無可接續紀錄」（無完成任務、無中斷檢查點）時覆寫範圍；
+ *   有可續跑紀錄時以進度為準，維持原範圍並記錄
+ * - 無完成紀錄（{@link findStartAfterLastPublish} 回傳 `undefined`）時維持原範圍
+ *
+ * @param progress 任務進度（可續跑狀態由其判定）
+ * @param range 原任務範圍（未覆寫時原樣回傳）
+ * @param dir 完成紀錄目錄（{@link createCompletionRecord} 的寫入目錄）
+ * @param options 訊息控制（獨立物件，不併入其他參數）
+ */
+export async function resumeFromCompletion(
+	progress: ITaskProgress,
+	range: ITaskRangeOptions,
+	dir: string,
+	options?: IMessageOptions,
+): Promise<ITaskRangeOptions>
+{
+	/** 是否有可接續紀錄：有即以進度為準，僅補缺漏、不覆寫起始點 */
+	const resumable = progress.size > 0 || progress.hasCheckpoint;
+
+	const resume = await findStartAfterLastPublish(dir, options);
+
+	if (!resume)
+	{
+		return range;
+	}
+
+	/** 起始點：僅無可接續紀錄時套用（含最後發布任務本身，由完成邊界比對其新增檔案） */
+	const scanRange = resume.start && !resumable
+		? { ...range, ...resume.start }
+		: range;
+
+	if (resume.start && resumable)
+	{
+		_logPhase(EnumPostPhase.AutoPost, options, 'start point from completion ignored (progress resumable)', 'debug');
+	}
+
+	/** 完成邊界寫入進度（僅補缺漏路徑、不覆寫既有）：已完成任務不重發 */
+	await progress.seed(resume.done);
+
+	return scanRange;
 }

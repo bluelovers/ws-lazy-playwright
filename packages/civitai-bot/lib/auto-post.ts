@@ -18,7 +18,7 @@ import {
 	type ITaskRangeOptions,
 	type IUploadItem,
 } from './types';
-import { iterateFolderInput } from './source';
+import { iterateFolderInput, prependFolder } from './source';
 import { iterateTaskDirs } from './scan';
 import { findAddedFiles, type ITaskProgress } from './progress';
 import type { ICompletionRecord } from './record';
@@ -49,6 +49,32 @@ export async function* collectFolders(
 			yield toTaskFolder(path);
 		}
 	}
+}
+
+/**
+ * 完整階段：探測來源串流首項，回傳可交給 {@link autoPost} 的完整串流
+ *
+ * 以 `next()` 探測首項：空串流回傳 `undefined` 並記錄
+ * （呼叫端提前中止，不啟動瀏覽器）；有首項則以 {@link prependFolder} 接回，
+ * 維持單次 `for await` 延遲產出 (Lazy Yield)，不建立中間陣列。
+ *
+ * @param folders 來源串流（由 {@link collectFolders} 逐項產出）
+ * @param options 訊息控制（獨立物件，不併入其他參數）
+ */
+export async function startFolderStream(
+	folders: AsyncGenerator<ITaskFolder>,
+	options?: IMessageOptions,
+): Promise<AsyncGenerator<ITaskFolder> | undefined>
+{
+	const head = await folders.next();
+
+	if (head.done)
+	{
+		_logPhase(EnumPostPhase.AutoPost, options, 'no folders to run');
+		return undefined;
+	}
+
+	return prependFolder(head.value, folders);
 }
 
 /**
