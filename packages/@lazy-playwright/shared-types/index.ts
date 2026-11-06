@@ -23,7 +23,7 @@ export type IBrowserCtxInput = ITSRequireAtLeastOne<IBrowserCtx>;
  * 兩者職責分離：引擎決定「實作類別」，瀏覽器種類決定「實際啟動的瀏覽器」。
  * Kept separate: the engine selects the implementation class, the browser kind selects the browser launched.
  */
-export enum EnumAutomationEngine
+export const enum EnumAutomationEngine
 {
 	/** Playwright 引擎 / Playwright engine */
 	Playwright = 'playwright',
@@ -41,7 +41,7 @@ export const DEFAULT_AUTOMATION_ENGINE = EnumAutomationEngine.Playwright;
 /**
  * 底層瀏覽器種類：由 {@link EnumAutomationEngine} 選出的實作類別再據此啟動瀏覽器
  */
-export enum EnumBrowserKind
+export const enum EnumBrowserKind
 {
 	Chromium = 'chromium',
 	Chrome = 'chrome',
