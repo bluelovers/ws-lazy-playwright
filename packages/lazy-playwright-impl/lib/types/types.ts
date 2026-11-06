@@ -5,10 +5,7 @@ import type { IPlaywrightModule, IPlaywrightModuleId } from '../core/module-regi
 import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 import { ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
-import { ITSRequiredWith } from 'ts-type';
-
-/** 可空值 (Nullable)：統一 `undefined` 與 `null` 的表達 */
-export type INullable<T> = T | null | undefined;
+import { ITSRequiredWith, ITSNullable } from 'ts-type';
 
 /** 分頁建立時的監聽器 (Page Listener) */
 export type IPageListener = (page: Page) => unknown;
@@ -54,7 +51,7 @@ export interface IBrowserAutomation extends ITSRequiredWith<IBrowserCtx, 'contex
 	readonly storage: IBrowserStorageManager;
 	readonly bridge: IBrowserBridge;
 
-	readonly browser: INullable<Browser>;
+	readonly browser: ITSNullable<Browser>;
 	/** 所有已追蹤的頁面 */
 	readonly pages: readonly Page[];
 
@@ -71,7 +68,7 @@ export interface IBrowserAutomation extends ITSRequiredWith<IBrowserCtx, 'contex
 	 * @param page - 起始分頁，立即觸發一次；`null` 表示不立即觸發
 	 * @param listener - 分頁建立時的處理器；重複註冊同一函式會被忽略
 	 */
-	pageLiveOn(page: INullable<Page>, listener: IPageListener): void;
+	pageLiveOn(page: ITSNullable<Page>, listener: IPageListener): void;
 
 	close(): Promise<void>;
 }

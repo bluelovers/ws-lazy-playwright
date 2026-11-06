@@ -1,6 +1,7 @@
 import type { BrowserContext, Page } from 'playwright';
-import type { INullable, IPageListener } from '../types/types';
+import type { IPageListener } from '../types/types';
 import { IBrowserCtx } from '@lazy-playwright/shared-types';
+import { ITSNullable } from 'ts-type';
 
 /**
  * 監聽 context 新增的分頁
@@ -22,7 +23,7 @@ import { IBrowserCtx } from '@lazy-playwright/shared-types';
  */
 export function pageLiveOn(
 	ctx: IBrowserCtx,
-	page: INullable<Page>,
+	page: ITSNullable<Page>,
 	listener: IPageListener,
 ): void
 {

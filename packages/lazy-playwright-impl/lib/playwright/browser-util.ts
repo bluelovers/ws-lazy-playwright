@@ -1,5 +1,5 @@
 import type { Browser, BrowserContext, Page } from 'playwright';
-import type { INullable } from '../types/types';
+import type { ITSNullable } from 'ts-type';
 
 /**
  * 安全關閉 page → context → browser
@@ -8,9 +8,9 @@ import type { INullable } from '../types/types';
  * 避免殘留背景程序。
  */
 export async function closeBrowserSafely(target: {
-	pages?: readonly INullable<Page>[];
-	contexts?: readonly INullable<BrowserContext>[];
-	browser?: INullable<Browser>;
+	pages?: readonly ITSNullable<Page>[];
+	contexts?: readonly ITSNullable<BrowserContext>[];
+	browser?: ITSNullable<Browser>;
 }): Promise<void>
 {
 	await Promise.allSettled([
@@ -21,14 +21,14 @@ export async function closeBrowserSafely(target: {
 }
 
 /** 關閉單一 page；已關閉或不存在時直接略過 */
-export async function closePageSafely(page: INullable<Page>): Promise<void>
+export async function closePageSafely(page: ITSNullable<Page>): Promise<void>
 {
 	if (!page || page.isClosed()) return;
 	await page.close().catch(() => {});
 }
 
 /** 關閉 context 或 browser；不存在時直接略過 */
-export async function closeContextSafely(context: INullable<BrowserContext | Browser>): Promise<void>
+export async function closeContextSafely(context: ITSNullable<BrowserContext | Browser>): Promise<void>
 {
 	await context?.close().catch(() => {});
 }

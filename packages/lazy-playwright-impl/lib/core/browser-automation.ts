@@ -14,9 +14,9 @@ import type {
 	IBrowserAutomation,
 	ICreateBrowserAutomationOptions,
 	ILaunchOptions,
-	INullable,
 } from '../types/types';
 import { createNewPage, ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
+import { ITSNullable } from 'ts-type';
 
 /**
  * 實例狀態 (Automation State)
@@ -73,12 +73,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	protected _suspendAutoClose = false;
 
 	/** 目前瀏覽器實例；未啟動時為空 */
-	protected _browser: INullable<Browser>;
+	protected _browser: ITSNullable<Browser>;
 	/** 目前主 context；未建立時為空 */
-	protected _context: INullable<BrowserContext>;
+	protected _context: ITSNullable<BrowserContext>;
 
 	/** 主頁面 (Main Page) */
-	protected _page: INullable<Page>;
+	protected _page: ITSNullable<Page>;
 
 	/** 目前狀態；預設為準備期，於 context 決定後由 {@link _lockContext} 鎖定 */
 	protected _state: EnumAutomationState = EnumAutomationState.Preparing;
@@ -525,7 +525,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	 * @param page - 起始分頁，立即觸發一次；`null` 表示不立即觸發
 	 * @param listener - 分頁建立時的處理器；重複註冊同一函式會被忽略
 	 */
-	pageLiveOn(page: INullable<Page>, listener: IPageListener): void
+	pageLiveOn(page: ITSNullable<Page>, listener: IPageListener): void
 	{
 		const isFirstRegistration = !this._pageLiveOnListeners.has(listener);
 		this._pageLiveOnListeners.add(listener);

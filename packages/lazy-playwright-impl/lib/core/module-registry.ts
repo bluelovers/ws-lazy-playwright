@@ -1,5 +1,5 @@
 import { chromium, firefox, webkit, type BrowserType } from 'playwright';
-import { EnumBrowserKind } from '@lazy-playwright/shared-types';
+import { EnumAutomationEngine, EnumBrowserKind } from '@lazy-playwright/shared-types';
 import { ITSPickExtra } from 'ts-type';
 
 /**
@@ -49,7 +49,7 @@ export interface IPlaywrightModule
 }
 
 /** 預設相容模組識別碼 */
-export const DEFAULT_PLAYWRIGHT_MODULE_ID = 'playwright';
+export const DEFAULT_PLAYWRIGHT_MODULE_ID = EnumAutomationEngine.Playwright;
 
 export type IPlaywrightModuleId = typeof DEFAULT_PLAYWRIGHT_MODULE_ID | (string & {});
 

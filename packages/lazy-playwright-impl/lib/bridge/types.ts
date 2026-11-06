@@ -1,7 +1,7 @@
 import type { BrowserContext, Page } from 'playwright';
 import type { EnumAutomationEngine, EnumBrowserKind } from '@lazy-playwright/shared-types';
 import type { IBrowserStorageManager } from '../storage/types';
-import type { INullable } from '../types/types';
+import type { ITSNullable } from 'ts-type';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 import type { ITSRequiredWith } from 'ts-type';
 
@@ -23,7 +23,7 @@ export interface IBridgeCommandHost extends ITSRequiredWith<IBrowserCtx, 'contex
  */
 export type IBridgeCommandHandler = (
 	args: readonly unknown[],
-	page: INullable<Page>,
+	page: ITSNullable<Page>,
 	ctx: IBrowserCtxInput,
 	host: IBridgeCommandHost,
 ) => unknown | Promise<unknown>;

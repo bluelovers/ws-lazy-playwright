@@ -24,7 +24,7 @@ import type {
 	IBridgeResponse,
 	IBrowserBridge,
 } from './types';
-import type { INullable } from '../types/types';
+import type { ITSNullable } from 'ts-type';
 import { EnumLogLabel } from '../logger';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 
@@ -313,7 +313,7 @@ export class PageBridge implements IBrowserBridge
 
 	protected async _invoke(
 		request: IBridgeRequest,
-		page: INullable<Page>,
+		page: ITSNullable<Page>,
 		ctx: IBrowserCtxInput,
 	): Promise<IBridgeResponse>
 	{
@@ -337,7 +337,7 @@ export class PageBridge implements IBrowserBridge
 }
 
 /** 由請求取得來源分頁；服務工作者等無 frame 的請求回傳 `null` */
-function _resolvePage(request: Request): INullable<Page>
+function _resolvePage(request: Request): ITSNullable<Page>
 {
 	try
 	{
