@@ -64,15 +64,15 @@
     "tsc:showConfig": "ynpx get-current-tsconfig -p"
   },
   "dependencies": {
-    "ts-type": "^3.0.18",
+    "ts-type": "^3.0.19",
     "tslib": "^2.9.1"
   },
   "devDependencies": {
     "@bluelovers/tsconfig": "^2.0.3",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.6",
-    "@yarn-tool/require-resolve": "^4.0.13",
-    "@yarn-tool/ws-find-up-paths": "^1.0.26"
+    "@yarn-tool/require-resolve": "^4.0.16",
+    "@yarn-tool/ws-find-up-paths": "^1.0.27"
   },
   "peerDependencies": {
     "@bluelovers/conventional-changelog-bluelovers": "*"

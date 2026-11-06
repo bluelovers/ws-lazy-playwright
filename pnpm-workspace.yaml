@@ -26,3 +26,7 @@ preferWorkspacePackages: true
 
 # onlyBuiltDependencies: []
 # ignoredBuiltDependencies: []
+minimumReleaseAgeExclude:
+  - playwright-core
+  - playwright
+  - ts-type
