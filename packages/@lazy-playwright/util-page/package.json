@@ -53,10 +53,10 @@
     "ts-type": "^3.0.19",
     "tslib": ">=2.9.1"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "devDependencies": {
     "playwright": "^1.65.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
