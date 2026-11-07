@@ -1,4 +1,4 @@
-import type { ILogMethod } from './logger';
+import type { ILogMethod } from '@lazy-playwright/logger';
 
 /**
  * 建立貼文頁（上傳頁面）網址

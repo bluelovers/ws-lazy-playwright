@@ -12,7 +12,8 @@ import {
 	PUBLISH_SELECTOR,
 	PUBLISH_URL_TIMEOUT,
 } from './const';
-import { _logPhase, type ILogMethod } from './logger';
+import type { ILogMethod } from '@lazy-playwright/logger';
+import { _logPhase } from './logger';
 import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from './types';
 
 /** 以標準輸入讀取一行（去空白、小寫）；用於 y/n 確認 */

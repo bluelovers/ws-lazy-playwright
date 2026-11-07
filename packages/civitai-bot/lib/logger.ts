@@ -1,6 +1,5 @@
-import { Console2, IStylesColorNames } from 'debug-color2';
+import { consoleLoggerTimeAndLabel, logConsole, type IConsoleMethodInput, type ILogMethod } from '@lazy-playwright/logger';
 import { EnumPostPhase, type IMessageOptions } from './types';
-import { ITSReadonlyToWriteableArray } from 'ts-type';
 
 /**
  * 模組日誌標籤 (Log Label)
@@ -13,17 +12,6 @@ export enum EnumLogLabel
 	CivitaiBot = '[civitai-bot]',
 }
 
-/** 終端日誌：帶 label 與時間戳 */
-export const consoleLogger = new Console2(null, {
-	label: true,
-	time: true,
-});
-
-/** 終端日誌記錄方法：{@link _logPhase} 與系統提示記錄規則共用的 method 型別（單一來源） */
-export type ILogMethod = keyof Pick<Console2, 'log' | 'debug' | 'success' | 'warn' | 'info' | 'error'>;
-
-export type ILogMethodInput = readonly [...style: IStylesColorNames[], method: ILogMethod] | readonly [method: ILogMethod] | ILogMethod;
-
 /**
  * 以指定階段名義輸出訊息；內容自動反映實際數量，不硬編碼
  *
@@ -34,7 +22,7 @@ export function _logPhase(
 	phase: EnumPostPhase,
 	options: IMessageOptions | undefined,
 	message: string,
-	method: ILogMethodInput = 'log',
+	method: IConsoleMethodInput<ILogMethod> = 'log',
 ): void
 {
 	if (options?.verbose === false) return;
@@ -42,19 +30,5 @@ export function _logPhase(
 	const scope = options?.batchNo === undefined ? '' : `[batch ${options.batchNo}] `;
 	const text = `[${phase}] ${scope}${message}`;
 
-	let finalConsole = consoleLogger;
-
-	if (Array.isArray(method))
-	{
-		let methodArray = [...method] as ITSReadonlyToWriteableArray<Extract<ILogMethodInput, readonly any[]>>;
-		method = methodArray.pop()! as ILogMethod ?? 'log';
-
-		for (const style of methodArray)
-		{
-			// @ts-ignore
-			finalConsole = finalConsole[style]!;
-		}
-	}
-
-	finalConsole[method as ILogMethod](EnumLogLabel.CivitaiBot, text);
+	logConsole(consoleLoggerTimeAndLabel, method, EnumLogLabel.CivitaiBot, text);
 }

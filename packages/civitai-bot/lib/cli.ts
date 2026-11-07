@@ -1,4 +1,5 @@
-import { EnumLogLabel, consoleLogger } from './logger';
+import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
+import { EnumLogLabel } from './logger';
 import type { IRunSwitches, ITaskRangeOptions } from './types';
 
 /** CLI 參數讀取：布林旗標 / 字串值 / 正整數值三種取值 */
@@ -147,7 +148,7 @@ export function parseAutoPostCli(argv: readonly string[], defaults: IAutoPostCli
 		closeAfter: args.has('--close'),
 	};
 
-	// consoleLogger.debug(
+	// consoleLoggerTimeAndLabel.debug(
 	// 	EnumLogLabel.CivitaiBot,
 	// 	`[auto-post] cli: publish=${cli.switches.enablePublish === true}`
 	// 	+ `, dryRun=${cli.switches.disableDryRun === true ? 'off' : 'on'}`
@@ -157,19 +158,19 @@ export function parseAutoPostCli(argv: readonly string[], defaults: IAutoPostCli
 	// 	+ `${cli.switches.agsMaxPublishTotal ? ' (total)' : ''}`,
 	// );
 
-	// consoleLogger.info(
+	// consoleLoggerTimeAndLabel.info(
 	// 	EnumLogLabel.CivitaiBot,
 	// 	`[auto-post] cli scan: taskBase=${cli.taskBase}`
 	// 	+ `, maxTasks=${cli.range.maxTasks ?? 'none'}`
 	// 	+ `, fromLastPublish=${cli.fromLastPublish}`,
 	// );
 
-	consoleLogger.debug(
+	consoleLoggerTimeAndLabel.debug(
 		EnumLogLabel.CivitaiBot,
 		`[auto-post] cli:`,
 	);
 
-	consoleLogger.dir(cli, { depth: null });
+	consoleLoggerTimeAndLabel.dir(cli, { depth: null });
 
 
 

@@ -6,7 +6,8 @@ import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';
 import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__root';
 import { createPostPage, LimitReachedError } from '#/lib/page';
-import { EnumLogLabel, consoleLogger } from '#/lib/logger';
+import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
+import { EnumLogLabel } from '#/lib/logger';
 import { autoPost, collectFolders, startFolderStream } from '#/lib/auto-post';
 import { loadTaskProgress } from '#/lib/progress';
 import { createCompletionRecord, resumeFromCompletion } from '#/lib/record';
@@ -31,7 +32,7 @@ const TASK_RANGE: ITaskRangeOptions = {
  *
  * CLI `--task-base <path>` 可覆寫。
  */
-const DEFAULT_TASK_BASE = 'D:\\sd-forge\\output\\txt2img-images\\2026-11-05';
+const DEFAULT_TASK_BASE = 'D:\\sd-forge\\output\\agent-scheduler\\2026-11-05';
 
 /** CLI 參數（旗標語意見 {@link parseAutoPostCli}） */
 const CLI = parseAutoPostCli(process.argv.slice(2), {
@@ -112,8 +113,8 @@ export async function autoUploadDemo(
 		const applied = await automation.storage.cookies.apply(STORAGE_ID, context);
 		const restored = await automation.storage.sessions.restore(STORAGE_ID, context);
 
-		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] cookies applied: ${applied}`);
-		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] session restored: ${restored}`);
+		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] cookies applied: ${applied}`);
+		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] session restored: ${restored}`);
 
 		/** 完成紀錄：完成任務依發布日期分檔保存 */
 		const record = createCompletionRecord(RECORD_DIR, options);
@@ -127,7 +128,7 @@ export async function autoUploadDemo(
 		/** 系統提示判定已達上限：停止任務（進度已於批次完成時落盤，下次可續跑） */
 		if (!(error instanceof LimitReachedError)) throw error;
 
-		consoleLogger.error(
+		consoleLoggerTimeAndLabel.error(
 			EnumLogLabel.CivitaiBot,
 			`[auto-post] limit reached, task stopped: ${error.message}`,
 		);

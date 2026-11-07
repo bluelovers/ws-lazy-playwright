@@ -2,7 +2,8 @@
 
 import { console } from 'debug-color2';
 // @ts-ignore
-import { EnumLogLabel, consoleLogger } from '#/lib/logger';
+import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
+import { EnumLogLabel } from '#/lib/logger';
 // @ts-ignore
 import { iterateFolderInput } from '#/lib/source';
 // @ts-ignore
@@ -52,7 +53,7 @@ async function resolveDemo()
 		['builder', fromBuilder],
 	] as const)
 	{
-		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}] (streaming):`);
+		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}] (streaming):`);
 
 		let count = 0;
 
@@ -63,11 +64,11 @@ async function resolveDemo()
 			/** 天目錄展開為任務；其餘維持自身 */
 			for await (const unit of expandFolder(folder))
 			{
-				consoleLogger.log(EnumLogLabel.CivitaiBot, `  [${unit.kind}] ${unit.path}`);
+				consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `  [${unit.kind}] ${unit.path}`);
 			}
 		}
 
-		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}]: ${count} folders`);
+		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}]: ${count} folders`);
 	}
 }
 
@@ -106,17 +107,17 @@ async function globDemo()
 		['globAsync', asyncSource],
 	] as const)
 	{
-		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}] (streaming):`);
+		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}] (streaming):`);
 
 		let count = 0;
 
 		for await (const folder of iterateFolderInput(source))
 		{
 			count++;
-			consoleLogger.log(EnumLogLabel.CivitaiBot, ` [${folder.kind}] ${folder.path}`);
+			consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, ` [${folder.kind}] ${folder.path}`);
 		}
 
-		consoleLogger.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}]: ${count} folders`);
+		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] source [${name}]: ${count} folders`);
 	}
 }
 

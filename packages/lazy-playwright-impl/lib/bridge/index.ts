@@ -9,7 +9,7 @@ import {
 import { buildBridgeClientScript } from './script-api/client-script';
 import { buildBridgeConsolePage } from './ui/console';
 import { buildBridgeConsoleScript, parseBridgeConsoleMessage, type IBridgeConsoleResponse } from './script-api/console-channel';
-import { consoleLogger } from '../logger';
+import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 import {
 	buildBridgeRoutePattern,
 	parseBridgeRequest,
@@ -193,17 +193,17 @@ export class PageBridge implements IBrowserBridge
 
 		const { id, ...request } = parsed;
 
-		consoleLogger.debug(EnumLogLabel.Bridge, 'console receive', request);
+		consoleLoggerTimeAndLabel.debug(EnumLogLabel.Bridge, 'console receive', request);
 
 		const response = await this._invoke(request, page, this._buildCtx(page.context()));
 
 		if (response.ok)
 		{
-			consoleLogger.debug(EnumLogLabel.Bridge, 'console respond', response);
+			consoleLoggerTimeAndLabel.debug(EnumLogLabel.Bridge, 'console respond', response);
 		}
 		else
 		{
-			consoleLogger.warn(EnumLogLabel.Bridge, 'console respond', response);
+			consoleLoggerTimeAndLabel.warn(EnumLogLabel.Bridge, 'console respond', response);
 		}
 
 		try
@@ -221,7 +221,7 @@ export class PageBridge implements IBrowserBridge
 		catch (e)
 		{
 			/** 分頁可能已關閉或導航中，回應派發失敗不影響後續訊息處理 */
-			consoleLogger.warn(EnumLogLabel.Bridge, 'console respond dispatch failed:', e);
+			consoleLoggerTimeAndLabel.warn(EnumLogLabel.Bridge, 'console respond dispatch failed:', e);
 		}
 	}
 
@@ -266,11 +266,11 @@ export class PageBridge implements IBrowserBridge
 
 		if (parsed)
 		{
-			consoleLogger.debug(EnumLogLabel.Bridge, 'receive', parsed);
+			consoleLoggerTimeAndLabel.debug(EnumLogLabel.Bridge, 'receive', parsed);
 		}
 		else
 		{
-			consoleLogger.warn(EnumLogLabel.Bridge, 'malformed', request.url());
+			consoleLoggerTimeAndLabel.warn(EnumLogLabel.Bridge, 'malformed', request.url());
 		}
 
 		const page = _resolvePage(request);
@@ -284,11 +284,11 @@ export class PageBridge implements IBrowserBridge
 
 		if (response.ok)
 		{
-			consoleLogger.debug(EnumLogLabel.Bridge, 'respond', response);
+			consoleLoggerTimeAndLabel.debug(EnumLogLabel.Bridge, 'respond', response);
 		}
 		else
 		{
-			consoleLogger.warn(EnumLogLabel.Bridge, 'respond', response);
+			consoleLoggerTimeAndLabel.warn(EnumLogLabel.Bridge, 'respond', response);
 		}
 
 		/** 位址列直接導航時回傳可讀的 HTML，其餘（fetch / XHR）回傳 JSON */
