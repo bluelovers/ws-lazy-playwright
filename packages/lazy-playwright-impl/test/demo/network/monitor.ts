@@ -2,6 +2,7 @@ import { console } from 'debug-color2';
 import { createBrowserAutomation } from '#/lib';
 import { EnumLogLabel } from '#/lib/logger';
 import { NetworkMonitor } from '#/lib/network/monitor';
+import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 
 /**
  * 示範：網路監聽 (Network Monitor)
@@ -35,25 +36,25 @@ export async function monitorDemo()
 		/** 未過濾：列出所有請求的資源類型與網址 */
 		monitor.on('request', ({ resourceType, href }) =>
 		{
-			console.log(EnumLogLabel.Temp, `[request] ${resourceType} ${href}`);
+			consoleLoggerTimeAndLabel.cyan.log(EnumLogLabel.Temp, `[request] ${resourceType} ${href}`);
 		});
 
 		/** 類型過濾：僅 JSON 回應——`content-type` 要到 response 階段才可解析 */
 		monitor.on('response', { type: 'json' }, ({ contentType, href }) =>
 		{
-			console.log(EnumLogLabel.Temp, `[json] ${contentType} ${href}`);
+			consoleLoggerTimeAndLabel.yellow.log(EnumLogLabel.Temp, `[json] ${contentType} ${href}`);
 		});
 
 		/** glob 過濾：比對目標為 `pathname`，故 `/docs/**` 命中 docs 路徑下的主文件 */
 		monitor.on('response', { url: '/docs/**', type: 'document' }, ({ response, href }) =>
 		{
-			console.log(EnumLogLabel.Temp, `[document] ${response.status()} ${href}`);
+			consoleLoggerTimeAndLabel.green.log(EnumLogLabel.Temp, `[document] ${response.status()} ${href}`);
 		});
 
 		/** 主框架跳轉：記錄 from -> href（首次跳轉沒有前次紀錄） */
 		monitor.on('navigation', { mainFrame: true }, ({ from, href }) =>
 		{
-			console.log(EnumLogLabel.Temp, `[navigation] ${from ?? '(start)'} -> ${href}`);
+			consoleLoggerTimeAndLabel.blue.log(EnumLogLabel.Temp, `[navigation] ${from ?? '(start)'} -> ${href}`);
 		});
 
 		await page.goto('https://example.com');
