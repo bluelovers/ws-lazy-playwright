@@ -1,9 +1,12 @@
 {
   "name": "@lazy-playwright/logger",
   "version": "1.0.0",
-  "description": "",
+  "description": "Console logger helpers built on debug-color2: flexible method/style input for logConsole, plus preconfigured label/time Console2 instances",
   "keywords": [
     "playwright",
+    "logger",
+    "console",
+    "debug-color2",
     "create-by-yarn-tool"
   ],
   "license": "ISC",
