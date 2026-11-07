@@ -1,5 +1,6 @@
-import { Console2 } from 'debug-color2';
+import { Console2, IStylesColorNames } from 'debug-color2';
 import { EnumPostPhase, type IMessageOptions } from './types';
+import { ITSReadonlyToWriteableArray } from 'ts-type';
 
 /**
  * 模組日誌標籤 (Log Label)
@@ -21,6 +22,8 @@ export const consoleLogger = new Console2(null, {
 /** 終端日誌記錄方法：{@link _logPhase} 與系統提示記錄規則共用的 method 型別（單一來源） */
 export type ILogMethod = keyof Pick<Console2, 'log' | 'debug' | 'success' | 'warn' | 'info' | 'error'>;
 
+export type ILogMethodInput = readonly [...style: IStylesColorNames[], method: ILogMethod] | readonly [method: ILogMethod] | ILogMethod;
+
 /**
  * 以指定階段名義輸出訊息；內容自動反映實際數量，不硬編碼
  *
@@ -31,7 +34,7 @@ export function _logPhase(
 	phase: EnumPostPhase,
 	options: IMessageOptions | undefined,
 	message: string,
-	method: ILogMethod = 'log',
+	method: ILogMethodInput = 'log',
 ): void
 {
 	if (options?.verbose === false) return;
@@ -39,24 +42,19 @@ export function _logPhase(
 	const scope = options?.batchNo === undefined ? '' : `[batch ${options.batchNo}] `;
 	const text = `[${phase}] ${scope}${message}`;
 
-	if (method === 'debug')
+	let finalConsole = consoleLogger;
+
+	if (Array.isArray(method))
 	{
-		consoleLogger.debug(EnumLogLabel.CivitaiBot, text);
+		let methodArray = [...method] as ITSReadonlyToWriteableArray<Extract<ILogMethodInput, readonly any[]>>;
+		method = methodArray.pop()! as ILogMethod ?? 'log';
+
+		for (const style of methodArray)
+		{
+			// @ts-ignore
+			finalConsole = finalConsole[style]!;
+		}
 	}
-	else if (method === 'success')
-	{
-		consoleLogger.success(EnumLogLabel.CivitaiBot, text);
-	}
-	else if (method === 'warn')
-	{
-		consoleLogger.warn(EnumLogLabel.CivitaiBot, text);
-	}
-	else if (method === 'info')
-	{
-		consoleLogger.info(EnumLogLabel.CivitaiBot, text);
-	}
-	else
-	{
-		consoleLogger.log(EnumLogLabel.CivitaiBot, text);
-	}
+
+	finalConsole[method as ILogMethod](EnumLogLabel.CivitaiBot, text);
 }

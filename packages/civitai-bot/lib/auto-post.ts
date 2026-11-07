@@ -96,6 +96,8 @@ export async function startFolderStream(
  * 出現 dry run 批次、或有批次未執行 / 未確認發布的單位，不標記完成、不寫完成紀錄。
  * agent-scheduler 任務受發布次數上限（{@link IRunSwitches.agsMaxPublish}）截斷時忽略剩餘圖片，
  * 完成邊界僅至實際發布的最後檔案，被忽略者可於日後比對為新增再行執行。
+ * 指定 {@link IRunSwitches.agsMaxPublishTotal} 時上限改以完成紀錄的累計發布次數判定：
+ * 已達上限的單位直接忽略（不再發布），截斷判定亦含其已發布過的次數。
  * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址與完成邊界。
  * 上傳與發布前後檢查系統提示：提示顯示已達上限時拋出錯誤中止整個流程，由呼叫端停止任務。
  *
@@ -145,6 +147,31 @@ export async function autoPost(
 		{
 			taskNo++;
 
+			/** agent-scheduler 任務的發布次數上限（僅任務模式生效，其他模式不限制） */
+			const agsPublishLimit = (unit.kind === EnumFolderKind.DayTask || unit.kind === EnumFolderKind.Task)
+				? switches?.agsMaxPublish
+				: undefined;
+
+			/**
+			 * 累計判定（{@link IRunSwitches.agsMaxPublishTotal}）：完成紀錄中該單位已發布過的次數，
+			 * 未啟用累計模式時為 0（上限僅計算本次執行）
+			 */
+			const publishedBefore = agsPublishLimit !== undefined && switches?.agsMaxPublishTotal
+				? await record?.publishedCount(unit.path) ?? 0
+				: 0;
+
+			/** 累計模式且完成紀錄已達上限：該單位不再發布，直接忽略（不掃描、不上傳） */
+			if (agsPublishLimit !== undefined && publishedBefore >= agsPublishLimit)
+			{
+				_logPhase(
+					EnumPostPhase.AutoPost,
+					options,
+					`publish limit ${agsPublishLimit} reached (${publishedBefore} published): ignored (${unit.path})`,
+					'info',
+				);
+				continue;
+			}
+
 			const order = await collectUploadOrder(unit, options);
 
 			if (!order.length)
@@ -178,11 +205,6 @@ export async function autoPost(
 			let queue = added ?? checkpointed?.remaining ?? order;
 
 			const publishedUrls: string[] = [...(checkpointed?.publishedUrls ?? [])];
-
-			/** agent-scheduler 任務的發布次數上限（僅任務模式生效，其他模式不限制） */
-			const agsPublishLimit = (unit.kind === EnumFolderKind.DayTask || unit.kind === EnumFolderKind.Task)
-				? switches?.agsMaxPublish
-				: undefined;
 
 			/** 發布次數 / 是否被上限截斷 / 最後實際發布的檔案（截斷時作為完成邊界） */
 			let publishCount = 0;
@@ -271,15 +293,16 @@ export async function autoPost(
 						lastPublished = publishedItems[publishedItems.length - 1];
 					}
 
-					/** 達發布次數上限：忽略剩餘圖片，完成邊界僅至實際發布的最後檔案 */
-					if (agsPublishLimit !== undefined && publishCount >= agsPublishLimit)
+					/** 達發布次數上限（累計模式含完成紀錄已發布的次數）：忽略剩餘圖片，完成邊界僅至實際發布的最後檔案 */
+					if (agsPublishLimit !== undefined && publishedBefore + publishCount >= agsPublishLimit)
 					{
 						truncated = true;
 
 						_logPhase(
 							EnumPostPhase.Publish,
 							message,
-							`publish limit ${agsPublishLimit} reached: ${queue.length} left ignored (${unit.path})`,
+							`publish limit ${agsPublishLimit} reached (${publishedBefore} + ${publishCount} published): `
+							+ `${queue.length} left ignored (${unit.path})`,
 							'info',
 						);
 						break;
@@ -342,6 +365,7 @@ export async function autoPost(
 				day: unit.day,
 				task: unit.task,
 				publishedUrls,
+				publishCount,
 				lastFile: last.path,
 				lastFileTime: last.mtime,
 			});

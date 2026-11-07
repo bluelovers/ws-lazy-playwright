@@ -183,4 +183,10 @@ export interface IRunSwitches
 	createUrl?: string;
 	/** agent-scheduler 任務的發布次數上限：達上限即忽略剩餘圖片（僅任務模式生效，CLI `--ags-max-publish`，預設不限制） */
 	agsMaxPublish?: number;
+	/**
+	 * 發布次數上限是否改以「累計已發布次數」判定（CLI `--ags-max-publish-total`，須與 {@link agsMaxPublish} 併用）：
+	 * 啟用後上限含完成紀錄中該單位已發布過的次數，已達上限的單位不再發布；
+	 * 未啟用時僅計算本次執行的發布次數（預設）
+	 */
+	agsMaxPublishTotal?: boolean;
 }

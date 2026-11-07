@@ -23,6 +23,8 @@ export interface ICompletionEntry extends Partial<IDoneBoundary>
 	completedAt: string;
 	/** 各批次發布後取得的網址（未發布時為空陣列） */
 	publishedUrls: string[];
+	/** 該筆完成對此單位的發布次數（各筆合計即為該目錄發布過的總次數）；舊紀錄省略，計算時以 `publishedUrls` 數量補上 */
+	publishCount?: number;
 }
 
 /** 寫入輸入：`completedAt` 由寫入當下補上；完成邊界（{@link IDoneBoundary}）必填 */
@@ -32,6 +34,8 @@ export interface ICompletionInput extends IDoneBoundary
 	day?: string;
 	task?: string;
 	publishedUrls?: readonly string[];
+	/** 該筆完成的發布次數；省略時以 `publishedUrls` 數量補上 */
+	publishCount?: number;
 }
 
 /** 從完成紀錄重建的續跑狀態（{@link findStartAfterLastPublish} 回傳） */
@@ -48,6 +52,8 @@ export interface ICompletionRecord
 {
 	/** 將完成任務寫入發布日期對應的紀錄檔（`YYYY-MM-DD.json`） */
 	append(input: ICompletionInput): Promise<void>;
+	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0）；供發布次數上限的累計判定 */
+	publishedCount(path: string): Promise<number>;
 }
 
 /** 日期檔案名特徵（`YYYY-MM-DD.json`） */
@@ -78,6 +84,9 @@ function _nextDay(day: string): string
  *
  * 紀錄檔為歷史資料：不因進度檔的重跑判定而重置，跨執行持續累加。
  *
+ * 每筆含該次完成的發布次數（`publishCount`），{@link ICompletionRecord.publishedCount} 據此合計單位的
+ * 累計發布次數（舊紀錄無此欄位者以 `publishedUrls` 數量計算），供發布次數上限的累計判定。
+ *
  * @param dir 紀錄目錄（不存在時建立）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  */
@@ -85,6 +94,12 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 {
 	/** 各發布日期已載入的條目：同日重複寫入時不重讀檔案 */
 	const days = new Map<string, ICompletionEntry[]>();
+
+	/** 各單位的累計發布次數：首次查詢時掃描目錄內全部紀錄檔建構，其後由寫入同步累加 */
+	let counts: Map<string, number> | undefined;
+
+	/** 單筆條目的發布次數：舊紀錄無 `publishCount` 欄位時以 `publishedUrls` 數量計算 */
+	const countOf = (entry: ICompletionEntry): number => entry.publishCount ?? entry.publishedUrls?.length ?? 0;
 
 	return {
 		append: async (input: ICompletionInput) =>
@@ -105,21 +120,58 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 				days.set(date, entries);
 			}
 
-			entries.push({
+			const entry: ICompletionEntry = {
 				path: input.path,
 				day: input.day,
 				task: input.task,
 				completedAt: now.toISOString(),
 				publishedUrls: [...(input.publishedUrls ?? [])],
+				publishCount: input.publishCount ?? input.publishedUrls?.length ?? 0,
 				lastFile: input.lastFile,
 				lastFileTime: input.lastFileTime,
-			});
+			};
+
+			entries.push(entry);
 
 			await mkdir(dir, { recursive: true });
 			await writeFile(`${file}.tmp`, JSON.stringify({ date, entries }, undefined, '\t'));
 			await rename(`${file}.tmp`, file);
 
+			/** 已建構累計次數時同步累加（尚未建構者由下次查詢掃描檔案取得） */
+			if (counts)
+			{
+				counts.set(entry.path, (counts.get(entry.path) ?? 0) + countOf(entry));
+			}
+
 			_logPhase(EnumPostPhase.AutoPost, options, `completion recorded: ${input.path} -> ${date}.json`, 'info');
+		},
+
+		publishedCount: async (path: string) =>
+		{
+			if (!counts)
+			{
+				const next = new Map<string, number>();
+
+				const files = (await readdir(dir, { withFileTypes: true }).catch(() => []))
+					.filter(item => item.isFile() && DAY_FILE_RE.test(item.name))
+					.map(item => item.name);
+
+				for (const file of files)
+				{
+					const saved = await readFile(join(dir, file), 'utf8')
+						.then(text => JSON.parse(text) as { entries?: ICompletionEntry[] })
+						.catch(() => undefined);
+
+					for (const item of saved?.entries ?? [])
+					{
+						next.set(item.path, (next.get(item.path) ?? 0) + countOf(item));
+					}
+				}
+
+				counts = next;
+			}
+
+			return counts.get(path) ?? 0;
 		},
 	};
 }

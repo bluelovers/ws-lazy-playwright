@@ -66,7 +66,7 @@ export interface IAutoPostCliDefaults
 /** auto-post CLI 解析結果 */
 export interface IAutoPostCli
 {
-	/** 執行設定（`--publish` / `--no-dry-run` / `--create-url` / `--ags-max-publish`） */
+	/** 執行設定（`--publish` / `--no-dry-run` / `--create-url` / `--ags-max-publish` / `--ags-max-publish-total`） */
 	switches: IRunSwitches;
 	/** 任務基準路徑（`--task-base`） */
 	taskBase: string;
@@ -97,6 +97,8 @@ export interface IAutoPostCli
  * agent-scheduler 專用（`--ags-` prefix）：
  *
  * - `--ags-max-publish <n>`：任務的發布次數上限，達上限即忽略剩餘圖片（僅任務模式生效，預設不限制）
+ * - `--ags-max-publish-total`：上限改以完成紀錄的累計發布次數判定（含該任務已發布過的次數，
+ *   已達上限的任務不再發布；須與 `--ags-max-publish` 併用，否則不生效）
  *
  * 解析完成即輸出摘要（debug / info 各一行）。
  *
@@ -114,6 +116,12 @@ export function parseAutoPostCli(argv: readonly string[], defaults: IAutoPostCli
 		/** agent-scheduler 任務發布次數上限：未指定或無效值不設限 */
 		agsMaxPublish: args.int('--ags-max-publish'),
 	};
+
+	/** 累計判定旗標：與 `--ags-max-publish` 併用時，上限含完成紀錄中已發布過的次數 */
+	if (args.has('--ags-max-publish-total'))
+	{
+		switches.agsMaxPublishTotal = true;
+	}
 
 	if (args.has('--publish'))
 	{
@@ -139,21 +147,31 @@ export function parseAutoPostCli(argv: readonly string[], defaults: IAutoPostCli
 		closeAfter: args.has('--close'),
 	};
 
+	// consoleLogger.debug(
+	// 	EnumLogLabel.CivitaiBot,
+	// 	`[auto-post] cli: publish=${cli.switches.enablePublish === true}`
+	// 	+ `, dryRun=${cli.switches.disableDryRun === true ? 'off' : 'on'}`
+	// 	+ `, close=${cli.closeAfter}`
+	// 	+ `, createUrl=${cli.switches.createUrl ?? 'default'}`
+	// 	+ `, agsMaxPublish=${cli.switches.agsMaxPublish ?? 'none'}`
+	// 	+ `${cli.switches.agsMaxPublishTotal ? ' (total)' : ''}`,
+	// );
+
+	// consoleLogger.info(
+	// 	EnumLogLabel.CivitaiBot,
+	// 	`[auto-post] cli scan: taskBase=${cli.taskBase}`
+	// 	+ `, maxTasks=${cli.range.maxTasks ?? 'none'}`
+	// 	+ `, fromLastPublish=${cli.fromLastPublish}`,
+	// );
+
 	consoleLogger.debug(
 		EnumLogLabel.CivitaiBot,
-		`[auto-post] cli: publish=${cli.switches.enablePublish === true}`
-		+ `, dryRun=${cli.switches.disableDryRun === true ? 'off' : 'on'}`
-		+ `, close=${cli.closeAfter}`
-		+ `, createUrl=${cli.switches.createUrl ?? 'default'}`
-		+ `, agsMaxPublish=${cli.switches.agsMaxPublish ?? 'none'}`,
+		`[auto-post] cli:`,
 	);
 
-	consoleLogger.info(
-		EnumLogLabel.CivitaiBot,
-		`[auto-post] cli scan: taskBase=${cli.taskBase}`
-		+ `, maxTasks=${cli.range.maxTasks ?? 'none'}`
-		+ `, fromLastPublish=${cli.fromLastPublish}`,
-	);
+	consoleLogger.dir(cli, { depth: null });
+
+
 
 	return cli;
 }
