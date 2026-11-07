@@ -9,6 +9,8 @@ export enum EnumLogLabel
 	Bridge = '[bridge]',
 	/** 瀏覽器自動化基底 */
 	BrowserAutomation = '[browser-automation]',
+	/** 網路監聽 */
+	Network = '[network]',
 	/** 示範腳本 */
 	Temp = '[temp]',
 }
