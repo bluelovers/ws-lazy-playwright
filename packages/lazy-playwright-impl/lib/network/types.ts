@@ -13,11 +13,12 @@ export interface IUrlParts
 	search: string;
 }
 
-/** `on('request')` 事件承載 (Event Payload) */
-export interface INetworkRequestEvent extends IUrlParts
+/**
+ * request / response 事件共用的承載欄位 (Shared Payload)：
+ * 兩者皆綁定同一個請求，並帶有該請求的分類資訊
+ */
+export interface INetworkRequestResponseEventBase extends IUrlParts
 {
-	/** 事件種類 (Event Kind) */
-	readonly kind: 'request';
 	/** 對應的請求物件 */
 	request: Request;
 	/** 資源類型 (Resource Type)，例如 `xhr` / `document` / `image` */
@@ -27,31 +28,27 @@ export interface INetworkRequestEvent extends IUrlParts
 	/**
 	 * 類型候選 (Type Candidates)：`type` 過濾的比對基準
 	 *
+	 * response 階段含 `content-type` 的逐層拆解結果，故 `json` 可同時命中
+	 * `application/json` 與 `application/vnd.api+json`；
 	 * request 階段尚無 response header，候選僅有 `resourceType`
 	 */
 	types: string[];
 }
 
+/** `on('request')` 事件承載 (Event Payload) */
+export interface INetworkRequestEvent extends INetworkRequestResponseEventBase
+{
+	/** 事件種類 (Event Kind) */
+	readonly kind: 'request';
+}
+
 /** `on('response')` 事件承載 (Event Payload) */
-export interface INetworkResponseEvent extends IUrlParts
+export interface INetworkResponseEvent extends INetworkRequestResponseEventBase
 {
 	/** 事件種類 (Event Kind) */
 	readonly kind: 'response';
-	/** 對應的請求物件 */
-	request: Request;
 	/** 對應的回應物件 */
 	response: Response;
-	/** 資源類型 (Resource Type)，例如 `xhr` / `document` / `image` */
-	resourceType: string;
-	/** 是否為導航請求 (Navigation Request) */
-	isNavigation: boolean;
-	/**
-	 * 類型候選 (Type Candidates)：`type` 過濾的比對基準
-	 *
-	 * 含 `content-type` 的逐層拆解結果，故 `json` 可同時命中
-	 * `application/json` 與 `application/vnd.api+json`
-	 */
-	types: string[];
 	/** 原始 `content-type` header；無該 header 時為 `undefined` */
 	contentType: string | undefined;
 }
@@ -79,6 +76,9 @@ export interface INetworkNavigationEvent extends IUrlParts
 
 /** 任一網路監聽事件 (Network Event)，供函式型模式統一接收 */
 export type INetworkEvent = INetworkRequestEvent | INetworkResponseEvent | INetworkNavigationEvent;
+
+/** 監聽事件種類 (Event Kind) */
+export type INetworkEventKind = 'request' | 'response' | 'navigation';
 
 /**
  * URL 函式型模式 (Pattern)：接收拆解後的 URL 與事件承載，
@@ -135,11 +135,14 @@ export interface INetworkFilter
 	mainFrame?: boolean;
 }
 
-/** request 事件監聽器 (Listener)：回傳值會被忽略 */
-export type INetworkRequestListener = (event: INetworkRequestEvent) => unknown;
+/** 事件監聽器 (Listener)：回傳值會被忽略 */
+export type INetworkListener<T extends INetworkEvent> = (event: T) => unknown;
 
-/** response 事件監聽器 (Listener)：回傳值會被忽略 */
-export type INetworkResponseListener = (event: INetworkResponseEvent) => unknown;
+/** request 事件監聽器 (Listener) */
+export type INetworkRequestListener = INetworkListener<INetworkRequestEvent>;
 
-/** navigation 事件監聽器 (Listener)：回傳值會被忽略 */
-export type INetworkNavigationListener = (event: INetworkNavigationEvent) => unknown;
+/** response 事件監聽器 (Listener) */
+export type INetworkResponseListener = INetworkListener<INetworkResponseEvent>;
+
+/** navigation 事件監聽器 (Listener) */
+export type INetworkNavigationListener = INetworkListener<INetworkNavigationEvent>;

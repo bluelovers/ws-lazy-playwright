@@ -9,7 +9,9 @@ import {
 } from './match';
 import type {
 	INetworkEvent,
+	INetworkEventKind,
 	INetworkFilter,
+	INetworkListener,
 	INetworkNavigationEvent,
 	INetworkNavigationListener,
 	INetworkRequestEvent,
@@ -22,7 +24,7 @@ import type {
 interface IListenerEntry<T extends INetworkEvent>
 {
 	/** 使用者提供的事件處理器 */
-	listener: (event: T) => unknown;
+	listener: INetworkListener<T>;
 	/** 註冊時編譯的過濾器；未提供過濾器時為 `undefined`（全通過） */
 	filter?: (event: T) => boolean;
 }
@@ -64,14 +66,8 @@ export class NetworkMonitor
 	/** 各框架最近一次已知的 URL，供導航事件產出 `from` */
 	protected readonly _frameUrls: WeakMap<Frame, string> = new WeakMap();
 
-	/** `request` 是否已接上 page 事件 */
-	protected _requestWired = false;
-
-	/** `response` 是否已接上 page 事件 */
-	protected _responseWired = false;
-
-	/** `framenavigated` 是否已接上 page 事件 */
-	protected _navigationWired = false;
+	/** 已接上 page 事件的監聽種類 */
+	protected readonly _wired = new Set<INetworkEventKind>();
 
 	/**
 	 * @param page - 要監聽的分頁
@@ -106,7 +102,7 @@ export class NetworkMonitor
 	on(event: 'navigation', listener: INetworkNavigationListener): this;
 	on(event: 'navigation', filter: INetworkFilter, listener: INetworkNavigationListener): this;
 	on(
-		event: 'request' | 'response' | 'navigation',
+		event: INetworkEventKind,
 		filterOrListener: INetworkFilter | INetworkRequestListener | INetworkResponseListener | INetworkNavigationListener,
 		listener?: INetworkRequestListener | INetworkResponseListener | INetworkNavigationListener,
 	): this
@@ -129,7 +125,7 @@ export class NetworkMonitor
 					this._requestListeners,
 					compiled && (e => compiled.matchRequest(e)),
 					requestListener,
-					() => this._wireRequest(),
+					() => this._wire('request'),
 				);
 				break;
 			}
@@ -142,7 +138,7 @@ export class NetworkMonitor
 					this._responseListeners,
 					compiled && (e => compiled.matchResponse(e)),
 					responseListener,
-					() => this._wireResponse(),
+					() => this._wire('response'),
 				);
 				break;
 			}
@@ -155,7 +151,7 @@ export class NetworkMonitor
 					this._navigationListeners,
 					compiled && (e => compiled.matchNavigation(e)),
 					navigationListener,
-					() => this._wireNavigation(),
+					() => this._wire('navigation'),
 				);
 				break;
 			}
@@ -177,7 +173,7 @@ export class NetworkMonitor
 	off(event: 'response', listener: INetworkResponseListener): this;
 	off(event: 'navigation', listener: INetworkNavigationListener): this;
 	off(
-		event: 'request' | 'response' | 'navigation',
+		event: INetworkEventKind,
 		listener: INetworkRequestListener | INetworkResponseListener | INetworkNavigationListener,
 	): this
 	{
@@ -185,17 +181,17 @@ export class NetworkMonitor
 		{
 			case 'request':
 			{
-				this._remove(this._requestListeners, listener as INetworkRequestListener, () => this._unwireRequest());
+				this._remove(this._requestListeners, listener as INetworkRequestListener, () => this._unwire('request'));
 				break;
 			}
 			case 'response':
 			{
-				this._remove(this._responseListeners, listener as INetworkResponseListener, () => this._unwireResponse());
+				this._remove(this._responseListeners, listener as INetworkResponseListener, () => this._unwire('response'));
 				break;
 			}
 			case 'navigation':
 			{
-				this._remove(this._navigationListeners, listener as INetworkNavigationListener, () => this._unwireNavigation());
+				this._remove(this._navigationListeners, listener as INetworkNavigationListener, () => this._unwire('navigation'));
 				break;
 			}
 		}
@@ -214,9 +210,9 @@ export class NetworkMonitor
 		this._responseListeners.length = 0;
 		this._navigationListeners.length = 0;
 
-		this._unwireRequest();
-		this._unwireResponse();
-		this._unwireNavigation();
+		this._unwire('request');
+		this._unwire('response');
+		this._unwire('navigation');
 	}
 
 	/**
@@ -226,7 +222,7 @@ export class NetworkMonitor
 	protected _add<T extends INetworkEvent>(
 		listeners: Array<IListenerEntry<T>>,
 		filter: ((event: T) => boolean) | undefined,
-		listener: (event: T) => unknown,
+		listener: INetworkListener<T>,
 		wire: () => void,
 	): void
 	{
@@ -244,7 +240,7 @@ export class NetworkMonitor
 	 */
 	protected _remove<T extends INetworkEvent>(
 		listeners: Array<IListenerEntry<T>>,
-		listener: (event: T) => unknown,
+		listener: INetworkListener<T>,
 		unwire: () => void,
 	): void
 	{
@@ -287,76 +283,69 @@ export class NetworkMonitor
 		}
 	}
 
-	/** 接上 Playwright `request` 事件（僅首次註冊時） */
-	protected _wireRequest(): void
+	/**
+	 * 接上對應的 page 事件（僅該種類首次註冊時）
+	 *
+	 * `_wired` 保證同種類重複接線不會掛上第二個處理器
+	 */
+	protected _wire(kind: INetworkEventKind): void
 	{
-		if (this._requestWired)
+		if (this._wired.has(kind))
 		{
 			return;
 		}
 
-		this._requestWired = true;
-		this._page.on('request', this._onRequest);
+		this._wired.add(kind);
+
+		/** 事件名與處理器的對應各自固定，以 switch 取得完整型別檢查 */
+		switch (kind)
+		{
+			case 'request':
+			{
+				this._page.on('request', this._onRequest);
+				break;
+			}
+			case 'response':
+			{
+				this._page.on('response', this._onResponse);
+				break;
+			}
+			case 'navigation':
+			{
+				this._page.on('framenavigated', this._onFrameNavigated);
+				break;
+			}
+		}
 	}
 
-	/** 接上 Playwright `response` 事件（僅首次註冊時） */
-	protected _wireResponse(): void
+	/** 解除對應的 page 事件接線（未接線的種類略過） */
+	protected _unwire(kind: INetworkEventKind): void
 	{
-		if (this._responseWired)
+		if (!this._wired.has(kind))
 		{
 			return;
 		}
 
-		this._responseWired = true;
-		this._page.on('response', this._onResponse);
-	}
+		this._wired.delete(kind);
 
-	/** 接上 Playwright `framenavigated` 事件（僅首次註冊時） */
-	protected _wireNavigation(): void
-	{
-		if (this._navigationWired)
+		switch (kind)
 		{
-			return;
+			case 'request':
+			{
+				this._page.off('request', this._onRequest);
+				break;
+			}
+			case 'response':
+			{
+				this._page.off('response', this._onResponse);
+				break;
+			}
+			case 'navigation':
+			{
+				this._page.off('framenavigated', this._onFrameNavigated);
+				break;
+			}
 		}
-
-		this._navigationWired = true;
-		this._page.on('framenavigated', this._onFrameNavigated);
-	}
-
-	/** 解除 `request` 接線 */
-	protected _unwireRequest(): void
-	{
-		if (!this._requestWired)
-		{
-			return;
-		}
-
-		this._requestWired = false;
-		this._page.off('request', this._onRequest);
-	}
-
-	/** 解除 `response` 接線 */
-	protected _unwireResponse(): void
-	{
-		if (!this._responseWired)
-		{
-			return;
-		}
-
-		this._responseWired = false;
-		this._page.off('response', this._onResponse);
-	}
-
-	/** 解除 `framenavigated` 接線 */
-	protected _unwireNavigation(): void
-	{
-		if (!this._navigationWired)
-		{
-			return;
-		}
-
-		this._navigationWired = false;
-		this._page.off('framenavigated', this._onFrameNavigated);
 	}
 
 	/** `request` 事件處理器：組出事件承載後派發給已註冊監聽器 */

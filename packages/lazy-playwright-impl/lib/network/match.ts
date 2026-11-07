@@ -109,6 +109,16 @@ export function collectTypeCandidates(resourceType: string, contentType: string 
 }
 
 /**
+ * 把單一模式或模式陣列正規化為陣列
+ *
+ * URL 與類型兩類模式的陣列語意同為 OR，共用此正規化
+ */
+function toPatternArray<T>(input: T | readonly T[]): readonly T[]
+{
+	return (Array.isArray(input) ? input : [input]) as readonly T[];
+}
+
+/**
  * 編譯 URL 模式為單一比對器 (OR)；未提供 `url` 時回傳 `undefined`（全通過）
  *
  * @param filter - 網路過濾器
@@ -122,7 +132,7 @@ export function compileUrlMatcher(filter: INetworkFilter): IUrlMatcher | undefin
 		return undefined;
 	}
 
-	const patterns = (Array.isArray(input) ? input : [input]) as readonly IUrlPattern[];
+	const patterns = toPatternArray(input);
 	const matchers = patterns.map(pattern => compileUrlPattern(pattern, filter.host === true));
 
 	/** 陣列模式採 OR：任一模式符合即通過 */
@@ -198,7 +208,7 @@ export function compileTypeMatcher(filter: INetworkFilter): ITypeMatcher | undef
 		return undefined;
 	}
 
-	const patterns = (Array.isArray(input) ? input : [input]) as readonly ITypePattern[];
+	const patterns = toPatternArray(input);
 	const matchers = patterns.map(pattern => compileTypePattern(pattern));
 
 	/** 陣列模式採 OR：任一候選符合即通過 */
