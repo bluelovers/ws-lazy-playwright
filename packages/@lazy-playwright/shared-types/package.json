@@ -12,7 +12,7 @@
   "author": "",
   "sideEffects": false,
   "type": "commonjs",
-  "main": "index.js",
+  "main": "index",
   "scripts": {
     "coverage": "pnpm run test --coverage",
     "pretest": "echo pretest",

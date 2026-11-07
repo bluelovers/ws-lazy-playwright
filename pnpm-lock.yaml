@@ -34,6 +34,18 @@ importers:
         specifier: ^1.0.27
         version: 1.0.27(ts-toolbelt@9.6.0)
 
+  packages/@lazy-playwright/logger:
+    dependencies:
+      debug-color2:
+        specifier: ^1.3.2
+        version: 1.3.2(@types/bluebird@3.5.42)(@types/node@26.6.6)(debug@4.4.3(supports-color@7.2.0))(ts-toolbelt@9.6.0)
+      ts-type:
+        specifier: ^3.0.19
+        version: 3.0.19(ts-toolbelt@9.6.0)
+      tslib:
+        specifier: '>=2.8.1'
+        version: 2.9.1
+
   packages/@lazy-playwright/shared-types:
     dependencies:
       playwright:
@@ -67,9 +79,15 @@ importers:
       '@bluelovers/string-natural-compare':
         specifier: ^2.0.17
         version: 2.0.17
+      '@lazy-playwright/logger':
+        specifier: ^1.0.0
+        version: link:../@lazy-playwright/logger
       '@lazy-playwright/shared-types':
         specifier: ^1.0.0
         version: link:../@lazy-playwright/shared-types
+      '@ts-type/is-array':
+        specifier: ^1.0.20
+        version: 1.0.20(ts-toolbelt@9.6.0)
       cache-path:
         specifier: ^4.0.17
         version: 4.0.17(ts-toolbelt@9.6.0)
@@ -97,6 +115,9 @@ importers:
 
   packages/lazy-playwright-impl:
     dependencies:
+      '@lazy-playwright/logger':
+        specifier: ^1.0.0
+        version: link:../@lazy-playwright/logger
       '@lazy-playwright/shared-types':
         specifier: ^1.0.0
         version: link:../@lazy-playwright/shared-types
@@ -206,6 +227,9 @@ packages:
   '@sindresorhus/is@4.6.0':
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
     engines: {node: '>=10'}
+
+  '@ts-type/is-array@1.0.20':
+    resolution: {integrity: sha512-s7t6dIwA+1fbDE7Xmw2U6iGzsqt0N0Kf96Vxgv67RJ/Wurn9yfFWB7MyrSmCR88ZGmzVzWKad4WhsOA2prNO8g==}
 
   '@ts-type/package-dts@3.0.14':
     resolution: {integrity: sha512-I+w4Yi/Rh1RI8+dR+xzwoJX89w7+Atz8ciyAoH7x0DlEXw1/iJyFz/py8H1N0qO0mxKETxsi6iJ14mMT8toSxQ==}
@@ -988,6 +1012,12 @@ snapshots:
   '@sinclair/typebox@0.34.52': {}
 
   '@sindresorhus/is@4.6.0': {}
+
+  '@ts-type/is-array@1.0.20(ts-toolbelt@9.6.0)':
+    dependencies:
+      ts-type: 3.0.19(ts-toolbelt@9.6.0)
+    transitivePeerDependencies:
+      - ts-toolbelt
 
   '@ts-type/package-dts@3.0.14(ts-toolbelt@9.6.0)':
     dependencies:
