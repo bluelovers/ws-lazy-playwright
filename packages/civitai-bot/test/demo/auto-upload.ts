@@ -38,6 +38,9 @@ const DEFAULT_TASK_BASE = 'D:\\sd-forge\\output\\agent-scheduler\\2026-11-05';
 const CLI = parseAutoPostCli(process.argv.slice(2), {
 	taskBase: DEFAULT_TASK_BASE,
 	range: TASK_RANGE,
+	switches: {
+		createUrl: DEFAULT_CREATE_URL,
+	},
 });
 
 /** 登入狀態的儲存 id：先以 storage/save 寫入 civitai.red 的登入狀態 */
