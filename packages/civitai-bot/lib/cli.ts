@@ -1,6 +1,7 @@
 import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 import { EnumLogLabel } from './logger';
 import type { IRunSwitches, ITaskRangeOptions } from './types';
+import { ITSPickExtra } from 'ts-type';
 
 /** CLI 參數讀取：布林旗標 / 字串值 / 正整數值三種取值 */
 export interface ICliArgs
@@ -55,15 +56,6 @@ export function createCliArgs(argv: readonly string[]): ICliArgs
 	};
 }
 
-/** auto-post CLI 預設值：CLI 未指定時採用 */
-export interface IAutoPostCliDefaults
-{
-	/** 任務基準路徑預設值（`--task-base` 未指定時） */
-	taskBase: string;
-	/** 任務範圍預設值（`--max-tasks` 合併入內，不修改傳入物件） */
-	range?: ITaskRangeOptions;
-}
-
 /** auto-post CLI 解析結果 */
 export interface IAutoPostCli
 {
@@ -106,16 +98,18 @@ export interface IAutoPostCli
  * @param argv CLI 參數（不含執行檔與腳本路徑）
  * @param defaults 預設值（任務基準路徑、任務範圍）
  */
-export function parseAutoPostCli(argv: readonly string[], defaults: IAutoPostCliDefaults): IAutoPostCli
+export function parseAutoPostCli(argv: readonly string[], defaults?: Partial<IAutoPostCli>): IAutoPostCli
 {
+	defaults ??= {};
+
 	const args = createCliArgs(argv);
 
 	/** 執行設定：僅在明確指定時覆寫預設值 */
 	const switches: IRunSwitches = {
 		/** 建立貼文頁網址：未指定時沿用 `CREATE_URL` 預設 */
-		createUrl: args.value('--create-url'),
+		createUrl: args.value('--create-url') ?? defaults.switches?.createUrl,
 		/** agent-scheduler 任務發布次數上限：未指定或無效值不設限 */
-		agsMaxPublish: args.int('--ags-max-publish'),
+		agsMaxPublish: args.int('--ags-max-publish') ?? defaults.switches?.agsMaxPublish,
 	};
 
 	/** 累計判定旗標：與 `--ags-max-publish` 併用時，上限含完成紀錄中已發布過的次數 */
@@ -138,14 +132,18 @@ export function parseAutoPostCli(argv: readonly string[], defaults: IAutoPostCli
 	const maxTasks = args.int('--max-tasks');
 
 	const cli: IAutoPostCli = {
-		switches,
+		...defaults,
+		switches: {
+			...defaults.switches,
+			...switches,
+		},
 		taskBase: args.value('--task-base') ?? defaults.taskBase,
 		range: {
 			...defaults.range,
 			...(maxTasks !== undefined && { maxTasks }),
 		},
-		fromLastPublish: args.has('--from-last-publish'),
-		closeAfter: args.has('--close'),
+		fromLastPublish: args.has('--from-last-publish') ?? defaults.fromLastPublish,
+		closeAfter: args.has('--close') ?? defaults.closeAfter,
 	};
 
 	// consoleLoggerTimeAndLabel.debug(
