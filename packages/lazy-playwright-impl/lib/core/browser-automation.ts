@@ -15,10 +15,10 @@ import type {
 	IBrowserAutomation,
 	ICreateBrowserAutomationOptions,
 	ILaunchOptions,
-	IWindowSize,
 } from '../types/types';
 import { createNewPage, ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { ITSNullable } from 'ts-type';
+import { IWindowSize } from '@lazy-playwright/browser-config/lib/opt-window-size';
 
 /**
  * 實例狀態 (Automation State)

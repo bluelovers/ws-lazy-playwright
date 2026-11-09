@@ -6,7 +6,7 @@ import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 import { ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 import { ITSRequiredWith, ITSNullable } from 'ts-type';
-import { IWindowSize } from '@lazy-playwright/browser-config/lib/window-size';
+import { IWindowSize } from '@lazy-playwright/browser-config/lib/opt-window-size';
 
 /** 分頁建立時的監聽器 (Page Listener) */
 export type IPageListener = (page: Page) => unknown;
