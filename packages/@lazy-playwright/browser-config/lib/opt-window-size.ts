@@ -1,4 +1,4 @@
-import { _handleBrowserKind, EnumAutomationEngine, type IBrowserKind } from '@lazy-playwright/shared-types';
+import { _handleBrowserKind, EnumAutomationEngine, IHandleBrowserKindResult, type IBrowserKind } from '@lazy-playwright/shared-types';
 import {
 	EnumSettingPlacement,
 	IBrowserLaunchArgsWriteable,
@@ -7,6 +7,7 @@ import {
 	type IBrowserSettingResult,
 } from './types/browser-setting';
 import { registerUnsupportedCliArgs } from './util/cli-args-filter';
+import { ITSPartialPick } from 'ts-type';
 
 /** 視窗尺寸 (Window Size)，單位為像素 */
 export interface IWindowSize
@@ -31,10 +32,8 @@ export const enum EnumWindowSizeSource
 }
 
 /** 決定視窗尺寸參數的輸入 */
-export interface IResolveWindowSizeOptions
+export type IResolveWindowSizeOptions = ITSPartialPick<IHandleBrowserKindResult, 'browserEngine' | 'baseKind'> &
 {
-	/** 引擎 / 瀏覽器種類，由 {@link _handleBrowserKind} 歸一化為 `baseKind` */
-	browserEngine: EnumAutomationEngine;
 	/** 建立選項指定的預設視窗尺寸 */
 	windowSize?: IWindowSize;
 	/** 已存在的啟動參數 */
@@ -135,8 +134,8 @@ export function _windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): IBro
  */
 export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveWindowSizeResult
 {
-	const { browserEngine, windowSize, args = [] } = options;
-	const { baseKind } = _handleBrowserKind(browserEngine);
+	const { windowSize, args = [] } = options;
+	const { baseKind } = options.baseKind ? options : _handleBrowserKind(options.browserEngine);
 
 	const own = _parse(baseKind, args);
 
