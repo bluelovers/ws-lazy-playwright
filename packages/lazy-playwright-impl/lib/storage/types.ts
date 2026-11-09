@@ -71,6 +71,16 @@ export interface IFileStorageOptions
 	baseDir?: string;
 }
 
+/** 未指定儲存 id 時使用的預設識別 */
+export const DEFAULT_STORAGE_ID = 'default';
+
+/** 登入狀態自動還原設定 */
+export interface IStorageRestoreOptions
+{
+	/** 儲存 id；未指定時使用 {@link DEFAULT_STORAGE_ID} */
+	id?: string;
+}
+
 /** 儲存機制設定 */
 export interface IStorageOptions
 {
@@ -78,6 +88,13 @@ export interface IStorageOptions
 	persist?: IStoragePersist;
 	/** 檔案後端設定 */
 	file?: IFileStorageOptions;
+	/**
+	 * 建立 context 時自動還原登入狀態（Cookie 與 Session），免於呼叫端自行組裝還原流程
+	 *
+	 * `true` 使用預設 id；未提供時不還原。
+	 * 尚未儲存過時僅記錄，後續頁面會以未登入狀態開啟。
+	 */
+	restore?: boolean | IStorageRestoreOptions;
 }
 
 /** 儲存管理器：彙整各類 store 並共用同一持久化後端 */

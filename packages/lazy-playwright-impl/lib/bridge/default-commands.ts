@@ -1,14 +1,11 @@
-import { EnumStorageKind } from '../storage/types';
+import { DEFAULT_STORAGE_ID, EnumStorageKind } from '../storage/types';
 import type { IBridgeCommandHandler } from './types';
-
-/** 預設命令未指定 id 時使用的儲存識別 */
-export const DEFAULT_BRIDGE_STORAGE_ID = 'default';
 
 /** 取得儲存 id：第一個字串參數，否則使用預設值 */
 function _resolveStorageId(args: readonly unknown[]): string
 {
 	const [id] = args;
-	return typeof id === 'string' && id ? id : DEFAULT_BRIDGE_STORAGE_ID;
+	return typeof id === 'string' && id ? id : DEFAULT_STORAGE_ID;
 }
 
 /**

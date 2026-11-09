@@ -35,8 +35,8 @@ const TASK_RANGE: ITaskRangeOptions = {
  */
 const DEFAULT_TASK_BASE = 'D:\\sd-forge\\output\\agent-scheduler\\2026-11-05';
 
-/** CLI 參數（旗標語意見 {@link parseAutoPostCli}） */
-const CLI = parseAutoPostCli(process.argv.slice(2), {
+/** CLI 參數（yargs 解析，旗標語意見 {@link parseAutoPostCli}） */
+const CLI = parseAutoPostCli(hideBin(process.argv), {
 	taskBase: DEFAULT_TASK_BASE,
 	range: TASK_RANGE,
 	switches: {
@@ -66,7 +66,8 @@ const RECORD_DIR = join(__TEST_TEMP, 'civitai-bot', 'completion');
  *    無可接續紀錄時覆寫掃描起始點（{@link resumeFromCompletion}）
  * 3. 串接來源串流並探測首項（{@link collectFolders} + {@link startFolderStream}，
  *    空清單提前中止、不啟動瀏覽器）
- * 4. 還原登入狀態、建立完成紀錄（{@link createCompletionRecord}）、開啟建立貼文頁（{@link createPostPage}）
+ * 4. 建立 context（`storage.restore` 內建還原登入狀態，不需自行組裝）、建立完成紀錄
+ *    （{@link createCompletionRecord}）、開啟建立貼文頁（{@link createPostPage}）
  * 5. 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次）
  *
  * 系統提示顯示已達上限（{@link LimitReachedError}）時停止任務。
@@ -106,19 +107,14 @@ export async function autoUploadDemo(
 		// engine: EnumAutomationEngine.Playwright,
 		storage: {
 			file: { baseDir: STORAGE_BASE_DIR },
+			/** 建立 context 時自動還原登入狀態（Cookie / Session），不需自行組裝還原流程 */
+			restore: { id: STORAGE_ID },
 		},
 	});
 
 	try
 	{
 		const context = await automation.newContext();
-
-		/** 還原登入狀態；尚未儲存過時僅記錄，後續頁面會以未登入狀態開啟 */
-		const applied = await automation.storage.cookies.apply(STORAGE_ID, context);
-		const restored = await automation.storage.sessions.restore(STORAGE_ID, context);
-
-		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] cookies applied: ${applied}`);
-		consoleLoggerTimeAndLabel.log(EnumLogLabel.CivitaiBot, `[auto-post] session restored: ${restored}`);
 
 		/** 完成紀錄：完成任務依發布日期分檔保存 */
 		const record = createCompletionRecord(RECORD_DIR, options);

@@ -9,6 +9,7 @@ import { pageLiveOn as _pageLiveOn } from '../playwright/event';
 import { gotoPage, type IGotoOptions, type IGotoResult } from '@lazy-playwright/util-page/lib/goto-util';
 import { isPageLike } from '../playwright/type-guard';
 import { BrowserStorageManager } from '../storage';
+import { DEFAULT_STORAGE_ID } from '../storage/types';
 import type {
 	IPageListener,
 	IBrowserAutomation,
@@ -251,7 +252,30 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	}
 
 	/**
+	 * 還原登入狀態至指定 context
+	 *
+	 * 由 `storage.restore` 啟用，於 {@link newContext} 建立 context 後、鎖定前執行，
+	 * 呼叫端不需再自行組裝 Cookie / Session 還原流程；
+	 * 尚未儲存過時僅記錄，後續頁面會以未登入狀態開啟。
+	 */
+	protected async _restoreStorageState(context: BrowserContext): Promise<void>
+	{
+		const restore = this._options.storage?.restore;
+
+		if (!restore) return;
+
+		const id = typeof restore === 'object' ? restore.id ?? DEFAULT_STORAGE_ID : DEFAULT_STORAGE_ID;
+
+		const cookies = await this.storage.cookies.apply(id, context);
+		const sessions = await this.storage.sessions.restore(id, context);
+
+		console.log(EnumLogLabel.BrowserAutomation, `storage restored [${id}] cookies: ${cookies}, session: ${sessions}`);
+	}
+
+	/**
 	 * 建立新 context 並鎖定為主 context；鎖定狀態下以新 context 取代原主 context
+	 *
+	 * `storage.restore` 啟用時於鎖定前還原登入狀態。
 	 *
 	 * @param options - context 建立選項
 	 * @returns 建立的 context
@@ -268,11 +292,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 		try
 		{
+			await this._restoreStorageState(context);
 			await this._lockContext(context);
 		}
 		catch (e)
 		{
-			/** 通訊協議接線失敗時不留殘留的空 context */
+			/** 還原或通訊協議接線失敗時不留殘留的空 context */
 			await closeContextSafely(context);
 			throw e;
 		}

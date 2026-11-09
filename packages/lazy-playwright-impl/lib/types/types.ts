@@ -69,7 +69,11 @@ export interface ICreateBrowserAutomationOptions
 	timezoneId?: string;
 	/** `BrowserContext` 建立選項 */
 	context?: BrowserContextOptions;
-	/** Cookie / Session 儲存設定 */
+	/**
+	 * Cookie / Session 儲存設定
+	 *
+	 * `restore` 啟用時於 {@link IBrowserAutomation.newContext} 建立 context後自動還原登入狀態。
+	 */
 	storage?: IStorageOptions;
 	/** 頁面通訊協議設定 */
 	bridge?: IBridgeOptions;
