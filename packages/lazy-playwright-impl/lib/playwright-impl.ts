@@ -1,7 +1,7 @@
 import { type Browser, type LaunchOptions } from 'playwright';
 import { AbstractBrowserAutomation } from './core/browser-automation';
 import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
-import { _playwrightArgsDisableFeatures } from './playwright/config';
+import { _playwrightArgsDisableFeatures } from '@lazy-playwright/browser-config/lib/chromium/cli-args';
 import { windowSizeLaunchArgs } from '@lazy-playwright/browser-config/lib/window-size';
 import {
 	DEFAULT_PLAYWRIGHT_MODULE_ID,
