@@ -22,25 +22,25 @@ export interface IResolveWindowSizeOptions
 	/** 引擎 / 瀏覽器種類，由 {@link _handleBrowserKind} 歸一化為 `baseKind` */
 	browserEngine: EnumAutomationEngine;
 	/** 建立選項指定的預設視窗尺寸 */
-	windowSize?: IWindowSize | null;
+	windowSize?: IWindowSize;
 	/** 已存在的啟動參數 */
 	args?: readonly string[];
 }
 
-/** 視窗尺寸的解析結果 */
+/** 視窗尺寸的解析結果；無可用尺寸時 `size` 與 `source` 皆為 `undefined` */
 export interface IResolveWindowSizeResult
 {
 	baseKind: IBrowserKind;
-	size: IWindowSize | null;
-	source: EnumWindowSizeSource | null;
+	size?: IWindowSize;
+	source?: EnumWindowSizeSource;
 }
 
 /**
  * 讀取旗標值，同時支援 `-flag value` 與 `-flag=value` 兩種寫法
  *
- * @returns 找不到旗標或缺少值時回傳 `null`
+ * @returns 找不到旗標或缺少值時回傳 `undefined`
  */
-function _readFlagValue(args: readonly string[], flag: string): string | null
+function _readFlagValue(args: readonly string[], flag: string): string | undefined
 {
 	for (let i = 0; i < args.length; i++)
 	{
@@ -48,46 +48,44 @@ function _readFlagValue(args: readonly string[], flag: string): string | null
 
 		if (arg === flag)
 		{
-			return args[i + 1] ?? null;
+			return args[i + 1];
 		}
 		else if (arg.startsWith(`${flag}=`))
 		{
 			return arg.slice(flag.length + 1);
 		}
 	}
-
-	return null;
 }
 
-function _toPositiveInt(value: string | null): number | null
+function _toPositiveInt(value: string | undefined): number | undefined
 {
-	if (!value) return null;
+	if (!value) return undefined;
 
 	const n = Number(value.trim());
 
-	return Number.isInteger(n) && n > 0 ? n : null;
+	return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
-/** 依 baseKind 解析視窗尺寸；缺旗標、缺值或數值不合法時回傳 `null` */
-function _parse(baseKind: IBrowserKind, args: readonly string[]): IWindowSize | null
+/** 依 baseKind 解析視窗尺寸；缺旗標、缺值或數值不合法時回傳 `undefined` */
+function _parse(baseKind: IBrowserKind, args: readonly string[]): IWindowSize | undefined
 {
 	if (baseKind === EnumAutomationEngine.Firefox)
 	{
 		const width = _toPositiveInt(_readFlagValue(args, '-width'));
 		const height = _toPositiveInt(_readFlagValue(args, '-height'));
 
-		return width !== null && height !== null ? { width, height } : null;
+		return width !== undefined && height !== undefined ? { width, height } : undefined;
 	}
 
 	const pair = _readFlagValue(args, '--window-size');
 
-	if (!pair) return null;
+	if (!pair) return undefined;
 
 	const [width, height] = pair.split(',');
 	const w = _toPositiveInt(width);
 	const h = _toPositiveInt(height);
 
-	return w !== null && h !== null ? { width: w, height: h } : null;
+	return w !== undefined && h !== undefined ? { width: w, height: h } : undefined;
 }
 
 /** 依 baseKind 輸出對應的視窗尺寸命令參數 */
@@ -124,7 +122,7 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 		return { baseKind, size: windowSize, source: EnumWindowSizeSource.Option };
 	}
 
-	const crossBaseKind = baseKind === EnumAutomationEngine.Firefox
+	const crossBaseKind: IBrowserKind = baseKind === EnumAutomationEngine.Firefox
 		? EnumAutomationEngine.Chromium
 		: EnumAutomationEngine.Firefox;
 	const cross = _parse(crossBaseKind, args);
@@ -134,7 +132,7 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 		return { baseKind, size: cross, source: EnumWindowSizeSource.CrossStyle };
 	}
 
-	return { baseKind, size: null, source: null };
+	return { baseKind };
 }
 
 /**
