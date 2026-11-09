@@ -1,9 +1,10 @@
 import { launchOptions } from 'camoufox-js';
 import { firefox, type Browser, type LaunchOptions } from 'playwright';
-import type { ICamoufoxBrowserAutomationOptions, ICamoufoxLaunchOptions, EnumCamoufoxOs } from './camoufox-options';
+import type { ICamoufoxBrowserAutomationOptions, EnumCamoufoxOs } from './camoufox-options';
+import type { ICamoufoxLaunchOptions } from '@lazy-playwright/browser-config/lib/firefox/camoufox-types';
 import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
-import { getCamoufoxFirefoxUserPrefs } from '@lazy-playwright/browser-config/lib/firefox/camoufox-prefs';
-import { _filterUnsupportedFirefoxCliArgs } from '@lazy-playwright/browser-config/lib/firefox/camoufox-utils';
+import { getCamoufoxFirefoxUserPrefs } from '@lazy-playwright/browser-config/lib/firefox/firefox-prefs';
+import { _filterUnsupportedFirefoxCliArgs } from '@lazy-playwright/browser-config/lib/firefox/cli-args-filter';
 import { PlaywrightBrowserAutomation } from './playwright-impl';
 import type { ILaunchOptions } from './types/types';
 
