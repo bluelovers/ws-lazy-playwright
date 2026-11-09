@@ -48,6 +48,7 @@
     "tsc:showConfig": "ynpx get-current-tsconfig -p"
   },
   "dependencies": {
+    "@lazy-playwright/browser-config": "^1.0.0",
     "@lazy-playwright/logger": "^1.0.0",
     "@lazy-playwright/shared-types": "^1.0.0",
     "@lazy-playwright/util-page": "^1.0.0",

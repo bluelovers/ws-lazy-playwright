@@ -1,5 +1,11 @@
 import { _handleBrowserKind, EnumAutomationEngine, type IBrowserKind } from '@lazy-playwright/shared-types';
-import type { IWindowSize } from '../types/types';
+
+/** 視窗尺寸 (Window Size)，單位為像素 */
+export interface IWindowSize
+{
+	width: number;
+	height: number;
+}
 
 /**
  * 視窗尺寸的解析來源 (Window Size Source)
@@ -93,7 +99,7 @@ function _parse(baseKind: IBrowserKind, args: readonly string[]): IWindowSize | 
 }
 
 /** 依 baseKind 輸出對應的視窗尺寸命令參數 */
-export function windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): string[]
+export function _windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): string[]
 {
 	if (baseKind === EnumAutomationEngine.Firefox)
 	{
@@ -157,5 +163,5 @@ export function windowSizeLaunchArgs(options: IResolveWindowSizeOptions): string
 		return [];
 	}
 
-	return windowSizeArgs(baseKind, size);
+	return _windowSizeArgs(baseKind, size);
 }

@@ -6,19 +6,13 @@ import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 import { ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 import { ITSRequiredWith, ITSNullable } from 'ts-type';
+import { IWindowSize } from '@lazy-playwright/browser-config/lib/window-size';
 
 /** 分頁建立時的監聽器 (Page Listener) */
 export type IPageListener = (page: Page) => unknown;
 
 /** 啟動選項：直接沿用 Playwright 的 `LaunchOptions`，不另行定義副本 */
 export type ILaunchOptions = LaunchOptions;
-
-/** 視窗尺寸 (Window Size)，單位為像素 */
-export interface IWindowSize
-{
-	width: number;
-	height: number;
-}
 
 /** 建立自動化實例的選項 */
 export interface ICreateBrowserAutomationOptions
