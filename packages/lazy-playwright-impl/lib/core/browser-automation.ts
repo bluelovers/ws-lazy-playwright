@@ -191,6 +191,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	protected _handleContextOptions(options: BrowserContextOptions = {})
 	{
 		options = {
+			viewport: null,
 			...this._options.context,
 			...options,
 		};
