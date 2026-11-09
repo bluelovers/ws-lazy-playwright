@@ -49,6 +49,24 @@ export interface ICreateBrowserAutomationOptions
 	 * 呼叫端若已於 `launch` 指定對應參數，則以呼叫端為準。
 	 */
 	windowSize?: IWindowSize;
+	/**
+	 * 預設 locale；未指定時使用內建預設（`zh-TW`，Camoufox 為 `['zh-TW', 'zh-CN', 'zh']`）
+	 *
+	 * 與 `context` 同名欄位同時指定時，以 `context` 為準。
+	 */
+	locale?: string;
+	/**
+	 * 是否忽略 HTTPS 錯誤 (Ignore HTTPS Errors)；未指定時為 `true`
+	 *
+	 * 與 `context` 同名欄位同時指定時，以 `context` 為準。
+	 */
+	ignoreHTTPSErrors?: boolean;
+	/**
+	 * 預設時區 (Timezone)；未指定時為 `Asia/Taipei`
+	 *
+	 * 與 `context` 同名欄位同時指定時，以 `context` 為準。
+	 */
+	timezoneId?: string;
 	/** `BrowserContext` 建立選項 */
 	context?: BrowserContextOptions;
 	/** Cookie / Session 儲存設定 */

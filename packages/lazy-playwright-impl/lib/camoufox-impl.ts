@@ -57,9 +57,9 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 				humanize: true,
 				geoip: true,
 				firefox_user_prefs: firefoxUserPrefs,
-				ignoreHTTPSErrors: true,
-				locale: ['zh-TW', 'zh-CN', 'zh'],
-				timezoneId: 'Asia/Taipei',
+				ignoreHTTPSErrors: this._options.ignoreHTTPSErrors ?? true,
+				locale: [this._options.locale ?? 'zh-TW', 'zh-TW', 'zh-CN', 'zh'],
+				timezoneId: this._options.timezoneId ?? 'Asia/Taipei',
 				...this._camoufox,
 				/** 未指定時交由 `camoufox-js` 決定，避免在此進行環境偵測 */
 				...(this._os === undefined

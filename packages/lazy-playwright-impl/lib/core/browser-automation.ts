@@ -215,14 +215,16 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return this._browser;
 	}
 
-	/** 合併建立時的 context 選項與本次輸入，本次輸入優先 */
+	/**
+	 * 合併 context 選項，優先序：本次輸入 > `context` > 建立選項專用欄位（`locale` 等） > 內建預設
+	 */
 	protected _handleContextOptions(options: BrowserContextOptions = {})
 	{
 		options = {
 			viewport: null,
-			ignoreHTTPSErrors: true,
-			locale: 'zh-TW',
-			timezoneId: 'Asia/Taipei',
+			ignoreHTTPSErrors: this._options.ignoreHTTPSErrors ?? true,
+			locale: this._options.locale ?? 'zh-TW',
+			timezoneId: this._options.timezoneId ?? 'Asia/Taipei',
 			...this._options.context,
 			...options,
 		};
