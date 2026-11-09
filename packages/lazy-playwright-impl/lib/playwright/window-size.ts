@@ -66,15 +66,21 @@ function _toPositiveInt(value: string | undefined): number | undefined
 	return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
+/** 寬高皆為正整數時組成視窗尺寸；任一缺失或不合法時回傳 `undefined` */
+function _toSize(width: string | undefined, height: string | undefined): IWindowSize | undefined
+{
+	const w = _toPositiveInt(width);
+	const h = _toPositiveInt(height);
+
+	return w && h ? { width: w, height: h } : undefined;
+}
+
 /** 依 baseKind 解析視窗尺寸；缺旗標、缺值或數值不合法時回傳 `undefined` */
 function _parse(baseKind: IBrowserKind, args: readonly string[]): IWindowSize | undefined
 {
 	if (baseKind === EnumAutomationEngine.Firefox)
 	{
-		const width = _toPositiveInt(_readFlagValue(args, '-width'));
-		const height = _toPositiveInt(_readFlagValue(args, '-height'));
-
-		return width !== undefined && height !== undefined ? { width, height } : undefined;
+		return _toSize(_readFlagValue(args, '-width'), _readFlagValue(args, '-height'));
 	}
 
 	const pair = _readFlagValue(args, '--window-size');
@@ -82,10 +88,8 @@ function _parse(baseKind: IBrowserKind, args: readonly string[]): IWindowSize | 
 	if (!pair) return undefined;
 
 	const [width, height] = pair.split(',');
-	const w = _toPositiveInt(width);
-	const h = _toPositiveInt(height);
 
-	return w !== undefined && h !== undefined ? { width: w, height: h } : undefined;
+	return _toSize(width, height);
 }
 
 /** 依 baseKind 輸出對應的視窗尺寸命令參數 */
@@ -93,7 +97,7 @@ export function windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): strin
 {
 	if (baseKind === EnumAutomationEngine.Firefox)
 	{
-		return ['-width', String(size.width), '-height', String(size.height)];
+		return ['-width', size.width as any as string, '-height', size.height as any as string];
 	}
 
 	return [`--window-size=${size.width},${size.height}`];
@@ -122,6 +126,10 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 		return { baseKind, size: windowSize, source: EnumWindowSizeSource.Option };
 	}
 
+	/**
+	 * 另一風格的 baseKind：自身風格無尺寸參數時改以它讀取，
+	 * 使 `-width/-height` 與 `--window-size` 兩種寫法皆能解析出尺寸。
+	 */
 	const crossBaseKind: IBrowserKind = baseKind === EnumAutomationEngine.Firefox
 		? EnumAutomationEngine.Chromium
 		: EnumAutomationEngine.Firefox;
