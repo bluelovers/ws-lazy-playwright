@@ -1,9 +1,13 @@
 /// <reference types="node" />
 import { describe, it, type TestContext } from 'node:test';
+// @ts-ignore
+import { inspect, isDeepStrictEqual, isPartialDeepStrictEqual } from 'node:util';
 
 import { EnumAutomationEngine, type IBrowserKind } from '@lazy-playwright/shared-types';
 import { filterCliArgsByPrefixes, registerUnsupportedCliArgs } from '../lib/util/cli-args-filter';
 import { filterUnsupportedCliArgs } from '../lib/opt-cli-args-filter';
+import { _assertMatchByOrderStrict } from './test-lib/assert/array';
+import { _assertLazyPartialDeepStrictEqual } from './test-lib/assert/helper';
 
 describe('filterCliArgsByPrefixes', () =>
 {
@@ -154,6 +158,15 @@ describe('filterUnsupportedCliArgs', () =>
 
 		t.assert.deepStrictEqual(actual, ['--headless', '-width', '800']);
 		t.assert.snapshot(actual);
+
+		/* === 示範其他等效斷言用法 === */
+
+		// t.assert.partialDeepStrictEqual(actual, ['-width', '800']);
+		_assertMatchByOrderStrict(t.assert, actual, ['--headless', '-width', '800']);
+		_assertLazyPartialDeepStrictEqual(t.assert, actual, [
+			['--headless'],
+			['-width', '800'],
+		]);
 	});
 
 	it('未註冊條件的瀏覽器原樣保留（回傳新陣列）', (t: TestContext) =>
