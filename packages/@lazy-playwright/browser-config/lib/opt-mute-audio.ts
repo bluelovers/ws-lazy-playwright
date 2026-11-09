@@ -1,10 +1,12 @@
 import { _handleBrowserKind, EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import {
 	EnumSettingPlacement,
-	type IArgsSetting,
-	type ILaunchOptionsSetting,
+	type IBrowserLaunchArgsSetting,
+	type IFirefoxUserPrefsSetting,
 	type IBrowserSettingResult,
 } from './browser-setting';
+import { IFirefoxUserPrefs } from './firefox/firefox-prefs';
+import type { ITSAnyOfUnion } from 'ts-type';
 
 /** Chromium 專屬的靜音音頻啟動參數 */
 const _CHROMIUM_MUTE_AUDIO_ARGS = ['--mute-audio'] as const;
@@ -15,22 +17,14 @@ const _FIREFOX_MUTE_AUDIO_PREFS = {
 	'media.volume_scale': '0.0',
 } as const;
 
-/** 靜音音頻的投放結果：僅可能落在 `args` 或 `LaunchOptions` */
-export type IMuteAudioSetting = IArgsSetting | ILaunchOptionsSetting;
+/** 靜音音頻的投放結果：僅可能落在 `args` 或 `firefoxUserPrefs` */
+export type IMuteAudioSetting = ITSAnyOfUnion<IBrowserLaunchArgsSetting | IFirefoxUserPrefsSetting>;
 
 /** 靜音音頻的解析輸入 */
-export interface IResolveMuteAudioOptions
-{
+export type IResolveMuteAudioOptions = {
 	/** 引擎 / 瀏覽器種類，由 {@link _handleBrowserKind} 歸一化為 `baseKind` */
 	browserEngine: EnumAutomationEngine;
-	/** 已存在的啟動參數，避免重複輸出 */
-	args?: readonly string[];
-	/** 已存在的 `firefoxUserPrefs`，避免重複輸出 */
-	firefoxUserPrefs?: Record<string, string | number | boolean>;
-}
-
-/** 靜音音頻的解析結果 */
-export type IResolveMuteAudioResult = IBrowserSettingResult<IMuteAudioSetting>;
+} & Omit<IMuteAudioSetting, 'placement'>;
 
 /**
  * 解析靜音音頻的跨瀏覽器設定
@@ -40,7 +34,7 @@ export type IResolveMuteAudioResult = IBrowserSettingResult<IMuteAudioSetting>;
  *
  * 設定已存在時回傳空 payload，消費端可統一以附加 / 淺層合併處理。
  */
-export function resolveMuteAudio(options: IResolveMuteAudioOptions): IResolveMuteAudioResult
+export function resolveMuteAudio(options: IResolveMuteAudioOptions): IBrowserSettingResult<IMuteAudioSetting>
 {
 	const { browserEngine, args = [], firefoxUserPrefs } = options;
 	const { baseKind } = _handleBrowserKind(browserEngine);
@@ -52,8 +46,8 @@ export function resolveMuteAudio(options: IResolveMuteAudioOptions): IResolveMut
 
 		return {
 			baseKind,
-			placement: EnumSettingPlacement.LaunchOptions,
-			launchOptions: applied ? {} : { firefoxUserPrefs: _FIREFOX_MUTE_AUDIO_PREFS },
+			placement: EnumSettingPlacement.FirefoxUserPrefs,
+			firefoxUserPrefs: applied ? {} : _FIREFOX_MUTE_AUDIO_PREFS,
 		};
 	}
 
