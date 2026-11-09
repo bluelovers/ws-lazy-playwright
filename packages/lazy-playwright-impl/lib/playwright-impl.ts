@@ -2,6 +2,7 @@ import { type Browser, type LaunchOptions } from 'playwright';
 import { AbstractBrowserAutomation } from './core/browser-automation';
 import { EnumAutomationEngine, EnumBrowserKind } from '@lazy-playwright/shared-types';
 import { _playwrightArgsDisableFeatures } from './playwright/config';
+import { windowSizeLaunchArgs } from './playwright/window-size';
 import {
 	DEFAULT_PLAYWRIGHT_MODULE_ID,
 	playwrightModuleRegistry,
@@ -32,11 +33,6 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 	{
 		const { args, ...baseOptions } = options;
 
-		/** 呼叫端已指定時不覆蓋，維持呼叫端優先權 */
-		const windowSize = (args ?? []).some(arg => arg.startsWith('--window-size'))
-			? null
-			: this._windowSize;
-
 		return {
 			headless: false,
 			...baseOptions,
@@ -44,9 +40,11 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 			args: [...new Set([
 				...(args ?? []),
 				/** 視窗尺寸；搭配 `viewport: null`，頁面尺寸隨實際視窗 */
-				...(windowSize
-					? [`--window-size=${windowSize.width},${windowSize.height}`]
-					: []),
+				...windowSizeLaunchArgs({
+					kind: this.browserKind,
+					windowSize: this._windowSize,
+					args,
+				}),
 				_playwrightArgsDisableFeatures(),
 
 				// '--remote-debugging-port=9222',

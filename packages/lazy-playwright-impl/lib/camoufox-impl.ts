@@ -35,8 +35,6 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 
 	protected override async _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
 	{
-		const { args, headless, ...baseOptions } = await super._handleBrowserLaunchOptions(options);
-
 		const camoufoxOpts = await launchOptions({
 			humanize: true,
 			geoip: true,
@@ -51,23 +49,24 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 				: { os: this._os as NonNullable<ICamoufoxLaunchOptions['os']> }),
 		});
 
-		/** Firefox 以 `-width` / `-height` 設定視窗；呼叫端已指定時不覆蓋 */
-		const windowSize = this._windowSize;
-		const hasWidthArg = [...(camoufoxOpts.args ?? []), ...(args ?? [])]
-			.some(arg => arg === '-width' || arg.startsWith('-width='));
+		/**
+		 * 先併入 camoufox 專屬參數再交由父別解析，
+		 * 視窗尺寸的自身 / 交叉風格判斷才能看到完整參數集。
+		 */
+		const { args, headless, ...baseOptions } = await super._handleBrowserLaunchOptions({
+			...options,
+			args: [
+				...(camoufoxOpts.args ?? []),
+				...(options.args ?? []),
+			],
+		});
 
 		return {
 			...baseOptions,
 			...camoufoxOpts,
 			headless,
-			/** 移除 Camoufox 無法識別的 Chromium CLI 參數 */
-			args: _filterUnsupportedFirefoxCliArgs([
-				...(camoufoxOpts.args ?? []),
-				...(args ?? []),
-				...(windowSize && !hasWidthArg
-					? ['-width', String(windowSize.width), '-height', String(windowSize.height)]
-					: []),
-			]),
+			/** 移除 Camoufox 無法識別的 Chromium CLI 參數（含交叉解析後殘留的 `--window-size`） */
+			args: _filterUnsupportedFirefoxCliArgs(args ?? []),
 		};
 	}
 

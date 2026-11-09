@@ -1,7 +1,7 @@
 
 
 import type { BrowserContext, Page, Browser } from 'playwright';
-import type { ITSRequireAtLeastOne } from 'ts-type';
+import type { ITSRequireAtLeastOne, IPreserveString } from 'ts-type';
 
 /** 命令執行時的上下文 (Context)；`IBrowserAutomation` 亦繼承此介面 */
 export interface IBrowserCtx
@@ -28,18 +28,27 @@ export const enum EnumAutomationEngine
 	/** Playwright 引擎 / Playwright engine */
 	Playwright = 'playwright',
 	Chromium = 'chromium',
+
 	Chrome = 'chrome',
+	MSEdge = 'msedge',
 
 	/** Camoufox 引擎 / Camoufox engine */
 	Camoufox = 'camoufox',
 	Firefox = 'firefox',
+
+	Webkit = 'webkit',
 }
 
-/** 預設自動化引擎 */
-export const DEFAULT_AUTOMATION_ENGINE = EnumAutomationEngine.Playwright;
+export const enum EnumBrowserKindSubChannel
+{
+	MSEdge_Dev = 'msedge-dev',
+	MSEdge_Beta = 'msedge-beta',
+	MSEdge_Canary = 'msedge-canary',
+}
 
 /**
  * 底層瀏覽器種類：由 {@link EnumAutomationEngine} 選出的實作類別再據此啟動瀏覽器
+ * @deprecated 請使用 {@link IBrowserKind} 代替
  */
 export const enum EnumBrowserKind
 {
@@ -49,5 +58,50 @@ export const enum EnumBrowserKind
 	Webkit = 'webkit',
 }
 
+/** 預設自動化引擎 */
+export const DEFAULT_AUTOMATION_ENGINE = EnumAutomationEngine.Playwright;
 /** 預設瀏覽器種類 */
-export const DEFAULT_BROWSER_KIND = EnumBrowserKind.Chromium;
+export const DEFAULT_BROWSER_KIND = EnumAutomationEngine.Chromium;
+
+/**
+ * 底層瀏覽器種類：由 {@link EnumAutomationEngine} 選出的實作類別再據此啟動瀏覽器
+ */
+export type IBrowserKind = EnumAutomationEngine.Chromium | EnumAutomationEngine.Firefox | EnumAutomationEngine.Webkit;
+export type IBrowserKindChannel = EnumAutomationEngine.Chrome | EnumAutomationEngine.MSEdge | EnumBrowserKindSubChannel | (string & {});
+
+export function _handleBrowserKind(browserEngine: EnumAutomationEngine, channel?: IBrowserKindChannel)
+{
+	let baseKind: IBrowserKind;
+
+	switch (browserEngine)
+	{
+		case EnumAutomationEngine.Chrome:
+			channel ||= EnumAutomationEngine.Chrome;
+		case EnumAutomationEngine.Playwright:
+		case EnumAutomationEngine.Chromium:
+			baseKind = EnumAutomationEngine.Chromium;
+			break;
+
+		case EnumAutomationEngine.MSEdge:
+			channel ||= EnumAutomationEngine.MSEdge;
+			baseKind = EnumAutomationEngine.Chromium;
+			break;
+
+		case EnumAutomationEngine.Firefox:
+		case EnumAutomationEngine.Camoufox:
+			baseKind = EnumAutomationEngine.Firefox;
+			break;
+
+		case EnumAutomationEngine.Webkit:
+			baseKind = EnumAutomationEngine.Webkit;
+			break;
+		default:
+			throw new Error(`Unsupported browser kind: ${browserEngine}`);
+	}
+
+	return {
+		browserEngine,
+		baseKind,
+		channel,
+	};
+}
