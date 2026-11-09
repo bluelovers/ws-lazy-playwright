@@ -10,13 +10,12 @@ import { IBrowserLaunchArgs } from '../types/browser-setting';
  *
  * Camoufox 基於 Firefox，從父類別繼承而來的 Chromium 專屬參數需先移除，
  * 避免啟動時產生警告或錯誤。
+ * 各設定模組另行註冊其專屬前綴（如 `--window-size=` 由 `opt-window-size` 註冊）。
  */
 const _UNSUPPORTED_FIREFOX_CLI_PREFIXES = [
 	'--disable-features=',
 	'--incognito=',
 	'--lang=',
-	/** Firefox 無此參數，改以 `-width` / `-height` 設定 */
-	'--window-size=',
 ] as const;
 
 /** 載入時註冊 Firefox 不支援的參數前綴，供通用過濾器按 `baseKind` 取用 */

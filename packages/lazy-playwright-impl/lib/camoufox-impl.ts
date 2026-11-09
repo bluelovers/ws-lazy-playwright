@@ -4,7 +4,6 @@ import type { ICamoufoxBrowserAutomationOptions, EnumCamoufoxOs } from './camouf
 import type { ICamoufoxLaunchOptions } from '@lazy-playwright/browser-config/lib/firefox/camoufox-types';
 import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { getCamoufoxFirefoxUserPrefs } from '@lazy-playwright/browser-config/lib/firefox/firefox-prefs';
-import { _filterUnsupportedFirefoxCliArgs } from '@lazy-playwright/browser-config/lib/firefox/cli-args-filter';
 import { PlaywrightBrowserAutomation } from './playwright-impl';
 import type { ILaunchOptions } from './types/types';
 
@@ -84,8 +83,8 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 			...baseOptions,
 			...camoufoxOpts,
 			headless,
-			/** 移除 Firefox 無法識別的 Chromium CLI 參數（含交叉解析後殘留的 `--window-size`） */
-			args: _filterUnsupportedFirefoxCliArgs(args ?? []),
+			/** 參數過濾統一由 `launch()` 的基底方法觸發（含交叉解析後殘留的 `--window-size`） */
+			args: args ?? [],
 		};
 	}
 

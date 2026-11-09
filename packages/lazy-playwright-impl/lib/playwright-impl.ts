@@ -36,7 +36,7 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 		return {
 			headless: false,
 			...baseOptions,
-			/** 以 Set 去除重複參數，保留呼叫端指定的 args 優先權 */
+			/** 以 Set 去除重複參數，保留呼叫端指定的 args 優先權；過濾統一由 `launch()` 觸發 */
 			args: [...new Set([
 				...(args ?? []),
 				/** 視窗尺寸；搭配 `viewport: null`，頁面尺寸隨實際視窗 */

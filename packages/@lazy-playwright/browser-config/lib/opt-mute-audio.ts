@@ -6,6 +6,7 @@ import {
 	type IBrowserSettingResult,
 } from './types/browser-setting';
 import { IFirefoxUserPrefs } from './firefox/firefox-prefs';
+import { registerUnsupportedCliArgs } from './util/cli-args-filter';
 import type { ITSAnyOfUnion } from 'ts-type';
 
 /** Chromium 專屬的靜音音頻啟動參數 */
@@ -16,6 +17,14 @@ const _FIREFOX_MUTE_AUDIO_PREFS = {
 	/** 全域音量設為 0 */
 	'media.volume_scale': '0.0',
 } as const;
+
+/**
+ * 註冊 Chromium 專屬、Firefox 不支援的啟動參數前綴
+ *
+ * Firefox 分支改以 `firefoxUserPrefs` 的 `media.volume_scale` 靜音，
+ * 由基底過濾方法於啟動前依 `browserKind` 移除該參數。
+ */
+registerUnsupportedCliArgs(EnumAutomationEngine.Firefox, _CHROMIUM_MUTE_AUDIO_ARGS);
 
 /** 靜音音頻的投放結果：僅可能落在 `args` 或 `firefoxUserPrefs` */
 export type IMuteAudioSetting = ITSAnyOfUnion<IBrowserLaunchArgsSetting | IFirefoxUserPrefsSetting>;

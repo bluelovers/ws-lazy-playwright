@@ -19,6 +19,8 @@ import type {
 import { createNewPage, ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { ITSNullable } from 'ts-type';
 import { IWindowSize } from '@lazy-playwright/browser-config/lib/opt-window-size';
+import { filterUnsupportedCliArgs } from '@lazy-playwright/browser-config/lib/util/cli-args-filter';
+import type { IBrowserLaunchArgs, IBrowserLaunchArgsWriteable } from '@lazy-playwright/browser-config/lib/types/browser-setting';
 
 /**
  * 實例狀態 (Automation State)
@@ -184,6 +186,17 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	protected abstract _initializeBrowser(options: LaunchOptions): Promise<Browser>;
 
 	/**
+	 * 過濾目標瀏覽器不支援的 CLI 參數（基底方法）
+	 *
+	 * 依 {@link browserKind} 取得該瀏覽器已註冊的不支援前綴並過濾；
+	 * 未註冊任何前綴時原樣保留。各瀏覽器 / 設定模組於載入時自行註冊。
+	 */
+	protected _filterUnsupportedCliArgs(args: IBrowserLaunchArgs): IBrowserLaunchArgsWriteable
+	{
+		return filterUnsupportedCliArgs(this.browserKind, args);
+	}
+
+	/**
 	 * 啟動瀏覽器
 	 *
 	 * @param options - 啟動選項
@@ -201,6 +214,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			...this._options.launch,
 			...options,
 		});
+
+		/**
+		 * 過濾點集中於此：子類別鉤子可自由疊加參數（含 `super._handleBrowserLaunchOptions` 的多層呼叫），
+		 * 於啟動前統一移除目標瀏覽器不支援的參數，鉤子內不必各自過濾。
+		 */
+		launchOptions.args = this._filterUnsupportedCliArgs(launchOptions.args ?? []);
 
 		this._browser = await this._initializeBrowser(launchOptions);
 
