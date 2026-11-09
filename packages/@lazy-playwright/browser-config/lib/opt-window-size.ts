@@ -8,16 +8,6 @@ import {
 } from './types/browser-setting';
 import { registerUnsupportedCliArgs } from './util/cli-args-filter';
 
-/**
- * 註冊本模組輸出、且另一風格瀏覽器不支援的參數前綴
- *
- * `--window-size=` 為 Chromium 風格，Firefox 無此參數、改以 `-width` / `-height` 設定；
- * `-width` / `-height` 為 Firefox 風格，Chromium 不支援。
- * 由基底過濾方法於啟動前依 `browserKind` 移除。
- */
-registerUnsupportedCliArgs(EnumAutomationEngine.Firefox, ['--window-size=']);
-registerUnsupportedCliArgs(EnumAutomationEngine.Chromium, ['-width', '-height']);
-
 /** 視窗尺寸 (Window Size)，單位為像素 */
 export interface IWindowSize
 {

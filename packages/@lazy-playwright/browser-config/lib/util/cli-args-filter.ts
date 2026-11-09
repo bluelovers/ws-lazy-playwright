@@ -62,8 +62,13 @@ export function registerUnsupportedCliArgs(baseKind: IBrowserKind, prefixes: Ite
  * 過濾指定瀏覽器不支援的 CLI 參數
  *
  * 以該瀏覽器已註冊的前綴集合過濾；未註冊任何前綴時原樣保留（回傳新陣列）。
+ *
+ * 實際使用時請直接呼叫 `filterUnsupportedCliArgs`。
+ * 內部呼叫可使用 `_filterUnsupportedCliArgsCore` 來防止遞迴呼叫。
+ *
+ * @internal
  */
-export function filterUnsupportedCliArgs(baseKind: IBrowserKind, args: IBrowserLaunchArgs): IBrowserLaunchArgsWriteable
+export function _filterUnsupportedCliArgsCore(baseKind: IBrowserKind, args: IBrowserLaunchArgs): IBrowserLaunchArgsWriteable
 {
 	return filterCliArgsByPrefixes(args, _unsupportedCliArgsPrefixes.get(baseKind) ?? []);
 }

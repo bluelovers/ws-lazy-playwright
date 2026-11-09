@@ -19,7 +19,7 @@ import type {
 import { createNewPage, ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { ITSNullable } from 'ts-type';
 import { IWindowSize } from '@lazy-playwright/browser-config/lib/opt-window-size';
-import { filterUnsupportedCliArgs } from '@lazy-playwright/browser-config/lib/util/cli-args-filter';
+import { filterUnsupportedCliArgs } from '@lazy-playwright/browser-config/lib/opt-cli-args-filter';
 import type { IBrowserLaunchArgs, IBrowserLaunchArgsWriteable } from '@lazy-playwright/browser-config/lib/types/browser-setting';
 
 /**
