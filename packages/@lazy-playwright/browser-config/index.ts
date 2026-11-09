@@ -1,2 +1,2 @@
 
-export { windowSizeLaunchArgs } from './lib/window-size';
+export { windowSizeLaunchArgs } from './lib/opt-window-size';
