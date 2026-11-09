@@ -1,0 +1,101 @@
+exports[`filterCliArgsByPrefixes > RegExp 條件命中時連同獨立值 token 移除 1`] = `
+[]
+`;
+
+exports[`filterCliArgsByPrefixes > flag 位於末尾（無值 token）時僅移除自身 1`] = `
+[]
+`;
+
+exports[`filterCliArgsByPrefixes > 一次性 Iterable（generator）作為條件時不會被耗盡 1`] = `
+[]
+`;
+
+exports[`filterCliArgsByPrefixes > 下一個 token 以 \`-\` 開頭時視為相鄰旗標，不連帶移除 1`] = `
+[
+  "-height"
+]
+`;
+
+exports[`filterCliArgsByPrefixes > 保留未命中的參數與相對順序 1`] = `
+[
+  "--lang=zh-TW",
+  "--headless"
+]
+`;
+
+exports[`filterCliArgsByPrefixes > 值以 \`=\` 內嵌時只移除該旗標，不影響後續 token 1`] = `
+[
+  "--headless"
+]
+`;
+
+exports[`filterCliArgsByPrefixes > 判定函式可取得 context（index / args / baseKind） 1`] = `
+{
+  "actual": [
+    "--keep"
+  ],
+  "seen": [
+    {
+      "index": 0,
+      "args": [
+        "--keep",
+        "--drop"
+      ],
+      "baseKind": "firefox"
+    },
+    {
+      "index": 1,
+      "args": [
+        "--keep",
+        "--drop"
+      ],
+      "baseKind": "firefox"
+    }
+  ]
+}
+`;
+
+exports[`filterCliArgsByPrefixes > 含 \`g\` 旗標的 RegExp 重複呼叫不受 \`lastIndex\` 殘留影響 1`] = `
+{
+  "first": [
+    "--headless"
+  ],
+  "second": [
+    "--headless"
+  ]
+}
+`;
+
+exports[`filterCliArgsByPrefixes > 移除字面前綴命中的旗標，連同其獨立值 token 一併移除 1`] = `
+[]
+`;
+
+exports[`filterUnsupportedCliArgs > chromium 移除 Firefox 風格的 \`-width\` 及其值 1`] = `
+[
+  "--disable-features=Foo",
+  "--window-size=800,600",
+  "--lang=zh-TW",
+  "--headless"
+]
+`;
+
+exports[`filterUnsupportedCliArgs > firefox 移除 Chromium 風格參數，但保留 \`-width\` 與其值 1`] = `
+[
+  "--headless",
+  "-width",
+  "800"
+]
+`;
+
+exports[`filterUnsupportedCliArgs > 可持續註冊新條件並生效 1`] = `
+[
+  "--headless"
+]
+`;
+
+exports[`filterUnsupportedCliArgs > 未註冊條件的瀏覽器原樣保留（回傳新陣列） 1`] = `
+[
+  "--headless",
+  "--lang=zh-TW"
+]
+`;

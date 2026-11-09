@@ -22,6 +22,54 @@ export interface IFilterCliArgsContext
 export type IFilterCliArgsByValue = (string & {}) | RegExp | ((arg: string, runtime?: IFilterCliArgsContext) => boolean);
 
 /**
+ * 判斷單一參數是否命中任一條件（字面前綴、正規表示式、判定函式）
+ *
+ * 未命中回傳 `false`；白名單外的條件型別一律拋出 `TypeError`，
+ * 避免不支援的設定值被靜默忽略。
+ *
+ * @internal
+ */
+function _matchCliArg(
+	arg: string,
+	matchers: readonly IFilterCliArgsByValue[],
+	context: IFilterCliArgsContext,
+): boolean
+{
+	for (const matcher of matchers)
+	{
+		if (typeof matcher === 'string')
+		{
+			if (arg.startsWith(matcher))
+			{
+				return true;
+			}
+		}
+		else if (matcher instanceof RegExp)
+		{
+			/** 含 `g` / `y` 旗標的正規式有狀態，測試前重設 `lastIndex` 避免跨呼叫殘留 */
+			matcher.lastIndex = 0;
+
+			if (matcher.test(arg))
+			{
+				return true;
+			}
+		}
+		else if (typeof matcher === 'function')
+		{
+			if (matcher(arg, context))
+			{
+				return true;
+			}
+		}
+		else
+		{
+			throw new TypeError(`${typeof matcher}: ${matcher} is not implemented or supported yet`);
+		}
+	}
+	return false;
+}
+
+/**
  * 依條件集合過濾 CLI 參數，移除命中任一條件的參數
  *
  * 條件支援字面前綴、正規表示式與判定函式，
@@ -29,6 +77,10 @@ export type IFilterCliArgsByValue = (string & {}) | RegExp | ((arg: string, runt
  *
  * 避免不支援的設定值被靜默忽略；
  * 用於過濾目標瀏覽器不支援的啟動參數，避免啟動時產生警告或錯誤。
+ *
+ * 旗標與其值以獨立 token 傳入時（如 `-width` / `800`），
+ * 命中旗標會連同其值一併移除，避免殘留孤兒值 token；
+ * 值以 `=` 內嵌（如 `--window-size=800,600`）或本身以 `-` 開頭（如相鄰旗標）時不受影響。
  */
 export function filterCliArgsByPrefixes(
 	args: IBrowserLaunchArgs,
@@ -36,42 +88,42 @@ export function filterCliArgsByPrefixes(
 	baseKind: IBrowserKind,
 ): IBrowserLaunchArgsWriteable
 {
-	return args.filter((arg, index) =>
-	{
-		for (const matcher of matchers)
-		{
-			if (typeof matcher === 'string')
-			{
-				if (arg.startsWith(matcher))
-				{
-					return false;
-				}
-			}
-			else if (matcher instanceof RegExp)
-			{
-				/** 含 `g` / `y` 旗標的正規式有狀態，測試前重設 `lastIndex` 避免跨呼叫殘留 */
-				matcher.lastIndex = 0;
+	/** 一次物化，避免一次性 Iterable（如 generator）在逐參數比對時被耗盡 */
+	const matcherList = [...matchers];
+	const result: IBrowserLaunchArgsWriteable = [];
 
-				if (matcher.test(arg))
-				{
-					return false;
-				}
-			}
-			else if (typeof matcher === 'function')
+	let skipNext = false;
+
+	for (const [index, arg] of args.entries())
+	{
+		if (skipNext)
+		{
+			skipNext = false;
+			continue;
+		}
+
+		if (!_matchCliArg(arg, matcherList, { index, args, baseKind }))
+		{
+			result.push(arg);
+			continue;
+		}
+
+		/**
+		 * 命中旗標（以 `-` 開頭且值未以 `=` 內嵌）時，
+		 * 若下一個 token 不以 `-` 開頭，即視為該旗標的獨立值，連同移除
+		 */
+		if (arg.startsWith('-') && !arg.includes('='))
+		{
+			const next = args[index + 1];
+
+			if (next !== undefined && !next.startsWith('-'))
 			{
-				if (matcher(arg, { index, args, baseKind }))
-				{
-					return false;
-				}
-			}
-			else
-			{
-				/** 白名單外的條件型別一律 loud failure，不支援的設定值不得被靜默忽略 */
-				throw new TypeError(`${typeof matcher}: ${matcher} is not implemented or supported yet`);
+				skipNext = true;
 			}
 		}
-		return true;
-	});
+	}
+
+	return result;
 }
 
 /** 各瀏覽器不支援的 CLI 參數條件登記表（key：`baseKind`） */
