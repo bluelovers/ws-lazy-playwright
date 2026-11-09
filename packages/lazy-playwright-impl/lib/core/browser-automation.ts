@@ -168,17 +168,6 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		return [...this._pages];
 	}
 
-	/**
-	 * 建立時指定的預設視窗尺寸 (Window Size)
-	 *
-	 * `context.viewport` 預設為 `null`，頁面尺寸隨實際視窗，
-	 * 因此視窗大小改由啟動參數決定；未設定時回傳 `undefined`，交由瀏覽器自行決定。
-	 */
-	protected get _windowSize(): IWindowSize | undefined
-	{
-		return this._options.windowSize;
-	}
-
 	/** 將輸入選項轉為 Playwright 的啟動選項，子類別可於此疊加引擎專屬設定 */
 	protected abstract _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>;
 

@@ -42,7 +42,7 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 				/** 視窗尺寸；搭配 `viewport: null`，頁面尺寸隨實際視窗 */
 				...windowSizeLaunchArgs({
 					browserEngine: this.browserKind,
-					windowSize: this._windowSize,
+					windowSize: this._options.windowSize,
 					args,
 				}),
 				_playwrightArgsDisableFeatures(),
