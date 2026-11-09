@@ -12,7 +12,7 @@ export async function createBrowserAutomation(
 	options: ICreateBrowserAutomationOptions = {},
 )
 {
-	const engine = ((options.engine ?? DEFAULT_AUTOMATION_ENGINE) || EnumAutomationEngine.Playwright) as EnumAutomationEngine;
+	const engine = options.engine ?? DEFAULT_AUTOMATION_ENGINE;
 
 	switch (engine)
 	{

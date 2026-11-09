@@ -1,6 +1,6 @@
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
 import type { IBrowserBridge, IBridgeOptions } from '../bridge/types';
-import type { EnumAutomationEngine, EnumBrowserKind } from '@lazy-playwright/shared-types';
+import type { EnumAutomationEngine, IBrowserKind } from '@lazy-playwright/shared-types';
 import type { IPlaywrightModule, IPlaywrightModuleId } from '../core/module-registry';
 import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
 import { ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
@@ -24,14 +24,14 @@ export interface IWindowSize
 export interface ICreateBrowserAutomationOptions
 {
 	/** 自動化引擎，決定實作類別；未提供時使用 {@link DEFAULT_AUTOMATION_ENGINE} */
-	engine?: EnumAutomationEngine | null;
+	engine?: EnumAutomationEngine;
 	/**
 	 * Playwright 相容模組：註冊的模組 id，或直接提供的模組描述；
 	 * 未提供時使用預設 `playwright`（僅 Playwright 引擎類別使用）
 	 */
 	module?: IPlaywrightModuleId | IPlaywrightModule;
-	/** 底層瀏覽器種類，決定實際啟動的瀏覽器 */
-	browser?: EnumBrowserKind;
+	/** 底層瀏覽器種類，決定實際啟動的瀏覽器；Chrome 屬 chromium 的通道 (Channel) 變體 */
+	browser?: IBrowserKind | EnumAutomationEngine.Chrome;
 	/** 啟動選項 */
 	launch?: ILaunchOptions;
 	/**
@@ -62,7 +62,7 @@ export interface ICreateBrowserAutomationOptions
 export interface IBrowserAutomation extends ITSRequiredWith<IBrowserCtx, 'context'>
 {
 	readonly engine: EnumAutomationEngine;
-	readonly browserKind: EnumBrowserKind;
+	readonly browserKind: IBrowserKind;
 	readonly storage: IBrowserStorageManager;
 	readonly bridge: IBrowserBridge;
 

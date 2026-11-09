@@ -1,5 +1,5 @@
 import { chromium, firefox, webkit, type BrowserType } from 'playwright';
-import { EnumAutomationEngine, EnumBrowserKind } from '@lazy-playwright/shared-types';
+import { EnumAutomationEngine, type IBrowserKind } from '@lazy-playwright/shared-types';
 import { ITSPickExtra } from 'ts-type';
 
 /**
@@ -26,14 +26,14 @@ export interface IPlaywrightCompatibleApi
  * playwrightModuleRegistry.register({
  * 	id: 'patchright',
  * 	api: { chromium: patchright.chromium },
- * 	unsupportedBrowsers: [EnumBrowserKind.Firefox, EnumBrowserKind.Webkit],
+ * 	unsupportedBrowsers: [EnumAutomationEngine.Firefox, EnumAutomationEngine.Webkit],
  * });
  *
  * // 外部邏輯組裝成類 Playwright API
  * playwrightModuleRegistry.register({
  * 	id: 'custom',
  * 	api: { chromium: { launch: options => externalLaunch(options) } },
- * 	supportedBrowsers: [EnumBrowserKind.Chromium],
+ * 	supportedBrowsers: [EnumAutomationEngine.Chromium],
  * });
  */
 export interface IPlaywrightModule
@@ -43,9 +43,9 @@ export interface IPlaywrightModule
 	/** 類 Playwright 的啟動 API */
 	api: IPlaywrightCompatibleApi;
 	/** 明確宣告支援的瀏覽器種類；省略時以 api 具備的入口判定 */
-	supportedBrowsers?: readonly EnumBrowserKind[];
+	supportedBrowsers?: readonly IBrowserKind[];
 	/** 明確宣告不支援的瀏覽器種類，優先於 supportedBrowsers（例：patchright 僅 chromium） */
-	unsupportedBrowsers?: readonly EnumBrowserKind[];
+	unsupportedBrowsers?: readonly IBrowserKind[];
 }
 
 /** 預設相容模組識別碼 */
@@ -53,22 +53,21 @@ export const DEFAULT_PLAYWRIGHT_MODULE_ID = EnumAutomationEngine.Playwright;
 
 export type IPlaywrightModuleId = typeof DEFAULT_PLAYWRIGHT_MODULE_ID | (string & {});
 
-/** 瀏覽器種類 → api 欄位的單一事實對應（Chrome 為 chromium 的 channel 變體） */
-const _browserKindApiKeyMap: Readonly<Record<EnumBrowserKind, keyof IPlaywrightCompatibleApi>> = {
-	[EnumBrowserKind.Chromium]: 'chromium',
-	[EnumBrowserKind.Chrome]: 'chromium',
-	[EnumBrowserKind.Firefox]: 'firefox',
-	[EnumBrowserKind.Webkit]: 'webkit',
+/** 瀏覽器種類 → api 欄位的單一事實對應（Chrome / MSEdge 已於建立時歸一化為 chromium） */
+const _browserKindApiKeyMap: Readonly<Record<IBrowserKind, keyof IPlaywrightCompatibleApi>> = {
+	[EnumAutomationEngine.Chromium]: 'chromium',
+	[EnumAutomationEngine.Firefox]: 'firefox',
+	[EnumAutomationEngine.Webkit]: 'webkit',
 };
 
 /** 取得瀏覽器種類對應的 api 欄位 */
-export function getBrowserKindApiKey(kind: EnumBrowserKind): keyof IPlaywrightCompatibleApi
+export function getBrowserKindApiKey(kind: IBrowserKind): keyof IPlaywrightCompatibleApi
 {
 	return _browserKindApiKeyMap[kind];
 }
 
 /** 判定模組是否支援指定瀏覽器種類 */
-export function isBrowserKindSupported(module: IPlaywrightModule, kind: EnumBrowserKind): boolean
+export function isBrowserKindSupported(module: IPlaywrightModule, kind: IBrowserKind): boolean
 {
 	if (module.unsupportedBrowsers?.includes(kind))
 	{
@@ -88,7 +87,7 @@ export function isBrowserKindSupported(module: IPlaywrightModule, kind: EnumBrow
  *
  * 支援宣告與 api 入口一併驗證，失敗時拋出含模組 id 與瀏覽器種類的錯誤。
  */
-export function resolveBrowserType(module: IPlaywrightModule, kind: EnumBrowserKind): IPlaywrightBrowserType
+export function resolveBrowserType(module: IPlaywrightModule, kind: IBrowserKind): IPlaywrightBrowserType
 {
 	const browserType = isBrowserKindSupported(module, kind)
 		? module.api[getBrowserKindApiKey(kind)]
@@ -155,7 +154,7 @@ export class PlaywrightModuleRegistry
 	 * @param target - 已註冊的模組 id，或直接提供的模組描述
 	 * @param browserKind - 預計啟動的瀏覽器種類
 	 */
-	resolve(target: string | IPlaywrightModule, browserKind: EnumBrowserKind): IPlaywrightModule
+	resolve(target: string | IPlaywrightModule, browserKind: IBrowserKind): IPlaywrightModule
 	{
 		const module = typeof target === 'string' ? this.require(target) : target;
 

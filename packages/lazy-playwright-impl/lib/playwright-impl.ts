@@ -1,6 +1,6 @@
 import { type Browser, type LaunchOptions } from 'playwright';
 import { AbstractBrowserAutomation } from './core/browser-automation';
-import { EnumAutomationEngine, EnumBrowserKind } from '@lazy-playwright/shared-types';
+import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { _playwrightArgsDisableFeatures } from './playwright/config';
 import { windowSizeLaunchArgs } from './playwright/window-size';
 import {
@@ -14,7 +14,7 @@ import type { ILaunchOptions } from './types/types';
 /**
  * Playwright 瀏覽器自動化實作
  *
- * 以 {@link EnumBrowserKind} 決定實際啟動的 browser type；
+ * 以 {@link IBrowserKind} 決定實際啟動的 browser type；
  * 底層啟動改由可插拔的 Playwright 相容模組提供（預設 `playwright`，
  * 可註冊切換 patchright 等反偵測分支，或由外部邏輯組裝的類 Playwright API），
  * Camoufox 實作繼承此類別並覆寫兩個鉤子 (Hook)。
@@ -41,7 +41,7 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 				...(args ?? []),
 				/** 視窗尺寸；搭配 `viewport: null`，頁面尺寸隨實際視窗 */
 				...windowSizeLaunchArgs({
-					kind: this.browserKind,
+					browserEngine: this.browserKind,
 					windowSize: this._windowSize,
 					args,
 				}),
@@ -73,16 +73,16 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 	/**
 	 * 由註冊表解析相容模組，並以其宣告的啟動入口建立瀏覽器
 	 *
-	 * Chrome 走 chromium 入口並以 channel 啟動；模組不支援該瀏覽器種類時直接拋錯。
+	 * 有通道 (Channel) 變體（Chrome / MSEdge）時走 chromium 入口並以 channel 啟動；模組不支援該瀏覽器種類時直接拋錯。
 	 */
 	protected async _initializeBrowser(options: LaunchOptions): Promise<Browser>
 	{
 		const module = playwrightModuleRegistry.resolve(this._moduleTarget, this.browserKind);
 		const browserType = resolveBrowserType(module, this.browserKind);
 
-		if (this.browserKind === EnumBrowserKind.Chrome)
+		if (this.browserChannel)
 		{
-			return browserType.launch({ ...options, channel: 'chrome' });
+			return browserType.launch({ ...options, channel: this.browserChannel });
 		}
 
 		return browserType.launch(options);

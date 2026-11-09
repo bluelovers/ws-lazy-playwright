@@ -2,7 +2,7 @@ import { console } from 'debug-color2';
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
 import { PageBridge } from '../bridge/index';
 import { createDefaultBridgeCommands } from '../bridge/default-commands';
-import { DEFAULT_BROWSER_KIND, type EnumAutomationEngine, type EnumBrowserKind } from '@lazy-playwright/shared-types';
+import { DEFAULT_BROWSER_KIND, _handleBrowserKind, type EnumAutomationEngine, type IBrowserKind, type IBrowserKindChannel } from '@lazy-playwright/shared-types';
 import { EnumLogLabel } from '../logger';
 import { closeBrowserSafely, closeContextSafely } from '../playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from '../playwright/event';
@@ -44,8 +44,10 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 {
 	abstract readonly engine: EnumAutomationEngine;
 
-	/** 底層瀏覽器種類，決定實際啟動的瀏覽器 */
-	readonly browserKind: EnumBrowserKind;
+	/** 底層瀏覽器種類（base kind），決定實際啟動的瀏覽器 */
+	readonly browserKind: IBrowserKind;
+	/** 瀏覽器通道 (Channel)：Chrome / MSEdge 等變體；未指定時為 `undefined` */
+	readonly browserChannel?: IBrowserKindChannel;
 	/** Cookie / Session 儲存管理 */
 	readonly storage: BrowserStorageManager;
 	/** 頁面通訊協定 (Bridge)，負責 context / 分頁的命令收發 */
@@ -88,7 +90,11 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	constructor(options: ICreateBrowserAutomationOptions = {})
 	{
 		this._options = options;
-		this.browserKind = options.browser ?? DEFAULT_BROWSER_KIND;
+		/** 以 `_handleBrowserKind` 歸一化：Chrome / MSEdge 等通道變體拆為 baseKind 與 channel */
+		const { baseKind, channel } = _handleBrowserKind(options.browser ?? DEFAULT_BROWSER_KIND);
+
+		this.browserKind = baseKind;
+		this.browserChannel = channel;
 		this.storage = new BrowserStorageManager(options.storage);
 		this.bridge = new PageBridge(this, options.bridge);
 		this.bridge.registerAll(createDefaultBridgeCommands());
@@ -153,11 +159,11 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	 * 建立時指定的預設視窗尺寸 (Window Size)
 	 *
 	 * `context.viewport` 預設為 `null`，頁面尺寸隨實際視窗，
-	 * 因此視窗大小改由啟動參數決定；未設定時回傳 `null`，交由瀏覽器自行決定。
+	 * 因此視窗大小改由啟動參數決定；未設定時回傳 `undefined`，交由瀏覽器自行決定。
 	 */
-	protected get _windowSize(): IWindowSize | null
+	protected get _windowSize(): IWindowSize | undefined
 	{
-		return this._options.windowSize ?? null;
+		return this._options.windowSize;
 	}
 
 	/** 將輸入選項轉為 Playwright 的啟動選項，子類別可於此疊加引擎專屬設定 */
