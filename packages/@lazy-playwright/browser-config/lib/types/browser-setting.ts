@@ -1,7 +1,7 @@
 import type { IBrowserKind, IHandleBrowserKindResult } from '@lazy-playwright/shared-types';
 import type { ITSAnyOfUnion } from 'ts-type';
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
-import { IFirefoxUserPrefs } from './firefox/firefox-prefs';
+import { IFirefoxUserPrefs } from '../firefox/firefox-prefs';
 
 /**
  * 跨瀏覽器設定的投放目標 (Setting Placement)

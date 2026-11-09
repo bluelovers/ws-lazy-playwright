@@ -4,7 +4,7 @@ import {
 	type IBrowserLaunchArgsSetting,
 	type IFirefoxUserPrefsSetting,
 	type IBrowserSettingResult,
-} from './browser-setting';
+} from './types/browser-setting';
 import { IFirefoxUserPrefs } from './firefox/firefox-prefs';
 import type { ITSAnyOfUnion } from 'ts-type';
 
