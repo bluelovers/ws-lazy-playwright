@@ -14,6 +14,7 @@ import { createCompletionRecord, resumeFromCompletion } from '#/lib/record';
 import { parseAutoPostCli } from '#/lib/cli';
 import type { IFolderInput, IMessageOptions, ITaskRangeOptions } from '#/lib/types';
 import { globStream, async as globAsync } from 'fast-glob';
+import { hideBin } from 'yargs/helpers';
 
 /** 任務範圍預設值：可在此指定起始天 / 結束天 / 起始任務 / 最大任務天數；`--max-tasks <n>` 由 CLI 合併 */
 const TASK_RANGE: ITaskRangeOptions = {

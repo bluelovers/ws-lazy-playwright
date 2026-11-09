@@ -1,60 +1,8 @@
 import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
+import { parseCliFlags } from './cli-flags';
+import type { IParsedFlags } from './cli-flags';
 import { EnumLogLabel } from './logger';
 import type { IRunSwitches, ITaskRangeOptions } from './types';
-import { ITSPickExtra } from 'ts-type';
-
-/** CLI 參數讀取：布林旗標 / 字串值 / 正整數值三種取值 */
-export interface ICliArgs
-{
-	/** 旗標是否存在（完全比對 token） */
-	has(name: string): boolean;
-	/** 字串參數值：支援 `--name value` 與 `--name=value`；未指定、缺少值或下一個 token 為旗標時回傳 `undefined` */
-	value(name: string): string | undefined;
-	/** 正整數參數值：未指定、非正整數時回傳 `undefined` */
-	int(name: string): number | undefined;
-}
-
-/**
- * 建立 CLI 參數讀取器
- *
- * @param argv CLI 參數（不含執行檔與腳本路徑，通常為 `process.argv.slice(2)`）
- */
-export function createCliArgs(argv: readonly string[]): ICliArgs
-{
-	const args = new Set(argv);
-
-	/** 取得字串參數值：`--name value` 與 `--name=value` 皆可 */
-	const value = (name: string): string | undefined =>
-	{
-		const prefix = `${name}=`;
-		const inline = argv.find(arg => arg.startsWith(prefix));
-
-		if (inline !== undefined)
-		{
-			return inline.slice(prefix.length) || undefined;
-		}
-
-		const index = argv.indexOf(name);
-		const raw = index >= 0 ? argv[index + 1] : undefined;
-
-		return raw !== undefined && !raw.startsWith('--') ? raw : undefined;
-	};
-
-	/** 取得正整數參數值：非正整數或未指定時回傳 `undefined` */
-	const int = (name: string): number | undefined =>
-	{
-		const raw = value(name);
-		const parsed = raw === undefined ? Number.NaN : Number(raw);
-
-		return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
-	};
-
-	return {
-		has: name => args.has(name),
-		value,
-		int,
-	};
-}
 
 /** auto-post CLI 解析結果 */
 export interface IAutoPostCli
@@ -72,80 +20,52 @@ export interface IAutoPostCli
 }
 
 /**
- * 完整階段：解析 auto-post CLI 參數並輸出摘要
+ * 邏輯層：CLI 取值與預設值合併為執行設定（純函式，無副作用）
  *
- * CLI 參數（`argv`）：
+ * 僅在明確指定的旗標覆寫預設值；未指定者沿用 `defaults`。
  *
- * 通用：
- *
- * - `--task-base <path>`：任務基準路徑（預設為 `defaults.taskBase`）
- * - `--max-tasks <n>`：最大任務數（合併入 `defaults.range`）
- * - `--from-last-publish`：以完成紀錄補齊進度缺漏的完成邊界（已完成任務不重發）；
- *   另於無可接續紀錄時找尋新任務起始點（覆寫 startDay / startTask）
- * - `--publish`：解除發布停用（預設停用；絕不按 save 的安全規則不變）
- * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告）
- * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
- * - `--create-url <url>`：變更上傳（建立貼文）頁面網址（預設 `CREATE_URL`）
- *
- * agent-scheduler 專用（`--ags-` prefix）：
- *
- * - `--ags-max-publish <n>`：任務的發布次數上限，達上限即忽略剩餘圖片（僅任務模式生效，預設不限制）
- * - `--ags-max-publish-total`：上限改以完成紀錄的累計發布次數判定（含該任務已發布過的次數，
- *   已達上限的任務不再發布；須與 `--ags-max-publish` 併用，否則不生效）
- *
- * 解析完成即輸出摘要（debug / info 各一行）。
- *
- * @param argv CLI 參數（不含執行檔與腳本路徑）
+ * @param flags CLI 取值（{@link parseCliFlags} 解析結果）
  * @param defaults 預設值（任務基準路徑、任務範圍）
  */
-export function parseAutoPostCli(argv: readonly string[], defaults?: Partial<IAutoPostCli>): IAutoPostCli
+export function resolveAutoPostCli(flags: IParsedFlags, defaults: Partial<IAutoPostCli> = {}): IAutoPostCli
 {
-	defaults ??= {};
-
-	const args = createCliArgs(argv);
-
 	/** 執行設定：僅在明確指定時覆寫預設值 */
 	const switches: IRunSwitches = {
 		/** 建立貼文頁網址：未指定時沿用 `CREATE_URL` 預設 */
-		createUrl: args.value('--create-url') ?? defaults.switches?.createUrl,
-		/** agent-scheduler 任務發布次數上限：未指定或無效值不設限 */
-		agsMaxPublish: args.int('--ags-max-publish') ?? defaults.switches?.agsMaxPublish,
+		createUrl: flags.createUrl ?? defaults.switches?.createUrl,
+		/** agent-scheduler 任務發布次數上限：未指定時不設限 */
+		agsMaxPublish: flags.agsMaxPublish ?? defaults.switches?.agsMaxPublish,
+		/** 累計判定旗標：與 `--ags-max-publish` 併用時，上限含完成紀錄中已發布過的次數 */
+		...(flags.agsMaxPublishTotal === true && { agsMaxPublishTotal: true }),
+		/** `--publish`：解除發布停用 */
+		...(flags.publish === true && { enablePublish: true }),
+		/** `--no-dry-run`：解除 dry run */
+		...(flags.dryRun === false && { disableDryRun: true }),
 	};
 
-	/** 累計判定旗標：與 `--ags-max-publish` 併用時，上限含完成紀錄中已發布過的次數 */
-	if (args.has('--ags-max-publish-total'))
-	{
-		switches.agsMaxPublishTotal = true;
-	}
-
-	if (args.has('--publish'))
-	{
-		switches.enablePublish = true;
-	}
-
-	if (args.has('--no-dry-run'))
-	{
-		switches.disableDryRun = true;
-	}
-
-	/** CLI `--max-tasks <n>`：未指定或非正整數時不覆寫 */
-	const maxTasks = args.int('--max-tasks');
-
-	const cli: IAutoPostCli = {
+	return {
 		...defaults,
 		switches: {
 			...defaults.switches,
 			...switches,
 		},
-		taskBase: args.value('--task-base') ?? defaults.taskBase,
+		taskBase: flags.taskBase ?? defaults.taskBase,
 		range: {
 			...defaults.range,
-			...(maxTasks !== undefined && { maxTasks }),
+			...(flags.maxTasks !== undefined && { maxTasks: flags.maxTasks }),
 		},
-		fromLastPublish: args.has('--from-last-publish') ?? defaults.fromLastPublish,
-		closeAfter: args.has('--close') ?? defaults.closeAfter,
+		fromLastPublish: flags.fromLastPublish ?? defaults.fromLastPublish,
+		closeAfter: flags.close ?? defaults.closeAfter,
 	};
+}
 
+/**
+ * 輸出層：CLI 解析結果摘要（I/O，不含解析與合併邏輯）
+ *
+ * @param cli 解析結果（{@link resolveAutoPostCli} 輸出）
+ */
+export function logAutoPostCli(cli: IAutoPostCli): void
+{
 	// consoleLoggerTimeAndLabel.debug(
 	// 	EnumLogLabel.CivitaiBot,
 	// 	`[auto-post] cli: publish=${cli.switches.enablePublish === true}`
@@ -169,8 +89,25 @@ export function parseAutoPostCli(argv: readonly string[], defaults?: Partial<IAu
 	);
 
 	consoleLoggerTimeAndLabel.dir(cli, { depth: null });
+}
 
+/**
+ * 完整階段：解析 auto-post CLI 參數並輸出摘要
+ *
+ * 組合三項單一職責，彼此分離：
+ *
+ * 1. {@link parseCliFlags}（機制層）：yargs 旗標解析與取值驗證，旗標清單見該函式說明
+ * 2. {@link resolveAutoPostCli}（邏輯層）：取值與預設值合併為執行設定，純函式
+ * 3. {@link logAutoPostCli}（輸出層）：解析結果摘要
+ *
+ * @param argv CLI 參數（不含執行檔與腳本路徑，通常為 `hideBin(process.argv)`）
+ * @param defaults 預設值（任務基準路徑、任務範圍）
+ */
+export function parseAutoPostCli(argv: readonly string[], defaults?: Partial<IAutoPostCli>): IAutoPostCli
+{
+	const cli = resolveAutoPostCli(parseCliFlags(argv), defaults);
 
+	logAutoPostCli(cli);
 
 	return cli;
 }
