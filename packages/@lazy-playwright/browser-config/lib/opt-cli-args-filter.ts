@@ -38,4 +38,6 @@ export const filterUnsupportedCliArgs = _filterUnsupportedCliArgsCore;
 	registerUnsupportedCliArgs(EnumAutomationEngine.Firefox, ['--window-size=']);
 	registerUnsupportedCliArgs(EnumAutomationEngine.Chromium, ['-width', '-height']);
 
+	/* --- keep for git diff --- */
+
 })();
