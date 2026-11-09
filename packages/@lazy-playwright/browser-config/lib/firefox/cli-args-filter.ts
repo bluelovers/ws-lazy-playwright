@@ -1,4 +1,9 @@
-import { filterCliArgsByPrefixes } from '../util/cli-args-filter';
+import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
+import {
+	filterUnsupportedCliArgs,
+	registerUnsupportedCliArgs,
+} from '../util/cli-args-filter';
+import { IBrowserLaunchArgs } from '../types/browser-setting';
 
 /**
  * Firefox 不支援的 Chromium CLI 參數前綴
@@ -14,8 +19,11 @@ const _UNSUPPORTED_FIREFOX_CLI_PREFIXES = [
 	'--window-size=',
 ] as const;
 
+/** 載入時註冊 Firefox 不支援的參數前綴，供通用過濾器按 `baseKind` 取用 */
+registerUnsupportedCliArgs(EnumAutomationEngine.Firefox, _UNSUPPORTED_FIREFOX_CLI_PREFIXES);
+
 /** 過濾 Firefox 不支援的 CLI 參數 */
-export function _filterUnsupportedFirefoxCliArgs(args: readonly string[]): string[]
+export function _filterUnsupportedFirefoxCliArgs(args: IBrowserLaunchArgs): string[]
 {
-	return filterCliArgsByPrefixes(args, _UNSUPPORTED_FIREFOX_CLI_PREFIXES);
+	return filterUnsupportedCliArgs(EnumAutomationEngine.Firefox, args);
 }
