@@ -89,8 +89,8 @@ importers:
         specifier: ^1.0.0
         version: link:../@lazy-playwright/shared-types
       '@ts-type/is-array':
-        specifier: ^1.0.20
-        version: 1.0.20(ts-toolbelt@9.6.0)
+        specifier: ^1.0.21
+        version: 1.0.21(ts-toolbelt@9.6.0)
       cache-path:
         specifier: ^4.0.17
         version: 4.0.17(ts-toolbelt@9.6.0)
@@ -240,8 +240,8 @@ packages:
     resolution: {integrity: sha512-t09vSN3MdfsyCHoFcTRCH/iUtG7OJ0CsjzB8cjAmKc/va/kIgeDI/TxsigdncE/4be734m0cvIYwNaV4i2XqAw==}
     engines: {node: '>=10'}
 
-  '@ts-type/is-array@1.0.20':
-    resolution: {integrity: sha512-s7t6dIwA+1fbDE7Xmw2U6iGzsqt0N0Kf96Vxgv67RJ/Wurn9yfFWB7MyrSmCR88ZGmzVzWKad4WhsOA2prNO8g==}
+  '@ts-type/is-array@1.0.21':
+    resolution: {integrity: sha512-/Zg+EoLOcd/GDCPBDPJ66gsTa+KzKB6lE1JOU4pRjmK21MFp2Dcxfg2I3U0rylk44IKXmVaifamPhnKtFEc0HQ==}
 
   '@ts-type/package-dts@3.0.14':
     resolution: {integrity: sha512-I+w4Yi/Rh1RI8+dR+xzwoJX89w7+Atz8ciyAoH7x0DlEXw1/iJyFz/py8H1N0qO0mxKETxsi6iJ14mMT8toSxQ==}
@@ -1079,7 +1079,7 @@ snapshots:
 
   '@sindresorhus/is@4.6.0': {}
 
-  '@ts-type/is-array@1.0.20(ts-toolbelt@9.6.0)':
+  '@ts-type/is-array@1.0.21(ts-toolbelt@9.6.0)':
     dependencies:
       ts-type: 3.0.19(ts-toolbelt@9.6.0)
     transitivePeerDependencies:
