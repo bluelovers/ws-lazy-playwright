@@ -85,8 +85,10 @@ export type IBrowserKind = EnumAutomationEngine.Chromium | EnumAutomationEngine.
 /**
  * 可指定的瀏覽器通道 (Channel)：內建 Chrome、MS Edge 及其預覽通道，
  * 亦接受任意字串以涵蓋未列舉的通道名稱
+ *
+ * 此處的 EnumAutomationEngine.Firefox 並非實際通道，而是為了表示「使用 Firefox 原生瀏覽器」而非 Camoufox
  */
-export type IBrowserKindChannel = EnumAutomationEngine.Chrome | EnumAutomationEngine.MSEdge | EnumBrowserKindSubChannel | (string & {});
+export type IBrowserKindChannel = EnumAutomationEngine.Chrome | EnumAutomationEngine.MSEdge | EnumBrowserKindSubChannel | EnumAutomationEngine.Firefox | (string & {});
 
 /**
  * 將自動化引擎 (Automation Engine) 歸一化為可啟動的基礎瀏覽器種類 (Base Kind) 的結果

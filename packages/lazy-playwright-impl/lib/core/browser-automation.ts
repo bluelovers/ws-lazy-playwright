@@ -2,7 +2,7 @@ import { console } from 'debug-color2';
 import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Page } from 'playwright';
 import { PageBridge } from '../bridge/index';
 import { createDefaultBridgeCommands } from '../bridge/default-commands';
-import { DEFAULT_BROWSER_KIND, _handleBrowserKind, type EnumAutomationEngine, type IBrowserKind, type IBrowserKindChannel } from '@lazy-playwright/shared-types';
+import { DEFAULT_BROWSER_KIND, _handleBrowserKind, EnumAutomationEngine, type IBrowserKind, type IBrowserKindChannel } from '@lazy-playwright/shared-types';
 import { EnumLogLabel } from '../logger';
 import { closeBrowserSafely, closeContextSafely } from '../playwright/browser-util';
 import { pageLiveOn as _pageLiveOn } from '../playwright/event';
@@ -90,8 +90,18 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	constructor(options: ICreateBrowserAutomationOptions = {})
 	{
 		this._options = options;
-		/** 以 `_handleBrowserKind` 歸一化：Chrome / MSEdge 等通道變體拆為 baseKind 與 channel */
-		const { baseKind, channel } = _handleBrowserKind(options.browser ?? DEFAULT_BROWSER_KIND);
+		/**
+		 * 以 `_handleBrowserKind` 正規化啟動目標：
+		 *
+		 * `channel: 'firefox'` 以種類 (Kind) 身分決定原生 Firefox (Native Firefox)，
+		 * 由 Camoufox 實作處理啟動設定與參數過濾；其餘 `channel` 為通道 (Channel) 變體；
+		 * 皆未指定時由 `engine` 決定。
+		 */
+		const nativeFirefox = options.channel === EnumAutomationEngine.Firefox;
+		const { baseKind, channel } = _handleBrowserKind(
+			nativeFirefox ? EnumAutomationEngine.Firefox : options.engine ?? DEFAULT_BROWSER_KIND,
+			nativeFirefox ? undefined : options.channel,
+		);
 
 		this.browserKind = baseKind;
 		this.browserChannel = channel;
@@ -210,6 +220,9 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	{
 		options = {
 			viewport: null,
+			ignoreHTTPSErrors: true,
+			locale: 'zh-TW',
+			timezoneId: 'Asia/Taipei',
 			...this._options.context,
 			...options,
 		};
