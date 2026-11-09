@@ -1,4 +1,4 @@
-import { DEFAULT_AUTOMATION_ENGINE, EnumAutomationEngine } from '@lazy-playwright/shared-types';
+import { DEFAULT_AUTOMATION_ENGINE, EnumAutomationEngine, _handleBrowserKind } from '@lazy-playwright/shared-types';
 import type { ICamoufoxBrowserAutomationOptions } from './camoufox-options';
 import type { ICreateBrowserAutomationOptions } from './types/types';
 
@@ -13,17 +13,16 @@ export async function createBrowserAutomation(
 )
 {
 	const engine = options.engine ?? DEFAULT_AUTOMATION_ENGINE;
+	/** 以 `_handleBrowserKind` 歸一化引擎值，再以 baseKind 分派實作類別 */
+	const { baseKind } = _handleBrowserKind(engine);
 
-	switch (engine)
+	switch (baseKind)
 	{
-		case EnumAutomationEngine.Playwright:
 		case EnumAutomationEngine.Chromium:
-		case EnumAutomationEngine.Chrome:
 		{
 			const { PlaywrightBrowserAutomation } = await import('./playwright-impl');
 			return new PlaywrightBrowserAutomation(options);
 		}
-		case EnumAutomationEngine.Camoufox:
 		case EnumAutomationEngine.Firefox:
 		{
 			const { CamoufoxBrowserAutomation } = await import('./camoufox-impl');
