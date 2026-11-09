@@ -14,6 +14,7 @@ import type {
 	IBrowserAutomation,
 	ICreateBrowserAutomationOptions,
 	ILaunchOptions,
+	IWindowSize,
 } from '../types/types';
 import { createNewPage, ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { ITSNullable } from 'ts-type';
@@ -146,6 +147,17 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	get pages(): readonly Page[]
 	{
 		return [...this._pages];
+	}
+
+	/**
+	 * 建立時指定的預設視窗尺寸 (Window Size)
+	 *
+	 * `context.viewport` 預設為 `null`，頁面尺寸隨實際視窗，
+	 * 因此視窗大小改由啟動參數決定；未設定時回傳 `null`，交由瀏覽器自行決定。
+	 */
+	protected get _windowSize(): IWindowSize | null
+	{
+		return this._options.windowSize ?? null;
 	}
 
 	/** 將輸入選項轉為 Playwright 的啟動選項，子類別可於此疊加引擎專屬設定 */

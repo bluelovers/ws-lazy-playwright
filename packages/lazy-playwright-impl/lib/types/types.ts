@@ -13,6 +13,13 @@ export type IPageListener = (page: Page) => unknown;
 /** 啟動選項：直接沿用 Playwright 的 `LaunchOptions`，不另行定義副本 */
 export type ILaunchOptions = LaunchOptions;
 
+/** 視窗尺寸 (Window Size)，單位為像素 */
+export interface IWindowSize
+{
+	width: number;
+	height: number;
+}
+
 /** 建立自動化實例的選項 */
 export interface ICreateBrowserAutomationOptions
 {
@@ -27,6 +34,14 @@ export interface ICreateBrowserAutomationOptions
 	browser?: EnumBrowserKind;
 	/** 啟動選項 */
 	launch?: ILaunchOptions;
+	/**
+	 * 預設視窗尺寸 (Window Size)
+	 *
+	 * `context.viewport` 預設為 `null`，頁面尺寸隨實際視窗，
+	 * 此處設定瀏覽器啟動時的視窗大小；未設定時由瀏覽器自行決定。
+	 * 呼叫端若已於 `launch` 指定對應參數，則以呼叫端為準。
+	 */
+	windowSize?: IWindowSize;
 	/** `BrowserContext` 建立選項 */
 	context?: BrowserContextOptions;
 	/** Cookie / Session 儲存設定 */

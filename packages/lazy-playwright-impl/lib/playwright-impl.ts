@@ -32,12 +32,21 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 	{
 		const { args, ...baseOptions } = options;
 
+		/** 呼叫端已指定時不覆蓋，維持呼叫端優先權 */
+		const windowSize = (args ?? []).some(arg => arg.startsWith('--window-size'))
+			? null
+			: this._windowSize;
+
 		return {
 			headless: false,
 			...baseOptions,
 			/** 以 Set 去除重複參數，保留呼叫端指定的 args 優先權 */
 			args: [...new Set([
 				...(args ?? []),
+				/** 視窗尺寸；搭配 `viewport: null`，頁面尺寸隨實際視窗 */
+				...(windowSize
+					? [`--window-size=${windowSize.width},${windowSize.height}`]
+					: []),
 				_playwrightArgsDisableFeatures(),
 
 				// '--remote-debugging-port=9222',

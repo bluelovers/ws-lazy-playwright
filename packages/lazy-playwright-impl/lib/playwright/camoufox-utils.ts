@@ -12,6 +12,8 @@ const _UNSUPPORTED_FIREFOX_CLI_PREFIXES = [
 	'--disable-features=',
 	'--incognito=',
 	'--lang=',
+	/** Firefox 無此參數，改以 `-width` / `-height` 設定 */
+	'--window-size=',
 ] as const;
 
 /** 過濾 Firefox 不支援的 CLI 參數 */

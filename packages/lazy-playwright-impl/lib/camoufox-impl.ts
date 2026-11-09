@@ -51,6 +51,11 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 				: { os: this._os as NonNullable<ICamoufoxLaunchOptions['os']> }),
 		});
 
+		/** Firefox 以 `-width` / `-height` 設定視窗；呼叫端已指定時不覆蓋 */
+		const windowSize = this._windowSize;
+		const hasWidthArg = [...(camoufoxOpts.args ?? []), ...(args ?? [])]
+			.some(arg => arg === '-width' || arg.startsWith('-width='));
+
 		return {
 			...baseOptions,
 			...camoufoxOpts,
@@ -59,6 +64,9 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 			args: _filterUnsupportedFirefoxCliArgs([
 				...(camoufoxOpts.args ?? []),
 				...(args ?? []),
+				...(windowSize && !hasWidthArg
+					? ['-width', String(windowSize.width), '-height', String(windowSize.height)]
+					: []),
 			]),
 		};
 	}
