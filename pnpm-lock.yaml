@@ -52,6 +52,9 @@ importers:
       camoufox-js:
         specifier: ^0.13.0
         version: 0.13.0(playwright-core@1.62.1)
+      playwright:
+        specifier: ^1.65.0
+        version: 1.65.0
 
   packages/@lazy-playwright/logger:
     dependencies:
