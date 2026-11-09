@@ -21,11 +21,11 @@ export const filterUnsupportedCliArgs = _filterUnsupportedCliArgsCore;
 
 	/* === Firefox 不支援的參數 === */
 
-	_filterUnsupportedCliArgsCore(EnumAutomationEngine.Firefox, [
-	'--disable-features=',
-	'--incognito=',
-	'--lang=',
-] as const);
+	registerUnsupportedCliArgs(EnumAutomationEngine.Firefox, [
+		'--disable-features=',
+		'--incognito=',
+		'--lang=',
+	] as const);
 
 	/* === --mute-audio === */
 
