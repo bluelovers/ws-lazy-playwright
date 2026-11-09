@@ -1,4 +1,11 @@
 import { _handleBrowserKind, EnumAutomationEngine, type IBrowserKind } from '@lazy-playwright/shared-types';
+import {
+	EnumSettingPlacement,
+	IBrowserLaunchArgsWriteable,
+	type IBrowserLaunchArgs,
+	type IBrowserLaunchArgsSetting,
+	type IBrowserSettingResult,
+} from './types/browser-setting';
 
 /** 視窗尺寸 (Window Size)，單位為像素 */
 export interface IWindowSize
@@ -30,23 +37,29 @@ export interface IResolveWindowSizeOptions
 	/** 建立選項指定的預設視窗尺寸 */
 	windowSize?: IWindowSize;
 	/** 已存在的啟動參數 */
-	args?: readonly string[];
+	args?: IBrowserLaunchArgs;
 }
 
-/** 視窗尺寸的解析結果；無可用尺寸時 `size` 與 `source` 皆為 `undefined` */
-export interface IResolveWindowSizeResult
-{
-	baseKind: IBrowserKind;
+/**
+ * 視窗尺寸的解析結果
+ *
+ * `args` 為應附加的啟動參數，遵循 {@link IBrowserSettingResult} 約定：
+ * 已存在自身風格參數或無可用尺寸時為空陣列（無需置入）。
+ * `size` 與 `source` 補充解析出的尺寸與其來源，無可用尺寸時皆為 `undefined`。
+ */
+export type IResolveWindowSizeResult = IBrowserSettingResult<IBrowserLaunchArgsSetting> & {
+	/** 已解析出的視窗尺寸；無可用尺寸時為 `undefined` */
 	size?: IWindowSize;
+	/** 尺寸的解析來源；無可用尺寸時為 `undefined` */
 	source?: EnumWindowSizeSource;
-}
+};
 
 /**
  * 讀取旗標值，同時支援 `-flag value` 與 `-flag=value` 兩種寫法
  *
  * @returns 找不到旗標或缺少值時回傳 `undefined`
  */
-function _readFlagValue(args: readonly string[], flag: string): string | undefined
+function _readFlagValue(args: IBrowserLaunchArgs, flag: string): string | undefined
 {
 	for (let i = 0; i < args.length; i++)
 	{
@@ -82,7 +95,7 @@ function _toSize(width: string | undefined, height: string | undefined): IWindow
 }
 
 /** 依 baseKind 解析視窗尺寸；缺旗標、缺值或數值不合法時回傳 `undefined` */
-function _parse(baseKind: IBrowserKind, args: readonly string[]): IWindowSize | undefined
+function _parse(baseKind: IBrowserKind, args: IBrowserLaunchArgs): IWindowSize | undefined
 {
 	if (baseKind === EnumAutomationEngine.Firefox)
 	{
@@ -99,7 +112,7 @@ function _parse(baseKind: IBrowserKind, args: readonly string[]): IWindowSize | 
 }
 
 /** 依 baseKind 輸出對應的視窗尺寸命令參數 */
-export function _windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): string[]
+export function _windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): IBrowserLaunchArgsWriteable
 {
 	if (baseKind === EnumAutomationEngine.Firefox)
 	{
@@ -110,10 +123,13 @@ export function _windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): stri
 }
 
 /**
- * 決定最終使用的視窗尺寸與其來源
+ * 決定最終使用的視窗尺寸與其投放內容
  *
  * 優先序：`args` 內的自身風格參數 > 建立選項 `windowSize` > 另一風格的參數。
  * 交叉解析讓傳入任一種寫法都能生效。
+ *
+ * 回傳符合 {@link IBrowserSettingResult} 的投放結果：
+ * 已含自身風格參數或無可用尺寸時 `args` 為空陣列，消費端可統一以附加處理。
  */
 export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveWindowSizeResult
 {
@@ -124,12 +140,25 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 
 	if (own)
 	{
-		return { baseKind, size: own, source: EnumWindowSizeSource.Args };
+		/** 自身風格參數已存在 → 空 payload，不重複輸出 */
+		return {
+			baseKind,
+			placement: EnumSettingPlacement.Args,
+			args: [],
+			size: own,
+			source: EnumWindowSizeSource.Args,
+		};
 	}
 
 	if (windowSize)
 	{
-		return { baseKind, size: windowSize, source: EnumWindowSizeSource.Option };
+		return {
+			baseKind,
+			placement: EnumSettingPlacement.Args,
+			args: _windowSizeArgs(baseKind, windowSize),
+			size: windowSize,
+			source: EnumWindowSizeSource.Option,
+		};
 	}
 
 	/**
@@ -143,25 +172,24 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 
 	if (cross)
 	{
-		return { baseKind, size: cross, source: EnumWindowSizeSource.CrossStyle };
+		return {
+			baseKind,
+			placement: EnumSettingPlacement.Args,
+			args: _windowSizeArgs(baseKind, cross),
+			size: cross,
+			source: EnumWindowSizeSource.CrossStyle,
+		};
 	}
 
-	return { baseKind };
+	return { baseKind, placement: EnumSettingPlacement.Args, args: [] };
 }
 
 /**
  * 產出應附加的視窗尺寸啟動參數
  *
- * `args` 已含自身風格參數時回傳空陣列，維持呼叫端優先權、不重複輸出。
+ * `args` 已含自身風格參數或無可用尺寸時回傳空陣列，維持呼叫端優先權、不重複輸出。
  */
-export function windowSizeLaunchArgs(options: IResolveWindowSizeOptions): string[]
+export function windowSizeLaunchArgs(options: IResolveWindowSizeOptions): IBrowserLaunchArgsWriteable
 {
-	const { baseKind, size, source } = resolveWindowSize(options);
-
-	if (!size || source === EnumWindowSizeSource.Args)
-	{
-		return [];
-	}
-
-	return _windowSizeArgs(baseKind, size);
+	return resolveWindowSize(options).args as IBrowserLaunchArgsWriteable;
 }

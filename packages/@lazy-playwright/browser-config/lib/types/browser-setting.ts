@@ -22,6 +22,7 @@ export const enum EnumSettingPlacement
 }
 
 export type IBrowserLaunchArgs = readonly string[];
+export type IBrowserLaunchArgsWriteable = string[];
 
 /** 以 `LaunchOptions.args` 投放的設定 */
 export interface IBrowserLaunchArgsSetting
