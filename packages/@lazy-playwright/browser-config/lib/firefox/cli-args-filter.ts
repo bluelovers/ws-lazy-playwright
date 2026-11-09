@@ -1,6 +1,4 @@
-/**
- * Camoufox 工具函數（純邏輯，無 I/O）
- */
+import { filterCliArgsByPrefixes } from '../util/cli-args-filter';
 
 /**
  * Firefox 不支援的 Chromium CLI 參數前綴
@@ -19,15 +17,5 @@ const _UNSUPPORTED_FIREFOX_CLI_PREFIXES = [
 /** 過濾 Firefox 不支援的 CLI 參數 */
 export function _filterUnsupportedFirefoxCliArgs(args: readonly string[]): string[]
 {
-	return args.filter(arg =>
-	{
-		for (const prefix of _UNSUPPORTED_FIREFOX_CLI_PREFIXES)
-		{
-			if (arg.startsWith(prefix))
-			{
-				return false;
-			}
-		}
-		return true;
-	});
+	return filterCliArgsByPrefixes(args, _UNSUPPORTED_FIREFOX_CLI_PREFIXES);
 }
