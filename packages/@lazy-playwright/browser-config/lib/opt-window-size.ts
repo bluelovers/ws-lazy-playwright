@@ -32,13 +32,11 @@ export const enum EnumWindowSizeSource
 }
 
 /** 決定視窗尺寸參數的輸入 */
-export type IResolveWindowSizeOptions = ITSPartialPick<IHandleBrowserKindResult, 'browserEngine' | 'baseKind'> &
+export type IResolveWindowSizeOptions = Partial<Pick<IHandleBrowserKindResult, 'browserEngine' | 'baseKind'> &
 {
 	/** 建立選項指定的預設視窗尺寸 */
 	windowSize?: IWindowSize;
-	/** 已存在的啟動參數 */
-	args?: IBrowserLaunchArgs;
-}
+} & Omit<IBrowserLaunchArgsSetting, 'placement'>>;
 
 /**
  * 視窗尺寸的解析結果
