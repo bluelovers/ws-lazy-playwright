@@ -174,6 +174,8 @@ export async function autoUploadDemo(
 		/** 任務範圍：未指定時取 CLI 解析結果 `range` */
 		range: range ?? cli.range,
 		source,
+		/** 執行設定：解除發布停用與 dry run 等開關（CLI 解析結果） */
+		switches: cli.switches,
 		taskBases,
 		/** 注入參數與模組層預設合併：僅未指定的欄位回落預設 */
 		storageId: params.storageId ?? STORAGE_ID,
@@ -204,7 +206,7 @@ export async function autoUploadDemo(
 		for (const taskBase of ctx.taskBases)
 		{
 			/** 多路徑執行時回報目前進行到哪一條路徑 */
-			_logPhase(EnumPostPhase.AutoPost, ctx.options, `current task base: ${taskBase}`, ['yellow', 'info']);
+			_logPhase(EnumPostPhase.AutoPost, ctx.options, `current task base: ${taskBase}`, ['yellow', 'bgGreenBright', 'info']);
 
 			/** 該路徑的任務進度：載入完成任務與中斷檢查點，供中斷後接續 */
 			const progress = await loadTaskProgress(ctx.progressFile, taskBase, ctx.options);
@@ -230,7 +232,7 @@ export async function autoUploadDemo(
 				continue;
 			}
 
-			const page = await createPostPage(context, runCtx.cli.switches.createUrl);
+			const page = await createPostPage(context, runCtx.switches?.createUrl);
 
 			await autoPost(page, stream, runCtx);
 		}
