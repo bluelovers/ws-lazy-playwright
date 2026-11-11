@@ -8,7 +8,7 @@ import {
 	type IMessageOptions,
 	type ITaskFolder,
 	type I_FolderInput,
-} from './types';
+} from './types/types';
 
 function _isThenable(value: unknown): value is PromiseLike<unknown>
 {

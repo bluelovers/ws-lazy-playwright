@@ -9,7 +9,7 @@ import { iterateFolderInput } from '#/lib/source';
 // @ts-ignore
 import { expandFolder } from '#/lib/folder';
 // @ts-ignore
-import type { IFolderInput } from '#/lib/types';
+import type { IFolderInput } from '#/lib/types/types';
 import { globStream, async as globAsync } from 'fast-glob';
 
 /** agent-scheduler 單日目錄（示範用） */

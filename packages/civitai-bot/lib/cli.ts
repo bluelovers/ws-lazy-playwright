@@ -2,7 +2,7 @@ import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 import { parseCliFlags } from './cli-flags';
 import type { IParsedFlags } from './cli-flags';
 import { EnumLogLabel } from './logger';
-import type { IRunSwitches, ITaskRangeOptions } from './types';
+import type { IRunSwitches, ITaskRangeOptions } from './types/types';
 
 /** auto-post CLI 解析結果 */
 export interface IAutoPostCli

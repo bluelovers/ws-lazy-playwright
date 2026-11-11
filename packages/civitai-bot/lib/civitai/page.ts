@@ -1,35 +1,20 @@
-import { createInterface } from 'node:readline/promises';
 import type { BrowserContext, Page } from 'playwright';
 import {
-	CREATE_URL,
-	DROPZONE_SELECTOR,
 	DROPZONE_WAIT_TIMEOUT,
 	ENABLE_PUBLISH,
-	LIMIT_RE,
-	NOTIFICATION_LOG_RULES,
-	NOTIFICATION_SELECTOR,
-	PUBLISHED_URL_PATTERNS,
-	PUBLISH_SELECTOR,
 	PUBLISH_URL_TIMEOUT,
-} from './const';
+} from '../types/const';
+import { PUBLISHED_URL_PATTERNS } from '../types/civitai';
+import { NOTIFICATION_LOG_RULES } from '../types/civitai';
+import {
+	CREATE_URL,
+	DROPZONE_SELECTOR, NOTIFICATION_SELECTOR, PUBLISH_SELECTOR
+} from '../types/civitai';
+import { LIMIT_RE } from '../util/re';
 import type { ILogMethod } from '@lazy-playwright/logger';
-import { _logPhase } from './logger';
-import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from './types';
-
-/** 以標準輸入讀取一行（去空白、小寫）；用於 y/n 確認 */
-async function _ask(question: string): Promise<string>
-{
-	const rl = createInterface({ input: process.stdin, output: process.stdout });
-
-	try
-	{
-		return (await rl.question(question)).trim().toLowerCase();
-	}
-	finally
-	{
-		rl.close();
-	}
-}
+import { _logPhase } from '../logger';
+import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from '../types/types';
+import { _ask } from '../util/cli-interface';
 
 /**
  * 完整階段：開啟建立貼文頁（`newPage` + `goto`）

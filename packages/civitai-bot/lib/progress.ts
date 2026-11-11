@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname } from 'upath2';
 import { _logPhase } from './logger';
-import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types';
+import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types/types';
 
 /** 進度檔格式版本；格式變更時遞增，舊版檔案一律重新開始 */
 const PROGRESS_VERSION = 2;

@@ -3,7 +3,8 @@ import { dirname, join } from 'upath2';
 import { expandFolder, toTaskFolder } from './folder';
 import { _logPhase } from './logger';
 import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';
-import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types';
+import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types/types';
+import { DAY_FILE_RE } from './util/re';
 
 /**
  * 完成任務條目：紀錄檔的單筆內容
@@ -55,9 +56,6 @@ export interface ICompletionRecord
 	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0）；供發布次數上限的累計判定 */
 	publishedCount(path: string): Promise<number>;
 }
-
-/** 日期檔案名特徵（`YYYY-MM-DD.json`） */
-const DAY_FILE_RE = /^\d{4}-\d{2}-\d{2}\.json$/;
 
 /** 以本地時區取得發布日期（`YYYY-MM-DD`） */
 function _dateOf(now: Date): string

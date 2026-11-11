@@ -1,5 +1,5 @@
 import { consoleLoggerTimeAndLabel, logConsole, type IConsoleMethodInput, type ILogMethod } from '@lazy-playwright/logger';
-import { EnumPostPhase, type IMessageOptions } from './types';
+import { EnumPostPhase, type IMessageOptions } from './types/types';
 
 /**
  * 模組日誌標籤 (Log Label)

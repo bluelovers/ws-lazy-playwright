@@ -1,5 +1,5 @@
 import { iterateFolderInput } from '#/lib/source';
-import { ITaskFolder } from '#/lib/types';
+import { ITaskFolder } from '#/lib/types/types';
 import { test, TestContext } from 'node:test';
 
 

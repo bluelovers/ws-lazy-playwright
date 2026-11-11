@@ -1,6 +1,6 @@
 import { basename } from 'upath2';
 import { _logPhase, _logPhaseData } from './logger';
-import { EnumPostPhase, EnumUploadKind, type IMessageOptions } from './types';
+import { EnumPostPhase, EnumUploadKind, type IMessageOptions } from './types/types';
 import { classify } from './upload-order';
 
 /** 依總大小貪心切包：單次上傳總和不超過 `maxBytes`
