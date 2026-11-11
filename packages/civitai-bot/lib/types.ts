@@ -111,7 +111,7 @@ type I_FolderInput =
 	| AsyncIterable<IFolderInputEntry>
 	/** globStream */
 	| NodeJS.ReadableStream
-	| Promise<IFolderInput>
+	| Promise<I_FolderInput>
 	;
 
 /**

@@ -24,9 +24,10 @@ function _isIterable(value: unknown): value is Iterable<unknown>
 	return typeof value === 'object' && value !== null && Symbol.iterator in value;
 }
 
-function _isFolderInputObject(value: unknown): value is IFolderInputObject
+function _isFolderInputObjectLike(value: unknown): value is IFolderInputObject
 {
-	return typeof value === 'object' && value !== null && typeof (value as IFolderInputObject).path === 'string';
+	// return typeof value === 'object' && value !== null && typeof (value as IFolderInputObject).path === 'string';
+	return typeof (value as IFolderInputObject)?.path === 'string';
 }
 
 export interface IIterateFolderInputOptions
@@ -48,7 +49,7 @@ export interface IIterateFolderInputOptions
 export async function* iterateFolderInput(input: IFolderInput, options?: IIterateFolderInputOptions): AsyncGenerator<ITaskFolder>
 {
 	/** 構建函式可逐層展開 */
-	let value: unknown = input;
+	let value: IFolderInput = input;
 
 	if (typeof value === 'function')
 	{
@@ -58,6 +59,7 @@ export async function* iterateFolderInput(input: IFolderInput, options?: IIterat
 	/** Promise（globAsync）：等待後重新判斷型態 */
 	while (_isThenable(value))
 	{
+		// @ts-ignore
 		value = await value;
 	}
 
@@ -80,16 +82,17 @@ export async function* iterateFolderInput(input: IFolderInput, options?: IIterat
 			yield toTaskFolder(entry);
 		}
 	}
-	else if (_isFolderInputObject(value))
+	else if (_isFolderInputObjectLike(value))
 	{
 		yield toTaskFolder(value);
 	}
 	else
 	{
-		_logPhase(EnumPostPhase.AutoPost, options?.messageOptions, `unsupported source input: ${String(value)}`);
+		const message = `unsupported source input: ${value}`;
+		_logPhase(EnumPostPhase.AutoPost, options?.messageOptions, message, 'error');
 		if (!options?.noThrowOnError)
 		{
-			throw new TypeError(`unsupported source input: ${value}`);
+			throw new TypeError(message);
 		}
 	}
 }
