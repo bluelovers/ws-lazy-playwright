@@ -1,3 +1,5 @@
+import { ITSPickExtra } from "ts-type";
+
 /** 單一待上傳檔案：路徑、大小（供 5MB 總和切包）與時間戳（供新增檔案比對） */
 export interface IUploadItem
 {
@@ -50,19 +52,8 @@ export enum EnumFolderKind
 
 /**
  * 輸入物件：至少要有 `path`
- *
- * 可選欄位：
- *
- * - `kind`：明確表明自身是哪一種資料夾模式（省略則由路徑推斷）
- * - `day` / `task`：幫助構建任務或減少二次查詢（省略則由路徑推斷）
  */
-export interface IFolderInputObject
-{
-	path: string;
-	kind?: EnumFolderKind;
-	day?: string;
-	task?: string;
-}
+export type IFolderInputObject = ITSPickExtra<ITaskFolder, 'path'>;
 
 /** 執行端的標準資料夾物件：由 `toTaskFolder` 統一轉換產生 */
 export interface ITaskFolder
