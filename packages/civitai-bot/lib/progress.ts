@@ -110,6 +110,8 @@ export function findAddedFiles(order: readonly IUploadItem[], entry: IDoneEntry)
  * @param file 進度檔路徑（含檔名）
  * @param basePath 任務基準路徑：作為進度檔所屬執行的識別
  * @param options 訊息控制（獨立物件，不併入其他參數）
+ * @throws {TypeError} 未輸入 `basePath`（undefined / 空字串 / 僅空白）時拋出：
+ *   缺少識別基準將無法判定進度所屬執行，不得載入或寫入進度檔
  */
 export async function loadTaskProgress(
 	file: string,
@@ -117,6 +119,12 @@ export async function loadTaskProgress(
 	options?: IMessageOptions,
 ): Promise<ITaskProgress>
 {
+	/** 任務基準路徑為進度歸屬識別：未輸入即拒絕，避免寫入無法比對的進度檔 */
+	if (!basePath?.trim())
+	{
+		throw new TypeError(`loadTaskProgress: basePath is required, got ${JSON.stringify(basePath)} (${file})`);
+	}
+
 	let saved: IProgressFile | undefined;
 
 	try
