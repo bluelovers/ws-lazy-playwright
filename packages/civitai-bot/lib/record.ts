@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join } from 'upath2';
 import { DAY_DIR_RE, TASK_DIR_RE } from './const';
 import { _logPhase } from './logger';
 import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';

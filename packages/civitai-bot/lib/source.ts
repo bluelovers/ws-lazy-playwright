@@ -29,6 +29,12 @@ function _isFolderInputObject(value: unknown): value is IFolderInputObject
 	return typeof value === 'object' && value !== null && typeof (value as IFolderInputObject).path === 'string';
 }
 
+export interface IIterateFolderInputOptions
+{
+	messageOptions?: IMessageOptions;
+	noThrowOnError?: boolean;
+}
+
 /**
  * 完整階段：以生成器 (Generator) 逐項解析來源輸入為標準資料夾物件
  *
@@ -39,12 +45,12 @@ function _isFolderInputObject(value: unknown): value is IFolderInputObject
  * 單次遍歷 (Single Pass)：解析一項即產出一項，不建立中間陣列 (Intermediate Array)，
  * 由呼叫端以 `for await` 逐項消費；非同步來源在迭代當下才被取用。
  */
-export async function* iterateFolderInput(input: IFolderInput, options?: IMessageOptions): AsyncGenerator<ITaskFolder>
+export async function* iterateFolderInput(input: IFolderInput, options?: IIterateFolderInputOptions): AsyncGenerator<ITaskFolder>
 {
 	/** 構建函式可逐層展開 */
 	let value: unknown = input;
 
-	while (typeof value === 'function')
+	if (typeof value === 'function')
 	{
 		value = (value as () => IFolderInput)();
 	}
@@ -80,7 +86,11 @@ export async function* iterateFolderInput(input: IFolderInput, options?: IMessag
 	}
 	else
 	{
-		_logPhase(EnumPostPhase.AutoPost, options, `unsupported source input: ${String(value)}`);
+		_logPhase(EnumPostPhase.AutoPost, options?.messageOptions, `unsupported source input: ${String(value)}`);
+		if (!options?.noThrowOnError)
+		{
+			throw new TypeError(`unsupported source input: ${value}`);
+		}
 	}
 }
 
@@ -89,16 +99,18 @@ export async function* iterateFolderInput(input: IFolderInput, options?: IMessag
  *
  * 以單次遍歷 (Single Pass) 消費來源串流後回傳。
  */
-export async function resolveFolderInput(input: IFolderInput, options?: IMessageOptions): Promise<ITaskFolder[]>
+export async function resolveFolderInput(input: IFolderInput, messageOptions?: IMessageOptions): Promise<ITaskFolder[]>
 {
 	const folders: ITaskFolder[] = [];
 
-	for await (const folder of iterateFolderInput(input, options))
+	for await (const folder of iterateFolderInput(input, {
+		messageOptions: messageOptions,
+	}))
 	{
 		folders.push(folder);
 	}
 
-	_logPhase(EnumPostPhase.AutoPost, options, `source resolved: ${folders.length} folders`);
+	_logPhase(EnumPostPhase.AutoPost, messageOptions, `source resolved: ${folders.length} folders`);
 
 	return folders;
 }

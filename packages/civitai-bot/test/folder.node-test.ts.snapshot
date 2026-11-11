@@ -1,0 +1,38 @@
+exports[`iterateFolderInput 1`] = `
+[
+  {
+    "path": "D:/sd-forge/output/agent-scheduler",
+    "kind": "agent-scheduler"
+  },
+  {
+    "path": "D:/sd-forge/output/agent-scheduler/2026-11-09",
+    "kind": "agent-scheduler-day",
+    "day": "2026-11-09"
+  },
+  {
+    "path": "D:/sd-forge/output/agent-scheduler/2026-11-09/14-07-58_task(0kfgui0dg5kmrpx)",
+    "kind": "agent-scheduler-day-task",
+    "day": "2026-11-09",
+    "task": "14-07-58_task(0kfgui0dg5kmrpx)"
+  },
+  {
+    "path": "D:/unknown/14-07-58_task(0kfgui0dg5kmrpx)",
+    "kind": "agent-scheduler-task",
+    "task": "14-07-58_task(0kfgui0dg5kmrpx)"
+  },
+  {
+    "path": "D:/sd-forge/output/txt2img-images/2026-11-09",
+    "kind": "day",
+    "day": "2026-11-09"
+  },
+  {
+    "path": "D:/sd-forge/output/txt2img-images",
+    "kind": "folder"
+  },
+  {
+    "path": "D:/unknown/2026-11-09",
+    "kind": "day",
+    "day": "2026-11-09"
+  }
+]
+`;

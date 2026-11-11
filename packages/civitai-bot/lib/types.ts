@@ -31,11 +31,18 @@ export interface ITaskRangeOptions
 /** 資料夾模式：來源清單可辨識的四種形態 */
 export enum EnumFolderKind
 {
+	/** agent-scheduler 根目錄 */
+	AgentScheduler = 'agent-scheduler',
+	/** agent-scheduler 天目錄（`.../2026-09-13`） */
+	AgentSchedulerDay = 'agent-scheduler-day',
 	/** 天 + agent-scheduler 任務（`.../2026-09-13/HH-MM-SS_task(...)`） */
-	DayTask = 'day-task',
-	/** agent-scheduler 任務（父層非天目錄） */
-	Task = 'task',
-	/** 天目錄（`.../2026-09-13` 或 `.../txt2img-images/2026-11-03`） */
+	AgentSchedulerDayTask = 'agent-scheduler-day-task',
+	/** 孤立的 agent-scheduler 任務（父層非天目錄） */
+	AgentSchedulerTask = 'agent-scheduler-task',
+	/**
+	 * 天目錄（`.../2026-09-13` 或 `.../txt2img-images/2026-11-03`）
+	 * 也可能是孤立的 agent-scheduler 的天目錄（父層非 agent-scheduler 根目錄）
+	 */
 	Day = 'day',
 	/** 其他有圖檔的路徑；無法判斷者一律為此 */
 	Folder = 'folder',
@@ -96,14 +103,16 @@ export type IFolderInputEntry = string | IFolderInputObject;
  * }));
  * ```
  */
-export type IFolderInput =
+export type IFolderInput = I_FolderInput | (() => I_FolderInput);
+
+type I_FolderInput =
 	| IFolderInputEntry
 	| Iterable<IFolderInputEntry>
 	| AsyncIterable<IFolderInputEntry>
 	/** globStream */
 	| NodeJS.ReadableStream
 	| Promise<IFolderInput>
-	| (() => IFolderInput);
+	;
 
 /**
  * 資料夾串流 (Folder Stream)：來源解析後的標準資料夾輸出形態

@@ -109,3 +109,7 @@ export const DAY_DIR_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** agent-scheduler 任務目錄特徵（`HH-MM-SS_task(...)`），用以辨識任務資料夾 */
 export const TASK_DIR_RE = /_task\(/;
+
+/** agent-scheduler 任務目錄特徵（`agent-scheduler`），用以辨識任務資料夾 */
+export const AGENT_SCHEDULER_DIR_RE = /\/agent-scheduler\/?$/;
+

@@ -1,5 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname } from 'upath2';
 import { _logPhase } from './logger';
 import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types';
 

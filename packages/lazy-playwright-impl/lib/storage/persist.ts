@@ -1,5 +1,5 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'upath2';
 import {
 	EnumStorageKind,
 	type IFileStorageOptions,

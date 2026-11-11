@@ -44,7 +44,7 @@ async function resolveDemo()
 	const fromGenerator: IFolderInput = taskPaths();
 
 	/** 構建函式 `() => 以上任一模式`（可逐層展開） */
-	const fromBuilder: IFolderInput = () => () => [DAY_BASE];
+	const fromBuilder: IFolderInput = () => [DAY_BASE];
 
 	for (const [name, source] of [
 		['string', fromString],

@@ -1,6 +1,6 @@
 import { readdir } from 'node:fs/promises';
-import { basename, dirname, join } from 'node:path';
-import { DAY_DIR_RE, TASK_DIR_RE } from './const';
+import { basename, dirname, join, normalize } from 'upath2';
+import { AGENT_SCHEDULER_DIR_RE, DAY_DIR_RE, TASK_DIR_RE } from './const';
 import { _logPhase } from './logger';
 import {
 	EnumFolderKind,
@@ -12,7 +12,7 @@ import {
 } from './types';
 
 /** 由路徑推導所屬天：自身為天目錄，或為天目錄下的任務 */
-function _deriveDay(name: string, parent: string): string | undefined
+export function _deriveDay(name: string, parent: string): string | undefined
 {
 	if (DAY_DIR_RE.test(name)) return name;
 	if (TASK_DIR_RE.test(name) && DAY_DIR_RE.test(parent)) return parent;
@@ -23,19 +23,35 @@ function _deriveDay(name: string, parent: string): string | undefined
 /**
  * 完整階段：由路徑推斷資料夾模式
  *
- * 任務特徵優先（`_task(`），其父層為天目錄則為 {@link EnumFolderKind.DayTask}；
+ * 任務特徵優先（`_task(`），其父層為天目錄則為 {@link EnumFolderKind.AgentSchedulerDayTask}；
  * 無法判斷者一律為 {@link EnumFolderKind.Folder}。
  */
-function _detectFolderKind(path: string): EnumFolderKind
+export function _detectFolderKind(path: string): EnumFolderKind
 {
 	const name = basename(path);
 
-	if (TASK_DIR_RE.test(name))
+	if (AGENT_SCHEDULER_DIR_RE.test(path))
 	{
-		return DAY_DIR_RE.test(basename(dirname(path))) ? EnumFolderKind.DayTask : EnumFolderKind.Task;
+		return EnumFolderKind.AgentScheduler;
 	}
 
-	if (DAY_DIR_RE.test(name)) return EnumFolderKind.Day;
+	if (TASK_DIR_RE.test(name))
+	{
+		if (DAY_DIR_RE.test(basename(dirname(path))))
+		{
+			return EnumFolderKind.AgentSchedulerDayTask;
+		}
+		return EnumFolderKind.AgentSchedulerTask;
+	}
+
+	if (DAY_DIR_RE.test(name))
+	{
+		if (AGENT_SCHEDULER_DIR_RE.test(dirname(path)))
+		{
+			return EnumFolderKind.AgentSchedulerDay;
+		}
+		return EnumFolderKind.Day;
+	}
 
 	return EnumFolderKind.Folder;
 }
@@ -50,7 +66,7 @@ function _detectFolderKind(path: string): EnumFolderKind
 export function toTaskFolder(entry: IFolderInputEntry): ITaskFolder
 {
 	const source: IFolderInputObject = typeof entry === 'string' ? { path: entry } : entry;
-	const path = source.path.replace(/[/\\]+$/, '');
+	const path = normalize(source.path).replace(/[/\\]+$/, '');
 	const name = basename(path);
 	const parent = basename(dirname(path));
 
@@ -61,10 +77,24 @@ export function toTaskFolder(entry: IFolderInputEntry): ITaskFolder
 	return { path, kind, day, task };
 }
 
+export function _folderKindIsNotDayLike(folder: ITaskFolder): folder is Omit<typeof folder, 'kind'> & {
+	kind: Exclude<typeof folder['kind'], EnumFolderKind.Day | EnumFolderKind.AgentSchedulerDay>
+}
+{
+	return !_folderKindIsDayLike(folder);
+}
+
+export function _folderKindIsDayLike(folder: ITaskFolder): folder is Omit<typeof folder, 'kind'> & {
+	kind: EnumFolderKind.Day | EnumFolderKind.AgentSchedulerDay
+}
+{
+	return folder.kind === EnumFolderKind.Day || folder.kind === EnumFolderKind.AgentSchedulerDay;
+}
+
 /**
  * 完整階段：以生成器 (Generator) 逐項展開資料夾為實際執行單位
  *
- * - {@link EnumFolderKind.Day}：含任務子目錄（`_task(`）時逐項產出各任務（{@link EnumFolderKind.DayTask}），
+ * - {@link EnumFolderKind.Day}：含任務子目錄（`_task(`）時逐項產出各任務（{@link EnumFolderKind.AgentSchedulerDayTask}），
  *   否則產出自身（如 `txt2img-images\2026-11-03` 直接含圖檔）
  * - 其餘模式：產出自身
  *
@@ -72,7 +102,7 @@ export function toTaskFolder(entry: IFolderInputEntry): ITaskFolder
  */
 export async function* expandFolder(folder: ITaskFolder, options?: IMessageOptions): AsyncGenerator<ITaskFolder>
 {
-	if (folder.kind !== EnumFolderKind.Day)
+	if (_folderKindIsNotDayLike(folder))
 	{
 		yield folder;
 		return;
@@ -95,7 +125,7 @@ export async function* expandFolder(folder: ITaskFolder, options?: IMessageOptio
 	{
 		yield toTaskFolder({
 			path: join(folder.path, name),
-			kind: EnumFolderKind.DayTask,
+			kind: EnumFolderKind.AgentSchedulerDayTask,
 			day: folder.day,
 			task: name,
 		});

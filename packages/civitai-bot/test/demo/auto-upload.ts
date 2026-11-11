@@ -1,6 +1,6 @@
 /// <reference types="node" />
 
-import { join } from 'node:path';
+import { join } from 'upath2';
 import { console } from 'debug-color2';
 import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';

@@ -34,17 +34,19 @@ import type { ICompletionRecord } from './record';
 export async function* collectFolders(
 	basePath: string,
 	range: ITaskRangeOptions,
-	options?: IMessageOptions,
+	messageOptions?: IMessageOptions,
 	source?: IFolderInput,
 ): AsyncGenerator<ITaskFolder>
 {
 	if (source !== undefined)
 	{
-		yield* iterateFolderInput(source, options);
+		yield* iterateFolderInput(source, {
+			messageOptions,
+		});
 	}
 	else
 	{
-		for await (const path of iterateTaskDirs(basePath, range, options))
+		for await (const path of iterateTaskDirs(basePath, range, messageOptions))
 		{
 			yield toTaskFolder(path);
 		}
@@ -148,7 +150,7 @@ export async function autoPost(
 			taskNo++;
 
 			/** agent-scheduler 任務的發布次數上限（僅任務模式生效，其他模式不限制） */
-			const agsPublishLimit = (unit.kind === EnumFolderKind.DayTask || unit.kind === EnumFolderKind.Task)
+			const agsPublishLimit = (unit.kind === EnumFolderKind.AgentSchedulerDayTask || unit.kind === EnumFolderKind.AgentSchedulerTask)
 				? switches?.agsMaxPublish
 				: undefined;
 

@@ -1,5 +1,5 @@
 import { readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join } from 'upath2';
 import { IMAGE_EXT_RE } from './const';
 import { _logPhase } from './logger';
 import {
@@ -58,7 +58,7 @@ async function _statItems(paths: readonly string[]): Promise<IUploadItem[]>
  *
  * 依資料夾模式分流：
  *
- * - 任務（{@link EnumFolderKind.DayTask} / {@link EnumFolderKind.Task}）：
+ * - 任務（{@link EnumFolderKind.AgentSchedulerDayTask} / {@link EnumFolderKind.AgentSchedulerTask}）：
  *   `txt2img-grids`（`xyz_grid-` → `grid-` → 其他）→ `txt2img-images`
  * - 圖檔資料夾（{@link EnumFolderKind.Day} / {@link EnumFolderKind.Folder}）：
  *   資料夾內直接的圖檔，同以 `xyz_grid-` → `grid-` → 其他` 排序

@@ -1,4 +1,4 @@
-import { basename } from 'node:path';
+import { basename } from 'upath2';
 import { _logPhase, _logPhaseData } from './logger';
 import { EnumPostPhase, EnumUploadKind, type IMessageOptions } from './types';
 import { classify } from './upload-order';
