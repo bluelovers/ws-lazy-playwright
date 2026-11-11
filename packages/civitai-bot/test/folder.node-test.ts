@@ -18,6 +18,15 @@ test('iterateFolderInput', async (t: TestContext) => {
 		'D:\\sd-forge\\output\\txt2img-images',
 
 		'D:\\unknown\\2026-11-09',
+
+		'./fixtures/agent-scheduler/2026-11-09/14-07-58_task(0kfgui0dg5kmrpx)',
+		'./fixtures/agent-scheduler/2026-11-09',
+		'./fixtures/agent-scheduler',
+
+		'./fixtures/txt2img-images/2026-11-09',
+		'./fixtures/txt2img-images',
+
+		'./fixtures/somewhere/14-07-58_task(0kfgui0dg5kmrpx)',
 	])) {
 		result.push(folder);
 	}
