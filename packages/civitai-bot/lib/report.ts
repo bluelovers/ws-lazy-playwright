@@ -1,6 +1,6 @@
-import { basename } from 'upath2';
+import { basename, relative } from 'upath2';
 import { _logPhase, _logPhaseData } from './logger';
-import { EnumPostPhase, EnumUploadKind, type IMessageOptions } from './types/types';
+import { EnumPostPhase, EnumUploadKind, type IRunContext } from './types/types';
 import { classify } from './scan-collect/upload-order';
 
 /** 依總大小貪心切包：單次上傳總和不超過 `maxBytes`
@@ -34,10 +34,17 @@ export function packBySize<T extends { size: number }>(items: readonly T[], maxB
 /**
  * 以上傳階段名義以終端輸出報告單一批次
  *
- * 輸出批次序號、各類型數量與批次的起始 / 結束檔案（批次邊界，空批次略過邊界）。
+ * 輸出批次序號、各類型數量與批次的起始 / 結束檔案（批次邊界，空批次略過邊界）；
+ * 起始 / 結束檔案取自執行期 context 的任務基準路徑（`ctx.taskBase`），
+ * 有基準路徑時以 {@link relative} 簡化為相對路徑。
+ *
+ * @param ctx 執行期 context（{@link IRunContext}）：提供訊息控制 `options` 與任務基準路徑 `taskBase`
  */
-export function reportBatch(batchNo: number, files: readonly string[], note: string, options?: IMessageOptions): void
+export function reportBatch(batchNo: number, files: readonly string[], note: string, ctx?: IRunContext): void
 {
+	const options = ctx?.options;
+	const { taskBase } = ctx ?? {};
+
 	const counts = new Map<EnumUploadKind, number>([
 		[EnumUploadKind.XyzGrid, 0],
 		[EnumUploadKind.Grid, 0],
@@ -50,10 +57,8 @@ export function reportBatch(batchNo: number, files: readonly string[], note: str
 		counts.set(kind, (counts.get(kind) ?? 0) + 1);
 	}
 
-	/** 批次邊界：起始與結束檔案（單檔批次兩者相同） */
-	const boundary = files.length
-		? `起始: ${files[0]}, 結束: ${files[files.length - 1]}`
-		: '';
+	/** 批次邊界路徑：有任務基準路徑時以 {@link relative} 簡化，否則維持原路徑 */
+	const boundaryPath = (file: string) => taskBase ? relative(taskBase, file) : file;
 
 	_logPhase(
 		EnumPostPhase.Upload,
@@ -68,8 +73,8 @@ export function reportBatch(batchNo: number, files: readonly string[], note: str
 		EnumPostPhase.Upload,
 		{ ...options, batchNo },
 		{
-			start: files[0],
-			end: files.length > 1 ? files[files.length - 1] : undefined,
+			start: boundaryPath(files[0]),
+			end: files.length > 1 ? boundaryPath(files[files.length - 1]) : undefined,
 		},
 		'dir'
 	);

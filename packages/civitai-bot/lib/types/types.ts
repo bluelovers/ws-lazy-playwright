@@ -1,4 +1,6 @@
 import { ITSPickExtra } from "ts-type";
+import type { ICompletionRecord } from '../record';
+import type { ITaskProgress } from '../progress';
 
 /** 單一待上傳檔案：路徑、大小（供 5MB 總和切包）與時間戳（供新增檔案比對） */
 export interface IUploadItem
@@ -191,4 +193,31 @@ export interface IRunSwitches
 	 * 未啟用時僅計算本次執行的發布次數（預設）
 	 */
 	agsMaxPublishTotal?: boolean;
+}
+
+/**
+ * 執行期 context：由呼叫端建立，由上而下傳遞本次執行的所有相關參數
+ *
+ * 底層流程（`collectFolders` / `startFolderStream` / `autoPost` → `reconcileUpload` → `reportBatch`）
+ * 一律自本物件取用參數，不再逐層增列個別引數。
+ */
+export interface IRunContext
+{
+	/** 訊息控制（獨立物件，不併入其他參數） */
+	options?: IMessageOptions;
+	/** 任務範圍：僅於未指定 {@link source} 的掃描模式生效 */
+	range: ITaskRangeOptions;
+	/** 來源輸入模式：指定時取代 `taskBase` + `range` 掃描 */
+	source?: IFolderInput;
+	/**
+	 * 目前任務基準路徑：多路徑執行時由逐路徑迴圈併入；
+	 * 掃描以其為根，批次報告的起始 / 結束檔案簡化為其相對路徑
+	 */
+	taskBase?: string;
+	/** 任務進度：記錄完成任務與中斷檢查點，供中斷後接續 */
+	progress?: ITaskProgress;
+	/** 執行設定：解除發布停用與 dry run、建立貼文頁網址、任務發布次數上限 */
+	switches?: IRunSwitches;
+	/** 完成紀錄：完成任務依發布日期分檔保存（含發布網址與完成邊界） */
+	record?: ICompletionRecord;
 }

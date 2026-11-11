@@ -12,7 +12,7 @@ import { autoPost, collectFolders, startFolderStream } from '#/lib/auto-post';
 import { loadTaskProgress } from '#/lib/progress';
 import { createCompletionRecord, resumeFromCompletion } from '#/lib/record';
 import { IAutoPostCli, parseAutoPostCli } from '#/lib/cli';
-import { EnumPostPhase, type IFolderInput, type IMessageOptions, type ITaskRangeOptions } from '#/lib/types/types';
+import { EnumPostPhase, type IFolderInput, type IMessageOptions, type IRunContext, type ITaskRangeOptions } from '#/lib/types/types';
 import { globStream, async as globAsync } from 'fast-glob';
 import { hideBin } from 'yargs/helpers';
 import type { ITSValueOrArrayMaybeReadonly } from 'ts-type';
@@ -85,6 +85,31 @@ export interface IAutoUploadDemoParams
 }
 
 /**
+ * 執行期 context：{@link autoUploadDemo} 建立，由上而下傳遞本次執行的所有相關參數
+ *
+ * 底層欄位繼承自 {@link IRunContext}（訊息控制、任務範圍、來源、目前任務基準路徑、
+ * 任務進度、執行設定與完成紀錄）——掃描、完整階段與批次報告一律自 context 取用；
+ * 其餘為本示範入口的執行期參數（CLI、多路徑清單、儲存與進度／紀錄路徑）。
+ *
+ * 逐路徑迴圈以展開運算逐路徑併入 `taskBase`、掃描範圍、`progress` 與共用 `record`。
+ */
+export interface IAutoUploadRunContext extends IRunContext
+{
+	/** CLI 參數（{@link parseAutoPostCli} 解析結果） */
+	cli: IAutoPostCli;
+	/** 任務基準路徑（正規化為陣列）：多路徑逐一執行並共用同一瀏覽器實例 */
+	taskBases: readonly string[];
+	/** 登入狀態的儲存 id */
+	storageId: string;
+	/** 儲存目錄（Cookie / Session） */
+	storageBaseDir: string;
+	/** 任務進度檔 */
+	progressFile: string;
+	/** 完成紀錄目錄 */
+	recordDir: string;
+}
+
+/**
  * 示範：自動上傳圖片到 civitai.red 建立貼文頁並分批發文
  *
  * 多路徑（`taskBaseInput`）時全程共用同一個 automation / context 實例，逐路徑載進度、掃描、開頁發文；
@@ -100,6 +125,9 @@ export interface IAutoUploadDemoParams
  * 4. 建立 context（`storage.restore` 內建還原登入狀態，不需自行組裝）、建立完成紀錄
  *    （{@link createCompletionRecord}）、逐路徑開啟建立貼文頁（{@link createPostPage}）
  * 5. 完整階段（{@link autoPost}：確認上傳區、逐任務逐批上傳、發布完成後重開頁面執行下一批次）
+ *
+ * 執行期參數由 {@link IAutoUploadRunContext} 彙整，逐路徑併入任務基準路徑、掃描範圍、
+ * 進度與完成紀錄後，由上而下傳遞至掃描、完整階段與批次報告（底層一律自 context 取用參數）。
  *
  * 系統提示顯示已達上限（{@link LimitReachedError}）時停止任務。
  *
@@ -135,22 +163,32 @@ export async function autoUploadDemo(
 		}
 	}
 
-	/** 注入參數與模組層預設合併：僅未指定的欄位回落預設 */
-	const storageId = params.storageId ?? STORAGE_ID;
-	const storageBaseDir = params.storageBaseDir ?? STORAGE_BASE_DIR;
-	const progressFile = params.progressFile ?? PROGRESS_FILE;
-	const recordDir = params.recordDir ?? RECORD_DIR;
-
-	/** 任務範圍：未指定時取 CLI 解析結果 `range` */
-	const taskRange = range ?? cli.range;
+	/**
+	 * 執行期 context：彙整本次執行的所有相關參數（CLI、範圍、來源、儲存與進度／紀錄路徑），
+	 * 由上而下傳遞至掃描、完整階段與批次報告；
+	 * 逐路徑迴圈再以展開運算併入目前任務基準路徑、掃描範圍、進度與完成紀錄
+	 */
+	const ctx: IAutoUploadRunContext = {
+		cli,
+		options,
+		/** 任務範圍：未指定時取 CLI 解析結果 `range` */
+		range: range ?? cli.range,
+		source,
+		taskBases,
+		/** 注入參數與模組層預設合併：僅未指定的欄位回落預設 */
+		storageId: params.storageId ?? STORAGE_ID,
+		storageBaseDir: params.storageBaseDir ?? STORAGE_BASE_DIR,
+		progressFile: params.progressFile ?? PROGRESS_FILE,
+		recordDir: params.recordDir ?? RECORD_DIR,
+	};
 
 	/** 多路徑共用：整個執行只建立一次瀏覽器實例 */
 	const automation = await createBrowserAutomation({
 		// engine: EnumAutomationEngine.Playwright,
 		storage: {
-			file: { baseDir: storageBaseDir },
+			file: { baseDir: ctx.storageBaseDir },
 			/** 建立 context 時自動還原登入狀態（Cookie / Session），不需自行組裝還原流程 */
-			restore: { id: storageId },
+			restore: { id: ctx.storageId },
 		},
 	});
 
@@ -160,35 +198,41 @@ export async function autoUploadDemo(
 		const context = await automation.newContext();
 
 		/** 完成紀錄：完成任務依發布日期分檔保存（多路徑共用同一實例） */
-		const record = createCompletionRecord(recordDir, options);
+		const record = createCompletionRecord(ctx.recordDir, ctx.options);
 
 		/** 逐路徑載進度、掃描並探測首項，於共用 context 開頁發文 */
-		for (const taskBase of taskBases)
+		for (const taskBase of ctx.taskBases)
 		{
 			/** 多路徑執行時回報目前進行到哪一條路徑 */
-			_logPhase(EnumPostPhase.AutoPost, options, `current task base: ${taskBase}`, ['yellow', 'info']);
+			_logPhase(EnumPostPhase.AutoPost, ctx.options, `current task base: ${taskBase}`, ['yellow', 'info']);
 
 			/** 該路徑的任務進度：載入完成任務與中斷檢查點，供中斷後接續 */
-			const progress = await loadTaskProgress(progressFile, taskBase, options);
+			const progress = await loadTaskProgress(ctx.progressFile, taskBase, ctx.options);
 
 			/** 掃描範圍：指定 `--from-last-publish` 時以完成紀錄重建續跑狀態，否則沿用任務範圍 */
-			const scanRange = cli.fromLastPublish
-				? await resumeFromCompletion(progress, taskRange, recordDir, options)
-				: taskRange;
+			const scanRange = ctx.cli.fromLastPublish
+				? await resumeFromCompletion(progress, ctx.range, ctx.recordDir, ctx.options)
+				: ctx.range;
+
+			/**
+			 * 逐路徑執行期 context：併入目前任務基準路徑、掃描範圍、進度與共用完成紀錄，
+			 * 由上而下傳遞給掃描（{@link collectFolders}）、完整階段（{@link autoPost}）與批次報告
+			 */
+			const runCtx: IAutoUploadRunContext & { taskBase: string } = { ...ctx, taskBase, range: scanRange, progress, record };
 
 			/** 來源串流：探測首項 */
-			const stream = await startFolderStream(collectFolders(taskBase, scanRange, options, source), options);
+			const stream = await startFolderStream(collectFolders(runCtx), runCtx);
 
 			/** 空清單：回報該路徑後跳過，不中斷後續路徑 */
 			if (!stream)
 			{
-				_logPhase(EnumPostPhase.AutoPost, options, `skip task base (no folders): ${taskBase}`);
+				_logPhase(EnumPostPhase.AutoPost, runCtx.options, `skip task base (no folders): ${taskBase}`);
 				continue;
 			}
 
-			const page = await createPostPage(context, cli.switches.createUrl);
+			const page = await createPostPage(context, runCtx.cli.switches.createUrl);
 
-			await autoPost(page, stream, options, progress, cli.switches, record);
+			await autoPost(page, stream, runCtx);
 		}
 	}
 	catch (error)

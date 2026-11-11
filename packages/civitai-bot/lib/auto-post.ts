@@ -13,6 +13,7 @@ import {
 	type IFolderInput,
 	type IFolderStream,
 	type IMessageOptions,
+	type IRunContext,
 	type IRunSwitches,
 	type ITaskFolder,
 	type ITaskRangeOptions,
@@ -26,27 +27,28 @@ import type { ICompletionRecord } from './record';
 /**
  * 完整階段：以生成器 (Generator) 逐項取得來源清單並轉為標準資料夾物件
  *
- * - 指定 `source`（globStream / globAsync / Iterable / Generator / 構建函式）：以其為準
- * - 未指定：以 `basePath` + `range` 掃描
+ * - 指定 `ctx.source`（globStream / globAsync / Iterable / Generator / 構建函式）：以其為準
+ * - 未指定：以 `ctx.taskBase` + `ctx.range` 掃描
  *
  * 兩分支皆延遲產出 (Lazy Yield)：呼叫端以 `for await` 逐項消費，不建立中間陣列 (Intermediate Array)。
+ *
+ * @param ctx 執行期 context（{@link IRunContext}）：需含任務基準路徑 `taskBase`，由呼叫端逐路徑併入
  */
 export async function* collectFolders(
-	basePath: string,
-	range: ITaskRangeOptions,
-	messageOptions?: IMessageOptions,
-	source?: IFolderInput,
+	ctx: IRunContext & { taskBase: string },
 ): AsyncGenerator<ITaskFolder>
 {
+	const { taskBase, range, options, source } = ctx;
+
 	if (source !== undefined)
 	{
 		yield* iterateFolderInput(source, {
-			messageOptions,
+			messageOptions: options,
 		});
 	}
 	else
 	{
-		for await (const path of iterateTaskDirs(basePath, range, messageOptions))
+		for await (const path of iterateTaskDirs(taskBase, range, options))
 		{
 			yield toTaskFolder(path);
 		}
@@ -61,18 +63,18 @@ export async function* collectFolders(
  * 維持單次 `for await` 延遲產出 (Lazy Yield)，不建立中間陣列。
  *
  * @param folders 來源串流（由 {@link collectFolders} 逐項產出）
- * @param options 訊息控制（獨立物件，不併入其他參數）
+ * @param ctx 執行期 context（{@link IRunContext}，僅取訊息控制 `options`）
  */
 export async function startFolderStream(
 	folders: AsyncGenerator<ITaskFolder>,
-	options?: IMessageOptions,
+	ctx?: IRunContext,
 ): Promise<AsyncGenerator<ITaskFolder> | undefined>
 {
 	const head = await folders.next();
 
 	if (head.done)
 	{
-		_logPhase(EnumPostPhase.AutoPost, options, 'no folders to run');
+		_logPhase(EnumPostPhase.AutoPost, ctx?.options, 'no folders to run');
 		return undefined;
 	}
 
@@ -109,20 +111,19 @@ export async function startFolderStream(
  *
  * @param page 已導航至建立貼文頁的頁面（後續重開頁面與其共用同一 context）
  * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
- * @param options 訊息控制（獨立物件，不併入其他參數）
- * @param progress 任務進度（可選，獨立物件）：記錄完成任務與中斷檢查點，供自實際進度續跑
- * @param switches 執行設定（可選，獨立物件）：解除發布停用與 dry run、指定建立貼文頁網址、任務發布次數上限
- * @param record 完成紀錄（可選，獨立物件）：完成任務依發布日期分檔保存
+ * @param ctx 執行期 context（{@link IRunContext}）：由上而下傳遞本次執行的所有參數——
+ *   訊息控制、任務範圍 / 來源 / 目前任務基準路徑、任務進度（{@link ITaskProgress}）、
+ *   執行設定（{@link IRunSwitches}）與完成紀錄（{@link ICompletionRecord}）
  */
 export async function autoPost(
 	page: Page,
 	folders: IFolderStream,
-	options?: IMessageOptions,
-	progress?: ITaskProgress,
-	switches?: IRunSwitches,
-	record?: ICompletionRecord,
+	ctx: IRunContext,
 ): Promise<void>
 {
+	/** 執行期參數一律取自 context：訊息控制、進度、執行開關與完成紀錄 */
+	const { options, progress, switches, record } = ctx;
+
 	/** 發布完成後以同一 context 重開建立貼文頁 */
 	const context = page.context();
 
@@ -246,7 +247,7 @@ export async function autoPost(
 				{
 					hasDryRun = true;
 					_logPhase(EnumPostPhase.Upload, message, `dry run from batch ${DRY_RUN_FROM_BATCH}: report only`);
-					reportBatch(batchNo, task.map(item => item.path), 'dry run', options);
+					reportBatch(batchNo, task.map(item => item.path), 'dry run', ctx);
 					continue;
 				}
 
@@ -268,7 +269,7 @@ export async function autoPost(
 				}
 
 				/** （上傳階段）比對數量：缺漏者排回佇列；結果與批次報告由該函式輸出 */
-				queue = [...reconcileUpload(batchNo, options, task, setPaths, actual), ...queue];
+				queue = [...reconcileUpload(batchNo, ctx, task, setPaths, actual), ...queue];
 
 				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後），絕不按 save */
 				const publishResult = await publishPost(currentPage, message, switches?.enablePublish);
