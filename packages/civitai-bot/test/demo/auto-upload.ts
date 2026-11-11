@@ -5,7 +5,7 @@ import { console } from 'debug-color2';
 import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { createBrowserAutomation } from 'lazy-playwright-impl/lib/index';
 import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__root';
-import { createPostPage, LimitReachedError } from '#/lib/civitai/page';
+import { createPostPage } from '#/lib/civitai/page';
 import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 import { EnumLogLabel, _logPhase } from '#/lib/logger';
 import { autoPost, collectFolders, startFolderStream } from '#/lib/auto-post';
@@ -16,6 +16,7 @@ import { EnumPostPhase, type IFolderInput, type IMessageOptions, type ITaskRange
 import { globStream, async as globAsync } from 'fast-glob';
 import { hideBin } from 'yargs/helpers';
 import type { ITSValueOrArrayMaybeReadonly } from 'ts-type';
+import { LimitReachedError } from '#/lib/civitai/notifications';
 
 /** 任務範圍預設值：可在此指定起始天 / 結束天 / 起始任務 / 最大任務天數；`--max-tasks <n>` 由 CLI 合併 */
 const TASK_RANGE: ITaskRangeOptions = {
