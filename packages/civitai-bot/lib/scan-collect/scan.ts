@@ -1,8 +1,8 @@
 import { readdir } from 'node:fs/promises';
 import { dirname, join } from 'upath2';
-import { _folderKindIsDayLike, _folderKindIsTaskLike, toTaskFolder } from './folder';
-import { _logPhase } from './logger';
-import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types/types';
+import { _folderKindIsDayLike, _folderKindIsTaskLike, toTaskFolder } from '../path-kind/folder';
+import { _logPhase } from '../logger';
+import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from '../types/types';
 
 /**
  * 完整階段：以生成器 (Generator) 逐日解析任務範圍，依序產出任務資料夾路徑

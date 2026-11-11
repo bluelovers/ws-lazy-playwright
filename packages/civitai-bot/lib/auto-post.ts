@@ -1,10 +1,10 @@
 import type { Page } from 'playwright';
 import { DRY_RUN_FROM_BATCH, MAX_PER_BATCH, MAX_PACK_BYTES } from './types/const';
-import { _folderKindIsTaskLike, expandFolder, toTaskFolder } from './folder';
+import { _folderKindIsTaskLike, expandFolder, toTaskFolder } from './path-kind/folder';
 import { _logPhase } from './logger';
 import { createPostPage, ensureDropzone, publishPost } from './civitai/page';
 import { packBySize, reportBatch } from './report';
-import { collectUploadOrder } from './upload-order';
+import { collectUploadOrder } from './scan-collect/upload-order';
 import { reconcileUpload } from './upload';
 import { uploadPack } from './civitai/page-upload';
 import {
@@ -18,8 +18,8 @@ import {
 	type ITaskRangeOptions,
 	type IUploadItem,
 } from './types/types';
-import { iterateFolderInput, prependFolder } from './source';
-import { iterateTaskDirs } from './scan';
+import { iterateFolderInput, prependFolder } from './path-kind/source';
+import { iterateTaskDirs } from './scan-collect/scan';
 import { findAddedFiles, type ITaskProgress } from './progress';
 import type { ICompletionRecord } from './record';
 

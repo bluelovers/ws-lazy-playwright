@@ -1,7 +1,7 @@
 import { readdir, stat } from 'node:fs/promises';
 import { join } from 'upath2';
-import { IMAGE_EXT_RE } from './util/re';
-import { _logPhase } from './logger';
+import { IMAGE_EXT_RE } from '../util/re';
+import { _logPhase } from '../logger';
 import {
 	EnumFolderKind,
 	EnumPostPhase,
@@ -9,7 +9,7 @@ import {
 	type IMessageOptions,
 	type ITaskFolder,
 	type IUploadItem,
-} from './types/types';
+} from '../types/types';
 
 /** 依檔名前綴分類；判定順序需先 xyz_grid- 再 grid- */
 export function classify(fileName: string): EnumUploadKind

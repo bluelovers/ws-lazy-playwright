@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'upath2';
-import { expandFolder, toTaskFolder } from './folder';
+import { expandFolder, toTaskFolder } from './path-kind/folder';
 import { _logPhase } from './logger';
 import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types/types';

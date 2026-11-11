@@ -5,9 +5,9 @@ import { console } from 'debug-color2';
 import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 import { EnumLogLabel } from '#/lib/logger';
 // @ts-ignore
-import { iterateFolderInput } from '#/lib/source';
+import { iterateFolderInput } from '#/lib/path-kind/source';
 // @ts-ignore
-import { expandFolder } from '#/lib/folder';
+import { expandFolder } from '#/lib/path-kind/folder';
 // @ts-ignore
 import type { IFolderInput } from '#/lib/types/types';
 import { globStream, async as globAsync } from 'fast-glob';

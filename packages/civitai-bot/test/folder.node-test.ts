@@ -1,4 +1,4 @@
-import { iterateFolderInput } from '#/lib/source';
+import { iterateFolderInput } from '#/lib/path-kind/source';
 import { ITaskFolder } from '#/lib/types/types';
 import { test, TestContext } from 'node:test';
 

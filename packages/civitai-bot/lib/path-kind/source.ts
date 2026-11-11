@@ -1,5 +1,5 @@
 import { toTaskFolder } from './folder';
-import { _logPhase } from './logger';
+import { _logPhase } from '../logger';
 import {
 	EnumPostPhase,
 	type IFolderInput,
@@ -8,7 +8,7 @@ import {
 	type IMessageOptions,
 	type ITaskFolder,
 	type I_FolderInput,
-} from './types/types';
+} from '../types/types';
 
 function _isThenable(value: unknown): value is PromiseLike<unknown>
 {
