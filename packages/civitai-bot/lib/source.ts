@@ -7,6 +7,7 @@ import {
 	type IFolderInputObject,
 	type IMessageOptions,
 	type ITaskFolder,
+	type I_FolderInput,
 } from './types';
 
 function _isThenable(value: unknown): value is PromiseLike<unknown>
@@ -53,7 +54,8 @@ export async function* iterateFolderInput(input: IFolderInput, options?: IIterat
 
 	if (typeof value === 'function')
 	{
-		value = (value as () => IFolderInput)();
+		// @ts-ignore
+		value = value() as I_FolderInput;
 	}
 
 	/** Promise（globAsync）：等待後重新判斷型態 */

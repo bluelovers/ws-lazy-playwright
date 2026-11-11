@@ -1,13 +1,12 @@
 import type { Page } from 'playwright';
 import { DRY_RUN_FROM_BATCH, MAX_PER_BATCH, MAX_PACK_BYTES } from './const';
-import { expandFolder, toTaskFolder } from './folder';
+import { _folderKindIsTaskLike, expandFolder, toTaskFolder } from './folder';
 import { _logPhase } from './logger';
 import { createPostPage, ensureDropzone, publishPost } from './page';
 import { packBySize, reportBatch } from './report';
 import { collectUploadOrder } from './upload-order';
 import { reconcileUpload, uploadPack } from './upload';
 import {
-	EnumFolderKind,
 	EnumPostPhase,
 	EnumPublishResult,
 	type IFolderInput,
@@ -150,7 +149,7 @@ export async function autoPost(
 			taskNo++;
 
 			/** agent-scheduler 任務的發布次數上限（僅任務模式生效，其他模式不限制） */
-			const agsPublishLimit = (unit.kind === EnumFolderKind.AgentSchedulerDayTask || unit.kind === EnumFolderKind.AgentSchedulerTask)
+			const agsPublishLimit = _folderKindIsTaskLike(unit)
 				? switches?.agsMaxPublish
 				: undefined;
 

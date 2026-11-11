@@ -41,7 +41,7 @@ export enum EnumFolderKind
 	AgentSchedulerDayTask = 'agent-scheduler-day-task',
 	/** 孤立的 agent-scheduler 任務（父層非天目錄） */
 	AgentSchedulerTask = 'agent-scheduler-task',
-	
+
 	/**
 	 * 天目錄（`.../2026-09-13` 或 `.../txt2img-images/2026-11-03`）
 	 * 也可能是孤立的 agent-scheduler 的天目錄（父層非 agent-scheduler 根目錄）
@@ -97,7 +97,7 @@ export type IFolderInputEntry = string | IFolderInputObject;
  */
 export type IFolderInput = I_FolderInput | (() => I_FolderInput);
 
-type I_FolderInput =
+export type I_FolderInput =
 	| IFolderInputEntry
 	| Iterable<IFolderInputEntry>
 	| AsyncIterable<IFolderInputEntry>

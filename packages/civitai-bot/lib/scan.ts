@@ -1,6 +1,6 @@
 import { readdir } from 'node:fs/promises';
-import { basename, dirname, join } from 'upath2';
-import { DAY_DIR_RE } from './const';
+import { dirname, join } from 'upath2';
+import { _folderKindIsDayLike, _folderKindIsTaskLike, toTaskFolder } from './folder';
 import { _logPhase } from './logger';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types';
 
@@ -14,8 +14,8 @@ import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './t
  *
  * 天目錄的產出：
  *
- * - 含子目錄 → 各子目錄為執行單位
- * - 僅含檔案、無子目錄（如 `txt2img-images\YYYY-MM-DD` 直接含圖檔）→ 天目錄本身為執行單位
+ * - 含任務子目錄（`_task(`）→ 各任務為執行單位
+ * - 無任務子目錄但含檔案（如 `txt2img-images\YYYY-MM-DD` 直接含圖檔）→ 天目錄本身為執行單位
  *
  * 過濾順序：`startDay` → `endDay` → `startTask`（僅首個有任務的天）→ `maxTasks` / `maxDays`。
  * `maxDays` 僅計算實際有任務的天。
@@ -29,10 +29,10 @@ export async function* iterateTaskDirs(
 	options?: IMessageOptions,
 ): AsyncGenerator<string>
 {
-	const baseName = basename(basePath);
-	const isDayDir = DAY_DIR_RE.test(baseName);
+	const base = toTaskFolder(basePath);
+	const isDayDir = _folderKindIsDayLike(base);
 	const root = isDayDir ? dirname(basePath) : basePath;
-	const startDay = isDayDir ? baseName : range.startDay;
+	const startDay = isDayDir ? base.day : range.startDay;
 
 	if (!startDay)
 	{
@@ -41,7 +41,7 @@ export async function* iterateTaskDirs(
 	}
 
 	const dayDirs = (await readdir(root, { withFileTypes: true }).catch(() => []))
-		.filter(entry => entry.isDirectory() && DAY_DIR_RE.test(entry.name))
+		.filter(entry => entry.isDirectory() && _folderKindIsDayLike(toTaskFolder(join(root, entry.name))))
 		.map(entry => entry.name)
 		.sort((a, b) => a.localeCompare(b))
 		.filter(name => name >= startDay)
@@ -59,7 +59,7 @@ export async function* iterateTaskDirs(
 		const items = await readdir(join(root, day), { withFileTypes: true }).catch(() => []);
 
 		let names = items
-			.filter(entry => entry.isDirectory())
+			.filter(entry => entry.isDirectory() && _folderKindIsTaskLike(toTaskFolder(join(root, day, entry.name))))
 			.map(entry => entry.name)
 			.sort((a, b) => a.localeCompare(b));
 

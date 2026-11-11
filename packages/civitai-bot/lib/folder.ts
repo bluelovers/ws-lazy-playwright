@@ -92,6 +92,18 @@ export function _folderKindIsDayLike(folder: ITaskFolder): folder is Omit<typeof
 }
 
 /**
+ * 判斷是否為 agent-scheduler 任務模式（{@link EnumFolderKind.AgentSchedulerDayTask} / {@link EnumFolderKind.AgentSchedulerTask}）
+ *
+ * 天目錄的任務子目錄與發布次數上限等任務專屬邏輯皆以此兩種模式為準
+ */
+export function _folderKindIsTaskLike(folder: ITaskFolder): folder is Omit<typeof folder, 'kind'> & {
+	kind: EnumFolderKind.AgentSchedulerDayTask | EnumFolderKind.AgentSchedulerTask
+}
+{
+	return folder.kind === EnumFolderKind.AgentSchedulerDayTask || folder.kind === EnumFolderKind.AgentSchedulerTask;
+}
+
+/**
  * 完整階段：以生成器 (Generator) 逐項展開資料夾為實際執行單位
  *
  * - {@link EnumFolderKind.Day}：含任務子目錄（`_task(`）時逐項產出各任務（{@link EnumFolderKind.AgentSchedulerDayTask}），

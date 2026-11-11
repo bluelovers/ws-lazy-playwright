@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { basename, dirname, join } from 'upath2';
-import { DAY_DIR_RE, TASK_DIR_RE } from './const';
+import { dirname, join } from 'upath2';
+import { expandFolder, toTaskFolder } from './folder';
 import { _logPhase } from './logger';
 import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types';
@@ -182,12 +182,10 @@ async function _deriveStartAfter(
 	options?: IMessageOptions,
 ): Promise<Pick<ITaskRangeOptions, 'startDay' | 'startTask'> | undefined>
 {
-	const dayDir = dirname(entry.path);
-	const day = basename(dayDir);
-	const task = basename(entry.path);
+	const { day, task } = toTaskFolder(entry.path);
 
 	/** 條目須為「天目錄 + 任務」結構才能定位起點 */
-	if (!DAY_DIR_RE.test(day) || !TASK_DIR_RE.test(task))
+	if (!day || !task)
 	{
 		_logPhase(EnumPostPhase.AutoPost, options, `cannot derive start point (not day/task): ${entry.path}`);
 		return undefined;
@@ -199,10 +197,15 @@ async function _deriveStartAfter(
 		return { startDay: day, startTask: task };
 	}
 
-	const tasks = (await readdir(dayDir, { withFileTypes: true }).catch(() => []))
-		.filter(item => item.isDirectory() && TASK_DIR_RE.test(item.name))
-		.map(item => item.name)
-		.sort((a, b) => a.localeCompare(b));
+	const dayDir = dirname(entry.path);
+
+	/** 同天任務清單：由天目錄標準展開（天目錄展開為自身時無任務名稱，故以任務名稱為準略過） */
+	const tasks: string[] = [];
+
+	for await (const unit of expandFolder(toTaskFolder(dayDir), options))
+	{
+		if (unit.task) tasks.push(unit.task);
+	}
 
 	const index = tasks.indexOf(task);
 
