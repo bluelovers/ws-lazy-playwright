@@ -17,7 +17,8 @@ export interface ITaskRangeOptions
 	/**
 	 * 起始天（`YYYY-MM-DD`，含）
 	 *
-	 * 基準路徑為單日目錄時預設該日；為根目錄時必填。
+	 * 基準路徑為單日目錄時預設該日；為根目錄時必填
+	 * （{@link EnumFolderKind.Folder} 模式的基準資料夾除外：未指定時以該資料夾本身為執行單位）。
 	 */
 	startDay?: string;
 	/** 結束天（`YYYY-MM-DD`，含）；未指定則不限制 */

@@ -2,7 +2,8 @@ import { readdir } from 'node:fs/promises';
 import { dirname, join } from 'upath2';
 import { _folderKindIsDayLike, _folderKindIsTaskLike, toTaskFolder } from '../path-kind/folder';
 import { _logPhase } from '../logger';
-import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from '../types/types';
+import { EnumFolderKind, EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from '../types/types';
+import { fsExists } from '../util/fs';
 
 /**
  * 完整階段：以生成器 (Generator) 逐日解析任務範圍，依序產出任務資料夾路徑
@@ -11,6 +12,8 @@ import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from '../
  *
  * - 單日目錄（basename 為 `YYYY-MM-DD`）：起始天即該日，根目錄為其上層
  * - 根目錄：需以 `range.startDay` 指定起始天，否則記錄後結束
+ * - 資料夾模式（{@link EnumFolderKind.Folder}，如 `txt2img-images` 根目錄）：未指定起始天時
+ *   以該資料夾本身為執行單位（只取直接位於其內的圖檔），指定起始天時仍掃描其天目錄
  *
  * 天目錄的產出：
  *
@@ -34,8 +37,22 @@ export async function* iterateTaskDirs(
 	const root = isDayDir ? dirname(basePath) : basePath;
 	const startDay = isDayDir ? base.day : range.startDay;
 
+	if (!(await fsExists(base.path)))
+	{
+		_logPhase(EnumPostPhase.AutoPost, options, `target directory does not exist: ${base.path}`);
+		return;
+	}
+
 	if (!startDay)
 	{
+		/** Folder 模式：無天範圍可掃描，基準資料夾本身即執行單位（圖檔直接位於其內） */
+		if (base.kind === EnumFolderKind.Folder)
+		{
+			_logPhase(EnumPostPhase.AutoPost, options, `folder base used as upload unit (no startDay): ${base.path}`);
+			yield base.path;
+			return;
+		}
+
 		_logPhase(EnumPostPhase.AutoPost, options, 'startDay is required when TASK_BASE is a root directory');
 		return;
 	}
