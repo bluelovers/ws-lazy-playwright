@@ -62,6 +62,17 @@ exports[`iterateFolderInput 1`] = `
     "path": "fixtures/somewhere/14-07-58_task(0kfgui0dg5kmrpx)",
     "kind": "agent-scheduler-task",
     "task": "14-07-58_task(0kfgui0dg5kmrpx)"
+  },
+  {
+    "path": "fixtures/somewhere/2026-11-09/14-07-58_task(0kfgui0dg5kmrpx)",
+    "kind": "agent-scheduler-day-task",
+    "day": "2026-11-09",
+    "task": "14-07-58_task(0kfgui0dg5kmrpx)"
+  },
+  {
+    "path": "fixtures/somewhere/2026-11-09",
+    "kind": "day",
+    "day": "2026-11-09"
   }
 ]
 `;

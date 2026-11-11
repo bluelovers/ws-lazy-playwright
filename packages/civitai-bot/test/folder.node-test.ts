@@ -27,6 +27,8 @@ test('iterateFolderInput', async (t: TestContext) => {
 		'./fixtures/txt2img-images',
 
 		'./fixtures/somewhere/14-07-58_task(0kfgui0dg5kmrpx)',
+		'./fixtures/somewhere/2026-11-09/14-07-58_task(0kfgui0dg5kmrpx)',
+		'./fixtures/somewhere/2026-11-09',
 	])) {
 		result.push(folder);
 	}
