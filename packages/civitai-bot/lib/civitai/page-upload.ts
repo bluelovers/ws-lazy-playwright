@@ -2,7 +2,7 @@ import type { Page } from 'playwright';
 import { _logPhase } from '../logger';
 import { type IMessageOptions, EnumPostPhase } from '../types/types';
 import { FILE_INPUT_SELECTOR } from '../types/civitai';
-import { checkNotifications } from './page';
+import { checkNotifications } from './notifications';
 
 
 /** 讀取當前等待區計數文字 `N / 20 files` 的 N；未出現時回傳 0 */
