@@ -32,3 +32,15 @@ export function _logPhase(
 
 	logConsole(consoleLoggerTimeAndLabel, method, EnumLogLabel.CivitaiBot, text);
 }
+
+export function _logPhaseData(
+	phase: EnumPostPhase,
+	options: IMessageOptions | undefined,
+	message: any,
+	method: 'dir',
+): void
+{
+	if (options?.verbose === false) return;
+
+	consoleLoggerTimeAndLabel.dir(message);
+}

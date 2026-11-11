@@ -163,7 +163,7 @@ export async function autoUploadDemo(
 		for (const taskBase of taskBases)
 		{
 			/** 多路徑執行時回報目前進行到哪一條路徑 */
-			_logPhase(EnumPostPhase.AutoPost, options, `current task base: ${taskBase}`, ['cyan', 'info']);
+			_logPhase(EnumPostPhase.AutoPost, options, `current task base: ${taskBase}`, ['yellow', 'info']);
 
 			/** 該路徑的任務進度：載入完成任務與中斷檢查點，供中斷後接續 */
 			const progress = await loadTaskProgress(progressFile, taskBase, options);

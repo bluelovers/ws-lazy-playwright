@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { _logPhase } from './logger';
+import { _logPhase, _logPhaseData } from './logger';
 import { EnumPostPhase, EnumUploadKind, type IMessageOptions } from './types';
 import { classify } from './upload-order';
 
@@ -64,10 +64,13 @@ export function reportBatch(batchNo: number, files: readonly string[], note: str
 		+ `, 其他: ${counts.get(EnumUploadKind.Other)}`
 		+ `, total: ${files.length}`
 	);
-	boundary && _logPhase(
+	files.length && _logPhaseData(
 		EnumPostPhase.Upload,
 		{ ...options, batchNo },
-		`[${note}]`
-		+ boundary,
+		{
+			start: files[0],
+			end: files.length > 1 ? files[files.length - 1] : undefined,
+		},
+		'dir'
 	);
 }
