@@ -87,16 +87,15 @@ export interface IAutoUploadDemoParams
 /**
  * 執行期 context：{@link autoUploadDemo} 建立，由上而下傳遞本次執行的所有相關參數
  *
- * 底層欄位繼承自 {@link IRunContext}（訊息控制、任務範圍、來源、目前任務基準路徑、
- * 任務進度、執行設定與完成紀錄）——掃描、完整階段與批次報告一律自 context 取用；
- * 其餘為本示範入口的執行期參數（CLI、多路徑清單、儲存與進度／紀錄路徑）。
+ * 底層欄位繼承自 {@link IRunContext}（CLI、訊息控制、任務範圍、來源、目前任務基準路徑、
+ * 任務進度與完成紀錄）——掃描、完整階段與批次報告一律自 context 取用；
+ * CLI 已定義的參數（執行設定 `switches`、`fromLastPublish` 等）取自 `cli`，不在此重複定義。
+ * 其餘為本示範入口的執行期參數（多路徑清單、儲存與進度／紀錄路徑）。
  *
  * 逐路徑迴圈以展開運算逐路徑併入 `taskBase`、掃描範圍、`progress` 與共用 `record`。
  */
 export interface IAutoUploadRunContext extends IRunContext
 {
-	/** CLI 參數（{@link parseAutoPostCli} 解析結果） */
-	cli: IAutoPostCli;
 	/** 任務基準路徑（正規化為陣列）：多路徑逐一執行並共用同一瀏覽器實例 */
 	taskBases: readonly string[];
 	/** 登入狀態的儲存 id */
@@ -174,8 +173,6 @@ export async function autoUploadDemo(
 		/** 任務範圍：未指定時取 CLI 解析結果 `range` */
 		range: range ?? cli.range,
 		source,
-		/** 執行設定：解除發布停用與 dry run 等開關（CLI 解析結果） */
-		switches: cli.switches,
 		taskBases,
 		/** 注入參數與模組層預設合併：僅未指定的欄位回落預設 */
 		storageId: params.storageId ?? STORAGE_ID,
@@ -232,7 +229,7 @@ export async function autoUploadDemo(
 				continue;
 			}
 
-			const page = await createPostPage(context, runCtx.switches?.createUrl);
+			const page = await createPostPage(context, runCtx.cli.switches.createUrl);
 
 			await autoPost(page, stream, runCtx);
 		}

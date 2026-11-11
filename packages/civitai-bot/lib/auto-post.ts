@@ -112,8 +112,8 @@ export async function startFolderStream(
  * @param page 已導航至建立貼文頁的頁面（後續重開頁面與其共用同一 context）
  * @param folders 來源串流 (Folder Stream)（由 {@link collectFolders} 逐項產出；同步 / 非同步可迭代皆可）
  * @param ctx 執行期 context（{@link IRunContext}）：由上而下傳遞本次執行的所有參數——
- *   訊息控制、任務範圍 / 來源 / 目前任務基準路徑、任務進度（{@link ITaskProgress}）、
- *   執行設定（{@link IRunSwitches}）與完成紀錄（{@link ICompletionRecord}）
+ *   CLI（含執行設定 {@link IRunSwitches}）、訊息控制、任務範圍 / 來源 / 目前任務基準路徑、
+ *   任務進度（{@link ITaskProgress}）與完成紀錄（{@link ICompletionRecord}）
  */
 export async function autoPost(
 	page: Page,
@@ -121,8 +121,8 @@ export async function autoPost(
 	ctx: IRunContext,
 ): Promise<void>
 {
-	/** 執行期參數一律取自 context：訊息控制、進度、執行開關與完成紀錄 */
-	const { options, progress, switches, record } = ctx;
+	/** 執行期參數一律取自 context：CLI（含執行開關）、訊息控制、進度與完成紀錄 */
+	const { cli, options, progress, record } = ctx;
 
 	/** 發布完成後以同一 context 重開建立貼文頁 */
 	const context = page.context();
@@ -131,7 +131,7 @@ export async function autoPost(
 	let currentPage = page;
 
 	/** dry run 是否生效：開關解除（`disableDryRun`）時全程實際上傳與發布 */
-	const dryRunEnabled = switches?.disableDryRun !== true;
+	const dryRunEnabled = cli.switches.disableDryRun !== true;
 
 	/** 等待上傳區渲染；失敗時提示手動登入，中止則不執行後續任務 */
 	if (!await ensureDropzone(currentPage, options))
@@ -152,14 +152,14 @@ export async function autoPost(
 
 			/** agent-scheduler 任務的發布次數上限（僅任務模式生效，其他模式不限制） */
 			const agsPublishLimit = _folderKindIsTaskLike(unit)
-				? switches?.agsMaxPublish
+				? cli.switches.agsMaxPublish
 				: undefined;
 
 			/**
 			 * 累計判定（{@link IRunSwitches.agsMaxPublishTotal}）：完成紀錄中該單位已發布過的次數，
 			 * 未啟用累計模式時為 0（上限僅計算本次執行）
 			 */
-			const publishedBefore = agsPublishLimit !== undefined && switches?.agsMaxPublishTotal
+			const publishedBefore = agsPublishLimit !== undefined && cli.switches.agsMaxPublishTotal
 				? await record?.publishedCount(unit.path) ?? 0
 				: 0;
 
@@ -272,7 +272,7 @@ export async function autoPost(
 				queue = [...reconcileUpload(batchNo, ctx, task, setPaths, actual), ...queue];
 
 				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後），絕不按 save */
-				const publishResult = await publishPost(currentPage, message, switches?.enablePublish);
+				const publishResult = await publishPost(currentPage, message, cli.switches.enablePublish);
 
 				if (publishResult === EnumPublishResult.Published)
 				{
@@ -281,7 +281,7 @@ export async function autoPost(
 					 * 當前頁面已離開建立貼文頁，重開新頁面執行下一批次
 					 */
 					publishedUrls.push(currentPage.url());
-					currentPage = await createPostPage(context, switches?.createUrl);
+					currentPage = await createPostPage(context, cli.switches.createUrl);
 
 					publishCount++;
 

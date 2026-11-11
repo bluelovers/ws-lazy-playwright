@@ -1,4 +1,5 @@
 import { ITSPickExtra } from "ts-type";
+import type { IAutoPostCli } from '../cli';
 import type { ICompletionRecord } from '../record';
 import type { ITaskProgress } from '../progress';
 
@@ -199,13 +200,16 @@ export interface IRunSwitches
  * 執行期 context：由呼叫端建立，由上而下傳遞本次執行的所有相關參數
  *
  * 底層流程（`collectFolders` / `startFolderStream` / `autoPost` → `reconcileUpload` → `reportBatch`）
- * 一律自本物件取用參數，不再逐層增列個別引數。
+ * 一律自本物件取用參數，不再逐層增列個別引數；
+ * CLI 已定義的參數（執行設定 `switches`、`fromLastPublish` 等）一律取自 {@link cli}，不在此重複定義。
  */
 export interface IRunContext
 {
+	/** CLI 參數（{@link IAutoPostCli}）：執行設定等已由 CLI 定義的參數一律自此取用 */
+	cli: IAutoPostCli;
 	/** 訊息控制（獨立物件，不併入其他參數） */
 	options?: IMessageOptions;
-	/** 任務範圍：僅於未指定 {@link source} 的掃描模式生效 */
+	/** 任務範圍：僅於未指定 {@link source} 的掃描模式生效（逐路徑併入續跑覆寫後的掃描範圍） */
 	range: ITaskRangeOptions;
 	/** 來源輸入模式：指定時取代 `taskBase` + `range` 掃描 */
 	source?: IFolderInput;
@@ -216,8 +220,6 @@ export interface IRunContext
 	taskBase?: string;
 	/** 任務進度：記錄完成任務與中斷檢查點，供中斷後接續 */
 	progress?: ITaskProgress;
-	/** 執行設定：解除發布停用與 dry run、建立貼文頁網址、任務發布次數上限 */
-	switches?: IRunSwitches;
 	/** 完成紀錄：完成任務依發布日期分檔保存（含發布網址與完成邊界） */
 	record?: ICompletionRecord;
 }
