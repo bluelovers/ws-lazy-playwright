@@ -41,6 +41,7 @@ export enum EnumFolderKind
 	AgentSchedulerDayTask = 'agent-scheduler-day-task',
 	/** 孤立的 agent-scheduler 任務（父層非天目錄） */
 	AgentSchedulerTask = 'agent-scheduler-task',
+	
 	/**
 	 * 天目錄（`.../2026-09-13` 或 `.../txt2img-images/2026-11-03`）
 	 * 也可能是孤立的 agent-scheduler 的天目錄（父層非 agent-scheduler 根目錄）
@@ -149,11 +150,11 @@ export enum EnumPublishResult
 export enum EnumUploadKind
 {
 	/** `xyz_grid-` 開頭的 xyz 交叉網格圖 */
-	XyzGrid = 'xyz_grid-',
+	XyzGrid = 'xyz_grid',
 	/** `grid-` 開頭的一般網格圖 */
-	Grid = 'grid-',
+	Grid = 'grid',
 	/** 其餘（含 txt2img-images 內的單張圖） */
-	Other = '其他',
+	Other = 'other',
 }
 
 /**
