@@ -32,6 +32,8 @@ const TASK_RANGE: ITaskRangeOptions = {
  *
  * - 單日目錄（`...\\2026-11-05`）：起始天即該日，可選 `range.endDay` 續掃後續天
  * - 根目錄（`...\\`）：需以 `range.startDay` 指定起始天
+ * - 資料夾（`EnumFolderKind.Folder`，如 `...\\txt2img-images`）：未指定起始天時以該資料夾本身為上傳單位
+ *   （只取直接位於其內的圖檔，不含日期子目錄）
  *
  * CLI `--task-base <path>` 可覆寫。
  */

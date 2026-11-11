@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'upath2';
+import { dirname, join, normalize } from 'upath2';
 import { expandFolder, toTaskFolder } from './path-kind/folder';
 import { _logPhase } from './logger';
 import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';
@@ -53,7 +53,7 @@ export interface ICompletionRecord
 {
 	/** 將完成任務寫入發布日期對應的紀錄檔（`YYYY-MM-DD.json`） */
 	append(input: ICompletionInput): Promise<void>;
-	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0）；供發布次數上限的累計判定 */
+	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0；路徑以 `normalize` 標準化比對）；供發布次數上限的累計判定 */
 	publishedCount(path: string): Promise<number>;
 }
 
@@ -119,13 +119,13 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			}
 
 			const entry: ICompletionEntry = {
-				path: input.path,
+				path: normalize(input.path),
 				day: input.day,
 				task: input.task,
 				completedAt: now.toISOString(),
 				publishedUrls: [...(input.publishedUrls ?? [])],
 				publishCount: input.publishCount ?? input.publishedUrls?.length ?? 0,
-				lastFile: input.lastFile,
+				lastFile: normalize(input.lastFile),
 				lastFileTime: input.lastFileTime,
 			};
 
@@ -162,14 +162,17 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 
 					for (const item of saved?.entries ?? [])
 					{
-						next.set(item.path, (next.get(item.path) ?? 0) + countOf(item));
+						/** 紀錄檔內的路徑先標準化，防止分隔符不同而比對失敗 */
+						const path = normalize(item.path);
+
+						next.set(path, (next.get(path) ?? 0) + countOf(item));
 					}
 				}
 
 				counts = next;
 			}
 
-			return counts.get(path) ?? 0;
+			return counts.get(normalize(path)) ?? 0;
 		},
 	};
 }
@@ -295,7 +298,10 @@ export async function findStartAfterLastPublish(
 	{
 		if (entry.lastFile === undefined || entry.lastFileTime === undefined) continue;
 
-		doneMap.set(entry.path, { path: entry.path, lastFile: entry.lastFile, lastFileTime: entry.lastFileTime });
+		/** 紀錄檔內的路徑先標準化：同一路徑取最新條目時不因分隔符而分裂成兩筆 */
+		const path = normalize(entry.path);
+
+		doneMap.set(path, { path, lastFile: normalize(entry.lastFile), lastFileTime: entry.lastFileTime });
 	}
 
 	const done = [...doneMap.values()];

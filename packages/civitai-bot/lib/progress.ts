@@ -1,5 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname } from 'upath2';
+import { dirname, normalize } from 'upath2';
 import { _logPhase } from './logger';
 import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types/types';
 
@@ -77,13 +77,15 @@ export interface ITaskProgress
  *
  * 以完成時的最後處理檔案定位：其在上傳順序中之後者即為新增；
  * 該檔案已不存在（被刪除）時退回時間戳比對——取 mtime 晚於邊界時間戳者（雙保險）。
+ * 路徑比對前以 `normalize` 標準化，紀錄檔與掃描結果分隔符不同時仍可定位。
  *
  * @param order 目前掃描的完整上傳順序（`collectUploadOrder` 結果）
  * @param entry 該單位的完成記錄（含完成邊界）
  */
 export function findAddedFiles(order: readonly IUploadItem[], entry: IDoneEntry): IUploadItem[]
 {
-	const index = order.findIndex(item => item.path === entry.lastFile);
+	const lastFile = normalize(entry.lastFile);
+	const index = order.findIndex(item => normalize(item.path) === lastFile);
 
 	if (index >= 0)
 	{
@@ -100,6 +102,7 @@ export function findAddedFiles(order: readonly IUploadItem[], entry: IDoneEntry)
  *
  * 檔案不存在、內容無法解析、或 `basePath` 與目前呼叫不符時，
  * 一律以空進度（重新開始）處理並記錄，避免套用不相符的舊進度。
+ * 路徑一律以 `normalize` 標準化後比對：紀錄檔的分隔符差異不影響相符判定。
  *
  * 進度以「已完成任務路徑」為準，不因任務範圍（`range` / CLI 參數）改變而重置：
  * 範圍不同的執行依舊比對完成紀錄。
@@ -140,10 +143,20 @@ export async function loadTaskProgress(
 	let done = new Map<string, IDoneEntry>();
 	let checkpoint: ITaskCheckpoint | undefined;
 
-	if (saved && saved.version === PROGRESS_VERSION && saved.basePath === basePath)
+	if (saved && saved.version === PROGRESS_VERSION && normalize(saved.basePath) === normalize(basePath))
 	{
-		done = new Map(saved.done.map(entry => [entry.path, entry] as [string, IDoneEntry]));
-		checkpoint = Array.isArray(saved.checkpoint?.remaining) ? saved.checkpoint : undefined;
+		/** 紀錄檔內的路徑先標準化（分隔符統一），防止與目前路徑比對失敗 */
+		done = new Map(saved.done.map(entry =>
+		{
+			const path = normalize(entry.path);
+
+			return [path, { ...entry, path, lastFile: normalize(entry.lastFile) }] as [string, IDoneEntry];
+		}));
+
+		const savedCheckpoint = saved.checkpoint;
+		checkpoint = savedCheckpoint && Array.isArray(savedCheckpoint.remaining)
+			? { ...savedCheckpoint, path: normalize(savedCheckpoint.path) }
+			: undefined;
 
 		_logPhase(
 			EnumPostPhase.AutoPost,
@@ -189,13 +202,13 @@ export async function loadTaskProgress(
 			return checkpoint !== undefined;
 		},
 
-		done: path => done.get(path),
+		done: path => done.get(normalize(path)),
 
-		checkpoint: path => (checkpoint && checkpoint.path === path ? checkpoint : undefined),
+		checkpoint: path => (checkpoint && checkpoint.path === normalize(path) ? checkpoint : undefined),
 
 		saveCheckpoint: async (state: ITaskCheckpoint) =>
 		{
-			checkpoint = state;
+			checkpoint = { ...state, path: normalize(state.path) };
 			await write();
 
 			_logPhase(
@@ -208,10 +221,12 @@ export async function loadTaskProgress(
 
 		mark: async (path: string, boundary: IDoneBoundary) =>
 		{
-			done.set(path, { path, ...boundary });
+			const key = normalize(path);
+
+			done.set(key, { ...boundary, path: key, lastFile: normalize(boundary.lastFile) });
 
 			/** 標記完成即清除同單位檢查點：該單位已無待執行佇列 */
-			if (checkpoint?.path === path)
+			if (checkpoint?.path === key)
 			{
 				checkpoint = undefined;
 			}
@@ -224,12 +239,14 @@ export async function loadTaskProgress(
 		{
 			let added = 0;
 
-			/** 僅補進度缺少的路徑：既有進度（較新）優先，不被外部紀錄覆寫 */
+			/** 僅補進度缺少的路徑：既有進度（較新）優先，不被外部紀錄覆寫（路徑標準化後比對） */
 			for (const entry of entries)
 			{
-				if (done.has(entry.path)) continue;
+				const path = normalize(entry.path);
 
-				done.set(entry.path, entry);
+				if (done.has(path)) continue;
+
+				done.set(path, { ...entry, path, lastFile: normalize(entry.lastFile) });
 				added++;
 			}
 
