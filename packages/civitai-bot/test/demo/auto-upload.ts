@@ -218,7 +218,7 @@ export async function autoUploadDemo(
 
 			/** 掃描範圍：指定 `--from-last-publish` 時以完成紀錄重建續跑狀態，否則沿用任務範圍 */
 			const scanRange = ctx.cli.fromLastPublish
-				? await resumeFromCompletion(progress, ctx.range, ctx.recordDir, ctx.options)
+				? await resumeFromCompletion(progress, taskBase, ctx.range, ctx.recordDir, ctx.options)
 				: ctx.range;
 
 			/**

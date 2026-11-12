@@ -1,6 +1,6 @@
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize } from 'upath2';
-import { expandFolder, toTaskFolder } from './path-kind/folder';
+import { _folderKindIsDayLike, expandFolder, toTaskFolder } from './path-kind/folder';
 import { _logPhase } from './logger';
 import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types/types';
@@ -177,6 +177,20 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 	};
 }
 
+/**
+ * 路徑是否位於基準路徑之下（含本身）
+ *
+ * 比對前以 `normalize` 統一分隔符，並要求邊界落在分隔符上，
+ * 避免 `txt2img-images` 誤判包含 `txt2img-images-backup`
+ */
+function _isUnder(path: string, base: string): boolean
+{
+	const target = normalize(path);
+	const root = normalize(base);
+
+	return target === root || target.startsWith(root.endsWith('/') ? root : `${root}/`);
+}
+
 /** 依最後發布成功的任務條目，推導掃描起始點（含完成邊界者起始任務為其本身） */
 async function _deriveStartAfter(
 	entry: ICompletionEntry,
@@ -236,10 +250,12 @@ async function _deriveStartAfter(
  * 呼叫端維持原範圍。
  *
  * @param dir 完成紀錄目錄（{@link createCompletionRecord} 的寫入目錄）
+ * @param scope 起始點範圍：僅由該路徑底下的條目推導（完成邊界仍全量重建，供跨路徑補齊進度）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  */
 export async function findStartAfterLastPublish(
 	dir: string,
+	scope: string,
 	options?: IMessageOptions,
 ): Promise<ICompletionResume | undefined>
 {
@@ -270,6 +286,9 @@ export async function findStartAfterLastPublish(
 
 		if (!entry.publishedUrls?.length) continue;
 
+		/** 起始點只由目前路徑底下的條目推導：其他路徑的發布不得改變本路徑的掃描起點 */
+		if (!_isUnder(entry.path, scope)) continue;
+
 		publishedFound = true;
 		start = await _deriveStartAfter(entry, options);
 
@@ -288,7 +307,7 @@ export async function findStartAfterLastPublish(
 
 	if (!publishedFound)
 	{
-		_logPhase(EnumPostPhase.AutoPost, options, `no successful publish record in ${dir}: start point not applied`, 'warn');
+		_logPhase(EnumPostPhase.AutoPost, options, `no successful publish record under ${scope} (${dir}): start point not applied`, 'warn');
 	}
 
 	/** 完成邊界：同一路徑以最新條目為準；舊紀錄無邊界者略過 */
@@ -329,12 +348,14 @@ export async function findStartAfterLastPublish(
  * - 無完成紀錄（{@link findStartAfterLastPublish} 回傳 `undefined`）時維持原範圍
  *
  * @param progress 任務進度（可續跑狀態由其判定）
+ * @param taskBase 任務基準路徑：起始點僅由其根目錄底下的條目推導
  * @param range 原任務範圍（未覆寫時原樣回傳）
  * @param dir 完成紀錄目錄（{@link createCompletionRecord} 的寫入目錄）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  */
 export async function resumeFromCompletion(
 	progress: ITaskProgress,
+	taskBase: string,
 	range: ITaskRangeOptions,
 	dir: string,
 	options?: IMessageOptions,
@@ -343,7 +364,16 @@ export async function resumeFromCompletion(
 	/** 是否有可接續紀錄：有即以進度為準，僅補缺漏、不覆寫起始點 */
 	const resumable = progress.size > 0 || progress.hasCheckpoint;
 
-	const resume = await findStartAfterLastPublish(dir, options);
+	/**
+	 * 起始點範圍：取任務基準路徑的根目錄（單日目錄取其上層，其餘取本身）。
+	 * 多路徑共用同一份完成紀錄，起始點必須限縮在本路徑底下——
+	 * 否則其他路徑（如 agent-scheduler 任務）的發布會推導出 `startDay`，
+	 * 使資料夾模式（`EnumFolderKind.Folder`）的基準資料夾被改以天目錄掃描而略過
+	 */
+	const base = toTaskFolder(taskBase);
+	const scope = _folderKindIsDayLike(base) ? dirname(taskBase) : taskBase;
+
+	const resume = await findStartAfterLastPublish(dir, scope, options);
 
 	if (!resume)
 	{
