@@ -33,7 +33,7 @@ import { _readUploadCount } from './page-upload';
  */
 export async function createPostPage(automation: AbstractBrowserAutomation, url: string = CREATE_URL, page?: Page): Promise<Page>
 {
-	await automation.goto(url, {
+	const result = await automation.goto(url, {
 		page,
 		ensurePage: true,
 		newPageMaybe: true,
@@ -42,21 +42,26 @@ export async function createPostPage(automation: AbstractBrowserAutomation, url:
 			/** 判定前讀取等待區計數：有殘留檔案即覆寫結果、強制導航重新載入 */
 			callback: async (result) =>
 			{
-				const count = await _readUploadCount(page);
+				if (result.isSameUrl)
+				{
+					const count = await _readUploadCount(page);
 
-				if (count > 0)
-				{
-					result.shouldGoto = true;
-					return result;
-				}
-				else
-				{
-					result.shouldNewPage = false;
-					return result;
+					if (count > 0)
+					{
+						result.shouldNewPage = true;
+						return result;
+					}
+					else
+					{
+						result.shouldNewPage = false;
+						return result;
+					}
 				}
 			},
 		},
 	});
+
+	page = result.page;
 
 	/** 導航後的等待區計數：殘留未清除代表上傳區不乾淨（新頁面應為 0） */
 	const count = await _readUploadCount(page);

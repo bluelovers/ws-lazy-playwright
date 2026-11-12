@@ -242,7 +242,7 @@ export async function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: str
 	{
 		result.shouldNewPage = options.newPage;
 	}
-	else if (options.newPageMaybe)
+	else if (options.newPageMaybe && result.shouldGoto)
 	{
 		result.shouldNewPage = options.newPageMaybe;
 	}
@@ -287,8 +287,7 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions, 
 
 	let isNewPage: boolean;
 
-	if (options.ensurePage && !pageExists || options.newPage)
-	{
+	const _newPage = async () => {
 		if (ctx)
 		{
 			page = await createNewPage(ctx, options.newPageOptions);
@@ -298,6 +297,11 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions, 
 		{
 			throw new Error('Cannot create new page without browser context');
 		}
+	}
+
+	if (options.ensurePage && !pageExists || options.newPage)
+	{
+		await _newPage();
 	}
 
 	const currentPageUrl = page.url();
@@ -312,7 +316,7 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions, 
 	let didGoto = false;
 
 	/** 略過導航時 `didGoto` 維持 false，僅回傳目前分頁 */
-	if (!checkResult.shouldGoto && !isNewPage)
+	if (!checkResult?.shouldGoto && !isNewPage)
 	{
 		didGoto = false;
 	}
@@ -323,15 +327,7 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions, 
 
 		if (checkResult?.shouldNewPage && !isNewPage)
 		{
-			if (ctx)
-			{
-				page = await createNewPage(ctx, options.newPageOptions);
-				isNewPage = true;
-			}
-			else
-			{
-				isNewPage = false;
-			}
+			await _newPage();
 		}
 
 		await page.goto(url, gotoOptions);
@@ -345,8 +341,8 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions, 
 
 		pageExists,
 
-		isSameUrl: checkResult.isSameUrl,
-		shouldGoto: checkResult.shouldGoto,
+		isSameUrl: checkResult?.isSameUrl,
+		shouldGoto: checkResult?.shouldGoto,
 		// shouldNewPage,
 	};
 }

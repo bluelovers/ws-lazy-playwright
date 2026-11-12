@@ -347,9 +347,11 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	async goto(url: string, options: IGotoOptions & ICreateNewPageOptions = {}): Promise<IGotoResult>
 	{
 		/** `page` 未提供時，由 `newPage` 決定建立新分頁或沿用主分頁 */
-		const page = options.page ?? (options.newPage ? await this.newPage(options) : this.page);
+		// const page = options.page ?? (options.newPage ? await this.newPage(options) : this.page);
 
-		return gotoPage(page, url, options);
+		const page = options.page ?? (options.newPage ? null : this.page);
+
+		return gotoPage(page, url, options, this);
 	}
 
 	/** 強制以新分頁導航（等同 `goto` 且 `newPage: true`） */
