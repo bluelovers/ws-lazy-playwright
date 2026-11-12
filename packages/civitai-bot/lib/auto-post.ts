@@ -96,13 +96,15 @@ export async function startFolderStream(
  *
  * 進度（{@link ITaskProgress}）：已完成的單位於掃描後比對新增檔案——無新增即跳過，有新增僅處理新增者；
  * 僅「確認發布」的批次推進中斷檢查點 (Checkpoint)，中斷後自實際進度續跑（大目錄不重跑整個單位）；
- * 單位全部批次確認發布後標記完成並更新完成邊界（最後處理檔案 + 時間戳）。
- * 出現 dry run 批次、或有批次未執行 / 未確認發布的單位，不標記完成、不寫完成紀錄。
+ * 有任一批次確認發布即標記完成並更新完成邊界（最後處理檔案 + 時間戳）。
+ * 無任何批次發布成功的單位不標記完成、不寫完成紀錄；只要有任一批次發布成功即寫入紀錄，
+ * 未完成的部分以完成邊界（僅至實際發布的最後檔案）交由重跑比對新增，避免重複發布已發布的圖片。
  * agent-scheduler 任務受發布次數上限（{@link IRunSwitches.agsMaxPublish}）截斷時忽略剩餘圖片，
  * 完成邊界僅至實際發布的最後檔案，被忽略者可於日後比對為新增再行執行。
  * 指定 {@link IRunSwitches.agsMaxPublishTotal} 時上限改以完成紀錄的累計發布次數判定：
  * 已達上限的單位直接忽略（不再發布），截斷判定亦含其已發布過的次數。
- * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址與完成邊界。
+ * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址與完成邊界；
+ * 每次發布成功當下即寫入一筆（不等單位全部完成），批次後續中斷也不遺失已發布的紀錄。
  * 上傳與發布前後檢查系統提示：提示顯示已達上限時拋出錯誤中止整個流程，由呼叫端停止任務。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
@@ -215,6 +217,7 @@ export async function autoPost(
 			{
 				batchNo = checkpointed.batchNo;
 				publishCount = checkpointed.publishCount ?? 0;
+				lastPublished = checkpointed.lastPublished;
 
 				_logPhase(
 					EnumPostPhase.AutoPost,
@@ -223,10 +226,10 @@ export async function autoPost(
 				);
 			}
 
-			/** 本單位是否有批次未執行或未確認發布：有即不標記完成 */
+			/** 本單位是否有批次未執行或未確認發布：有即完成邊界僅至實際發布的最後檔案 */
 			let unpublished = false;
 
-			/** 本單位是否出現 dry run 批次：有即代表未全部實際執行 */
+			/** 本單位是否出現 dry run 批次：有即完成邊界僅至實際發布的最後檔案 */
 			let hasDryRun = false;
 
 			while (queue.length)
@@ -277,8 +280,9 @@ export async function autoPost(
 					 * 發布後的網址須於重置頁面前取得；
 					 * 當前頁面已離開建立貼文頁，重開新頁面執行下一批次
 					 */
-					publishedUrls.push(currentPage.url());
-					currentPage = await createPostPage(automation, cli.switches.createUrl);
+					const url = currentPage.url();
+
+					publishedUrls.push(url);
 
 					publishCount++;
 
@@ -292,6 +296,30 @@ export async function autoPost(
 					{
 						lastPublished = publishedItems[publishedItems.length - 1];
 					}
+
+					/**
+					 * 發布成功當下立即寫入完成紀錄（不等單位全部完成）：
+					 * 後續批次若中斷（頁面關閉、例外），已發布的紀錄不遺失，
+					 * 重跑由完成邊界比對新增而不重複發布已發布的圖片
+					 *
+					 * 每筆為一次發布事件，`publishCount` 固定為 1，
+					 * 各筆合計即為該單位的發布總次數
+					 */
+					if (lastPublished)
+					{
+						await record?.append({
+							path: unit.path,
+							day: unit.day,
+							task: unit.task,
+							publishedUrls: [url],
+							publishCount: 1,
+							lastFile: lastPublished.path,
+							lastFileTime: lastPublished.mtime,
+						});
+					}
+
+					/** 重開建立貼文頁：完成紀錄已先行落盤，此處失敗不遺失發布紀錄 */
+					currentPage = await createPostPage(automation, cli.switches.createUrl);
 
 					/** 達發布次數上限（累計模式含完成紀錄已發布的次數）：忽略剩餘圖片，完成邊界僅至實際發布的最後檔案 */
 					if (agsPublishLimit !== undefined && publishedBefore + publishCount >= agsPublishLimit)
@@ -315,6 +343,7 @@ export async function autoPost(
 						batchNo,
 						publishedUrls,
 						publishCount,
+						lastPublished,
 					});
 				}
 				else
@@ -332,43 +361,39 @@ export async function autoPost(
 				}
 			}
 
-			/** 未執行或未確認發布：不標記完成、不寫完成紀錄，留待發布 run 續跑 */
-			if (unpublished)
-			{
-				_logPhase(EnumPostPhase.AutoPost, options, `not marked (publish not completed): ${unit.path}`);
-				continue;
-			}
-
-			/** dry run 批次未實際執行：不標記完成、不寫完成紀錄，留待實際執行的 run 續跑 */
-			if (hasDryRun)
-			{
-				_logPhase(EnumPostPhase.AutoPost, options, `not marked (dry run): ${unit.path}`);
-				continue;
-			}
-
 			/**
-			 * 完成邊界：截斷時僅至實際發布的最後檔案（被忽略者留在邊界之後）；
-			 * 完整完成則為上傳順序末端。供重跑比對新增檔案
+			 * 無任何批次發布成功：不標記完成、不寫完成紀錄，留待發布 run 續跑。
+			 * 只要有任一批次發布成功（`publishCount > 0`）即必須留下紀錄——
+			 * 缺少紀錄時重跑無從比對已發布者，會重複發布而再次觸發站台上限
 			 */
-			const last = truncated && lastPublished
-				? lastPublished
-				: order[order.length - 1];
+			if (!publishCount)
+			{
+				const reason = unpublished ? 'publish not completed' : hasDryRun ? 'dry run' : 'no published batch';
+
+				_logPhase(EnumPostPhase.AutoPost, options, `not marked (${reason}): ${unit.path}`);
+				continue;
+			}
 
 			/**
-			 * 該任務批次全部完成：先寫入進度檔（含完成邊界），
-			 * 再寫入完成紀錄（含發布網址與完成邊界，依發布日期分檔）
+			 * 完成邊界：全部批次實際完成（無未確認發布、無 dry run、未被上限截斷）時為上傳順序末端；
+			 * 否則僅至實際發布的最後檔案，未發布者留在邊界之後供重跑比對新增
+			 */
+			const last = !unpublished && !hasDryRun && !truncated
+				? order[order.length - 1]
+				: lastPublished;
+
+			/** 續跑自舊檢查點且本次未再發布成功：無從判定邊界，不標記以免誤判整批已完成 */
+			if (!last)
+			{
+				_logPhase(EnumPostPhase.AutoPost, options, `not marked (boundary unknown): ${unit.path}`, 'warn');
+				continue;
+			}
+
+			/**
+			 * 單位全部批次完成：寫入進度檔的完成邊界（同時清除檢查點）。
+			 * 完成紀錄已於每次發布成功時逐筆寫入，此處不再重複寫入，否則發布次數會被重複計算
 			 */
 			await progress?.mark(unit.path, { lastFile: last.path, lastFileTime: last.mtime });
-
-			await record?.append({
-				path: unit.path,
-				day: unit.day,
-				task: unit.task,
-				publishedUrls,
-				publishCount,
-				lastFile: last.path,
-				lastFileTime: last.mtime,
-			});
 		}
 	}
 }

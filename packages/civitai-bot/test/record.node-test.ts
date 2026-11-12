@@ -38,3 +38,26 @@ test('publishedCount normalizes record paths', async (t: TestContext) => {
 
 	t.assert.equal(await record.publishedCount('D:\\sd-forge\\output\\x\\task'), 3);
 });
+
+/** 每次發布各寫一筆（該筆次數為 1）：各筆合計即為單位的發布總次數 */
+test('publishedCount sums per-publish entries', async (t: TestContext) => {
+	const dir = join(__TEST_TEMP, 'record-node-test-sum');
+	const unit = 'D:/x/task';
+
+	await mkdir(dir, { recursive: true });
+
+	const record = createCompletionRecord(dir, QUIET);
+
+	for (let i = 0; i < 3; i++)
+	{
+		await record.append({
+			path: unit,
+			lastFile: `D:/x/task/f${i}.png`,
+			lastFileTime: i,
+			publishedUrls: [`https://example.invalid/${i}`],
+			publishCount: 1,
+		});
+	}
+
+	t.assert.equal(await record.publishedCount(unit), 3);
+});

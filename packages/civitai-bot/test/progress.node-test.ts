@@ -66,3 +66,29 @@ test('seed normalizes entry paths', async (t: TestContext) => {
 
 	t.assert.ok(progress.done('D:/base/unit'));
 });
+
+/** 檢查點須持久化完成邊界：續跑時本次未再發布成功，仍能取得邊界而不誤判整批完成 */
+test('checkpoint keeps lastPublished boundary', async (t: TestContext) => {
+	const dir = join(__TEST_TEMP, 'progress-node-test');
+	const file = join(dir, 'boundary.json');
+	const unit = 'D:/x/unit';
+
+	await mkdir(dir, { recursive: true });
+
+	const first = await loadTaskProgress(file, 'D:/x', QUIET);
+
+	await first.saveCheckpoint({
+		path: unit,
+		remaining: [],
+		batchNo: 2,
+		publishedUrls: ['https://example.invalid/1'],
+		publishCount: 1,
+		lastPublished: { path: 'D:/x/a.png', size: 1, mtime: 100 },
+	});
+
+	const second = await loadTaskProgress(file, 'D:/x', QUIET);
+	const checkpoint = second.checkpoint(unit);
+
+	t.assert.equal(checkpoint?.publishCount, 1);
+	t.assert.equal(checkpoint?.lastPublished?.path, 'D:/x/a.png');
+});

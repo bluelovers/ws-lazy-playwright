@@ -19,6 +19,8 @@ export interface ITaskCheckpoint
 	publishedUrls: string[];
 	/** 該輪已發布次數：限量發布續跑時接續計數（舊檢查點可省略） */
 	publishCount?: number;
+	/** 該單位最後實際發布的檔案：續跑未再發布成功時作為完成邊界（舊檢查點可省略） */
+	lastPublished?: IUploadItem;
 }
 
 /** 完成邊界：完成時的最後處理檔案與時間戳，供重跑比對新增檔案 */
