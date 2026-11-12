@@ -1,4 +1,5 @@
-import type { BrowserContext, Page } from 'playwright';
+import type { Page } from 'playwright';
+import type { AbstractBrowserAutomation } from 'lazy-playwright-impl/lib/core/browser-automation';
 import {
 	DROPZONE_WAIT_TIMEOUT,
 	ENABLE_PUBLISH,
@@ -13,18 +14,58 @@ import { _logPhase } from '../logger';
 import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from '../types/types';
 import { _ask } from '../util/cli-interface';
 import { checkNotifications } from './notifications';
+import { _readUploadCount } from './page-upload';
 
 /**
- * 完整階段：開啟建立貼文頁（`newPage` + `goto`）
+ * 完整階段：開啟建立貼文頁（`automation.newPage` + `automation.goto`）
+ *
+ * 新分頁由 automation 的主 context 建立（與呼叫端共用同一 context），
+ * 以 `automation.goto`（內部 `gotoPage`）導航（`checkMatch.href` 啟用時同網址略過導航）：
+ * 判定回傳前經 `callback` 讀取等待區計數（{@link _readUploadCount}），
+ * 尚有殘留檔案時以回傳值覆寫 `shouldGoto` 強制導航；
+ * 導航後再讀取計數，殘留未清除時以 warn 提醒。
  *
  * 初始頁面與發布完成後的下一批次，皆由此取得新的建立貼文頁。
  *
+ * @param automation 瀏覽器自動化實例（提供 `newPage` 與 `goto`）
  * @param url 建立貼文頁（上傳頁面）網址；未指定時沿用 {@link CREATE_URL}
+ * @param page 可選的現有分頁；未提供時自動建立新分頁
  */
-export async function createPostPage(context: BrowserContext, url: string = CREATE_URL): Promise<Page>
+export async function createPostPage(automation: AbstractBrowserAutomation, url: string = CREATE_URL, page?: Page): Promise<Page>
 {
-	const page = await context.newPage();
-	await page.goto(url);
+	await automation.goto(url, {
+		page,
+		ensurePage: true,
+		newPageMaybe: true,
+		checkMatch: {
+			href: true,
+			/** 判定前讀取等待區計數：有殘留檔案即覆寫結果、強制導航重新載入 */
+			callback: async (result) =>
+			{
+				const count = await _readUploadCount(page);
+
+				if (count > 0)
+				{
+					result.shouldGoto = true;
+					return result;
+				}
+				else
+				{
+					result.shouldNewPage = false;
+					return result;
+				}
+			},
+		},
+	});
+
+	/** 導航後的等待區計數：殘留未清除代表上傳區不乾淨（新頁面應為 0） */
+	const count = await _readUploadCount(page);
+
+	if (count > 0)
+	{
+		_logPhase(EnumPostPhase.Upload, undefined, `dropzone not empty after goto: ${count} files`, 'warn');
+	}
+
 	return page;
 }
 

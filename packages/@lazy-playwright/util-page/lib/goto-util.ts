@@ -1,5 +1,7 @@
 import type { Page } from 'playwright';
 import type { ITSOverwrite } from 'ts-type';
+import { createNewPage, ICreateNewPageOptions } from './open-new-util';
+import { IBrowserCtxInput } from '@lazy-playwright/shared-types';
 
 /**
  * checkMatch 的物件形式
@@ -10,6 +12,12 @@ export interface IGotoCheckMatch
 {
 	/** 為 true 時比對目前網址與目標網址，相同則略過導航 */
 	href?: boolean;
+	/**
+	 * 判定完成、`_checkShouldGotoUrl` 回傳前的回呼（{@link IGotoCheckCallback}）：
+	 * 接收目前判定結果與輸入參數，回傳非空時以之覆寫結果
+	 * （如讀取頁面狀態後強制 / 取消導航，例如支援 `_readUploadCount`）
+	 */
+	callback?: IGotoCheckCallback;
 }
 
 /**
@@ -76,21 +84,34 @@ export interface IGotoOptions
 {
 	/** 指定導航分頁；未提供時依 `newPage` 決定 */
 	page?: Page;
-	/** `page` 未提供時，true 建立新分頁、false 使用主分頁 */
-	newPage?: boolean;
+
 	/** true 或 `{ href: true }` 時比對目前網址，相同則略過導航 */
 	checkMatch?: boolean | IGotoCheckMatch;
 	/** Playwright 導航選項 */
 	gotoOptions?: IGotoOptionsInput;
+
+	/** 確保分頁存在，若不存在則建立新分頁 */
+	ensurePage?: boolean;
+
+	/** `page` 未提供時，true 建立新分頁、false 使用主分頁 */
+	newPage?: boolean;
+	/** true 時 真具條件來決定是否建立新分頁 */
+	newPageMaybe?: boolean;
+	/** 建立新分頁時的選項 */
+	newPageOptions?: ICreateNewPageOptions;
 }
 
 /** goto 導航結果 */
-export interface IGotoResult
+export interface IGotoResult extends Pick<ICheckShouldGotoResult, 'isSameUrl' | 'shouldGoto'>
 {
 	/** 導航使用的分頁 */
 	page: Page;
 	/** 是否有發生 goto 行為 */
 	didGoto: boolean;
+	/** 是否為新建立的分頁 */
+	isNewPage: boolean;
+	/** 分頁是否存在 */
+	pageExists: boolean;
 }
 
 export interface ICheckShouldGotoResult
@@ -99,7 +120,39 @@ export interface ICheckShouldGotoResult
 	isSameUrl: boolean;
 	/** 是否需要執行導航 */
 	shouldGoto: boolean;
+	/** 是否需要新建立分頁 */
+	shouldNewPage: boolean;
 }
+
+/** `IGotoCheckMatch.callback` 的回傳值：非空欄位覆寫判定結果的對應欄位 */
+export type IGotoCheckCallbackResult = Partial<ICheckShouldGotoResult> | null | undefined;
+
+/** `IGotoCheckMatch.callback` 的輸入參數：判定時的來源值 */
+export interface IGotoCheckCallbackArgs
+{
+	/** 目標網址 */
+	targetUrl: string;
+	/** 目前網址 */
+	currentPageUrl: string;
+	/** 正規化後的比對選項 */
+	checkMatch: IGotoCheckMatch;
+	/** 原始選項 */
+	options: IGotoOptions;
+	/** 提供 context 與目前主分頁的瀏覽器實例 */
+	ctx?: IBrowserCtxInput;
+}
+
+/**
+ * `IGotoCheckMatch.callback`：於 `_checkShouldGotoUrl` 回傳前接收目前判定結果與輸入參數
+ *
+ * 回傳非空（至少含一個欄位）時以之覆寫對應欄位；
+ * 回傳 `null` / `undefined` / `{}` 時沿用原判定。
+ * 允許非同步回呼（可讀取頁面狀態，如 `_readUploadCount`）。
+ */
+export type IGotoCheckCallback = (
+	result: ICheckShouldGotoResult,
+	runtimeArgs: IGotoCheckCallbackArgs,
+) => IGotoCheckCallbackResult | Promise<IGotoCheckCallbackResult>;
 
 /**
  * 將 `checkMatch` 的布林 / 物件輸入正規化為物件形式
@@ -130,7 +183,7 @@ export function _handleGotoOptionsCheckMatch(checkMatch?: boolean | IGotoCheckMa
  */
 export function _handleGotoOptionsInput(runtime: {
 	currentPageUrl: string;
-}, gotoOptions?: IGotoOptionsInput): IPlaywrightGotoOptions
+}, gotoOptions?: IGotoOptionsInput, ctx?: IBrowserCtxInput): IPlaywrightGotoOptions
 {
 	if (typeof gotoOptions?.referer === 'boolean')
 	{
@@ -155,35 +208,60 @@ export function _handleGotoOptionsInput(runtime: {
  * 僅在啟用 `checkMatch` 且目前網址已等於目標網址時略過導航；
  * 未啟用 `checkMatch` 時一律導航（相同網址亦重新導航）。
  *
+ * `checkMatch.callback` 存在時，於回傳前接收目前判定結果與輸入參數（{@link IGotoCheckCallback}），
+ * 回傳非空即以之覆寫結果（如讀取頁面狀態後強制 / 取消導航）。
+ *
  * @param targetUrl - 目標網址
  * @param currentPageUrl - 目前網址
- * @param checkMatch - 是否比對目前網址與目標網址
- * @returns `isSameUrl` 目前網址是否已等於目標網址；`shouldGoto` 是否需要執行導航
+ * @param checkMatch - 是否比對目前網址與目標網址（含回呼 `callback`）
+ * @returns Promise：`isSameUrl` 目前網址是否已等於目標網址；`shouldGoto` 是否需要執行導航
  */
-export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, checkMatch?: boolean | IGotoCheckMatch): ICheckShouldGotoResult
+export async function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, checkMatch: boolean | IGotoCheckMatch, options: IGotoOptions, ctx?: IBrowserCtxInput): Promise<ICheckShouldGotoResult>
 {
 	const checkMatchOptions = _handleGotoOptionsCheckMatch(checkMatch);
 
-	const isSameUrl = currentPageUrl === targetUrl;
-
-	let shouldGoto = true;
+	let result: ICheckShouldGotoResult = {
+		/** 目前網址是否已等於目標網址 */
+		isSameUrl: currentPageUrl === targetUrl,
+		/** 是否需要執行導航 */
+		shouldGoto: true,
+		shouldNewPage: void 0,
+	};
 
 	/** 已在目標網址時才需要判斷是否重複導航 */
-	if (isSameUrl)
+	if (result.isSameUrl)
 	{
 		/** 僅在 checkMatch 啟用時才略過導航 */
 		if (checkMatchOptions.href)
 		{
-			shouldGoto = false;
+			result.shouldGoto = false;
 		}
 	}
 
-	return {
-		/** 目前網址是否已等於目標網址 */
-		isSameUrl,
-		/** 是否需要執行導航 */
-		shouldGoto,
-	};
+	if (options.newPage)
+	{
+		result.shouldNewPage = options.newPage;
+	}
+	else if (options.newPageMaybe)
+	{
+		result.shouldNewPage = options.newPageMaybe;
+	}
+
+	/** 回呼存在時：於回傳前接收目前結果與輸入參數，回傳非空即覆寫對應欄位 */
+	const patched = await checkMatchOptions.callback?.(result, {
+		targetUrl,
+		currentPageUrl,
+		checkMatch: checkMatchOptions,
+		options,
+		ctx,
+	});
+
+	if (patched && Object.keys(patched).length)
+	{
+		result = { ...result, ...patched };
+	}
+
+	return result;
 }
 
 /**
@@ -191,35 +269,84 @@ export function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: string, c
  *
  * `checkMatch` 為 true 或 `checkMatch.href` 為 true 時，
  * 比對目前網址與目標網址，相同則不執行導航；未啟用時一律導航。
+ * `checkMatch.callback` 存在時，於判定回傳前接收結果與參數，回傳非空即覆寫判定
+ * （可非同步讀取頁面狀態，如 `_readUploadCount`）。
  *
  * @param page - 導航分頁
  * @param url - 目標網址
  * @param options - 導航選項（分頁來源、`checkMatch` 與 Playwright 導航選項）
  * @returns 導航分頁與是否有發生 goto 行為
  */
-export async function gotoPage(page: Page, url: string, options?: IGotoOptions): Promise<IGotoResult>
+export async function gotoPage(page: Page, url: string, options?: IGotoOptions, ctx?: IBrowserCtxInput): Promise<IGotoResult>
 {
-	const checkMatchOptions = _handleGotoOptionsCheckMatch(options?.checkMatch);
+	options ??= {};
+
+	const checkMatchOptions = _handleGotoOptionsCheckMatch(options.checkMatch);
+
+	const pageExists = page && !page.isClosed();
+
+	let isNewPage: boolean;
+
+	if (options.ensurePage && !pageExists || options.newPage)
+	{
+		if (ctx)
+		{
+			page = await createNewPage(ctx, options.newPageOptions);
+			isNewPage = true;
+		}
+		else
+		{
+			throw new Error('Cannot create new page without browser context');
+		}
+	}
 
 	const currentPageUrl = page.url();
 
-	const { shouldGoto } = _checkShouldGotoUrl(url, currentPageUrl, checkMatchOptions);
+	let checkResult: ICheckShouldGotoResult;
+
+	if (!isNewPage)
+	{
+		checkResult = await _checkShouldGotoUrl(url, currentPageUrl, checkMatchOptions, options, ctx);
+	}
 
 	let didGoto = false;
 
 	/** 略過導航時 `didGoto` 維持 false，僅回傳目前分頁 */
-	if (!shouldGoto)
+	if (!checkResult.shouldGoto && !isNewPage)
 	{
 		didGoto = false;
 	}
 	else
 	{
 		/** 收斂 `referer` 布林輸入後交由 Playwright 導航 */
-		const gotoOptions = _handleGotoOptionsInput({ currentPageUrl }, options?.gotoOptions);
+		const gotoOptions = _handleGotoOptionsInput({ currentPageUrl }, options.gotoOptions);
+
+		if (checkResult?.shouldNewPage && !isNewPage)
+		{
+			if (ctx)
+			{
+				page = await createNewPage(ctx, options.newPageOptions);
+				isNewPage = true;
+			}
+			else
+			{
+				isNewPage = false;
+			}
+		}
 
 		await page.goto(url, gotoOptions);
 		didGoto = true;
 	}
 
-	return { page, didGoto };
+	return {
+		page,
+		didGoto,
+		isNewPage,
+
+		pageExists,
+
+		isSameUrl: checkResult.isSameUrl,
+		shouldGoto: checkResult.shouldGoto,
+		// shouldNewPage,
+	};
 }

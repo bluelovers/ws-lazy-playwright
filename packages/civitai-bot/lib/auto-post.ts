@@ -121,13 +121,10 @@ export async function autoPost(
 	ctx: IRunContext,
 ): Promise<void>
 {
-	/** 執行期參數一律取自 context：CLI（含執行開關）、訊息控制、進度與完成紀錄 */
-	const { cli, options, progress, record } = ctx;
+	/** 執行期參數一律取自 context：CLI（含執行開關）、訊息控制、進度、完成紀錄與瀏覽器實例 */
+	const { cli, options, progress, record, automation } = ctx;
 
-	/** 發布完成後以同一 context 重開建立貼文頁 */
-	const context = page.context();
-
-	/** 目前批次使用的頁面；發布完成後重置 */
+	/** 目前批次使用的頁面；發布完成後由 automation 於同一 context 重開建立貼文頁（{@link createPostPage}） */
 	let currentPage = page;
 
 	/** dry run 是否生效：開關解除（`disableDryRun`）時全程實際上傳與發布 */
@@ -281,7 +278,7 @@ export async function autoPost(
 					 * 當前頁面已離開建立貼文頁，重開新頁面執行下一批次
 					 */
 					publishedUrls.push(currentPage.url());
-					currentPage = await createPostPage(context, cli.switches.createUrl);
+					currentPage = await createPostPage(automation, cli.switches.createUrl);
 
 					publishCount++;
 

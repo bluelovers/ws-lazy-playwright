@@ -162,8 +162,24 @@ export async function autoUploadDemo(
 		}
 	}
 
+	/** 注入參數與模組層預設合併：僅未指定的欄位回落預設 */
+	const storageId = params.storageId ?? STORAGE_ID;
+	const storageBaseDir = params.storageBaseDir ?? STORAGE_BASE_DIR;
+	const progressFile = params.progressFile ?? PROGRESS_FILE;
+	const recordDir = params.recordDir ?? RECORD_DIR;
+
+	/** 多路徑共用：整個執行只建立一次瀏覽器實例 */
+	const automation = await createBrowserAutomation({
+		// engine: EnumAutomationEngine.Playwright,
+		storage: {
+			file: { baseDir: storageBaseDir },
+			/** 建立 context 時自動還原登入狀態（Cookie / Session），不需自行組裝還原流程 */
+			restore: { id: storageId },
+		},
+	});
+
 	/**
-	 * 執行期 context：彙整本次執行的所有相關參數（CLI、範圍、來源、儲存與進度／紀錄路徑），
+	 * 執行期 context：彙整本次執行的所有相關參數（CLI、範圍、來源、儲存與進度／紀錄路徑、瀏覽器實例），
 	 * 由上而下傳遞至掃描、完整階段與批次報告；
 	 * 逐路徑迴圈再以展開運算併入目前任務基準路徑、掃描範圍、進度與完成紀錄
 	 */
@@ -173,28 +189,20 @@ export async function autoUploadDemo(
 		/** 任務範圍：未指定時取 CLI 解析結果 `range` */
 		range: range ?? cli.range,
 		source,
+		automation,
 		taskBases,
-		/** 注入參數與模組層預設合併：僅未指定的欄位回落預設 */
-		storageId: params.storageId ?? STORAGE_ID,
-		storageBaseDir: params.storageBaseDir ?? STORAGE_BASE_DIR,
-		progressFile: params.progressFile ?? PROGRESS_FILE,
-		recordDir: params.recordDir ?? RECORD_DIR,
+		storageId,
+		storageBaseDir,
+		progressFile,
+		recordDir,
 	};
 
-	/** 多路徑共用：整個執行只建立一次瀏覽器實例 */
-	const automation = await createBrowserAutomation({
-		// engine: EnumAutomationEngine.Playwright,
-		storage: {
-			file: { baseDir: ctx.storageBaseDir },
-			/** 建立 context 時自動還原登入狀態（Cookie / Session），不需自行組裝還原流程 */
-			restore: { id: ctx.storageId },
-		},
-	});
+	let currentPage = automation.page;
 
 	try
 	{
-		/** 多路徑共用同一個 context 實例：各路徑皆於其中開頁發文 */
-		const context = await automation.newContext();
+		/** 鎖定 automation 主 context（`storage.restore` 內建還原登入狀態）：後續新分頁皆於其中開頁發文 */
+		await automation.newContext();
 
 		/** 完成紀錄：完成任務依發布日期分檔保存（多路徑共用同一實例） */
 		const record = createCompletionRecord(ctx.recordDir, ctx.options);
@@ -229,9 +237,9 @@ export async function autoUploadDemo(
 				continue;
 			}
 
-			const page = await createPostPage(context, runCtx.cli.switches.createUrl);
+			currentPage = await createPostPage(runCtx.automation, runCtx.cli.switches.createUrl, currentPage);
 
-			await autoPost(page, stream, runCtx);
+			await autoPost(currentPage, stream, runCtx);
 		}
 	}
 	catch (error)

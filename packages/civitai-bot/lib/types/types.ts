@@ -2,6 +2,7 @@ import { ITSPickExtra } from "ts-type";
 import type { IAutoPostCli } from '../cli';
 import type { ICompletionRecord } from '../record';
 import type { ITaskProgress } from '../progress';
+import type { AbstractBrowserAutomation } from 'lazy-playwright-impl/lib/core/browser-automation';
 
 /** 單一待上傳檔案：路徑、大小（供 5MB 總和切包）與時間戳（供新增檔案比對） */
 export interface IUploadItem
@@ -207,6 +208,8 @@ export interface IRunContext
 {
 	/** CLI 參數（{@link IAutoPostCli}）：執行設定等已由 CLI 定義的參數一律自此取用 */
 	cli: IAutoPostCli;
+	/** 瀏覽器自動化實例：提供主 context 與 `goto`（建立貼文頁等導航使用） */
+	automation: AbstractBrowserAutomation;
 	/** 訊息控制（獨立物件，不併入其他參數） */
 	options?: IMessageOptions;
 	/** 任務範圍：僅於未指定 {@link source} 的掃描模式生效（逐路徑併入續跑覆寫後的掃描範圍） */
