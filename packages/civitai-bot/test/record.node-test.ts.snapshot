@@ -16,6 +16,24 @@ exports[`append inherits cross-day history 1`] = `
 ]
 `;
 
+exports[`cross-day history chains from latest old entry 1`] = `
+[
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/3"
+    ],
+    "publishCount": 1,
+    "lastFile": "D:/x/task/f1.png",
+    "lastFileTime": 1,
+    "historyPublishedUrls": [
+      "https://example.invalid/2"
+    ],
+    "historyPublishCount": 1
+  }
+]
+`;
+
 exports[`cross-day history inherited on new day entry 1`] = `
 [
   {

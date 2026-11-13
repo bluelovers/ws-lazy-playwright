@@ -384,3 +384,57 @@ test('append inherits cross-day history', async (t: TestContext) => {
 	/** 快照今日條目（剔除動態 `completedAt`） */
 	t.assert.snapshot(_stripCompletedAt(saved.entries));
 });
+
+/** 鏈式承接：只接最新一筆含該路徑的舊檔（自身 + 其 history），不回頭累加更舊檔案 */
+test('cross-day history chains from latest old entry', async (t: TestContext) => {
+	/** 固定子目錄：執行前重設，避免完成紀錄跨執行累積 */
+	const dir = join(__TEST_TEMP, 'record-node-test-history-chain');
+
+	await _resetDir(dir);
+	const unit = 'D:/x/task';
+
+	/** 兩日前：自身發布 3 筆（舊版紀錄，無 history 欄位） */
+	await writeFile(join(dir, `${_day(2)}.json`), JSON.stringify({
+		date: _day(2),
+		entries: [{
+			path: unit,
+			completedAt: '2026-01-01T00:00:00.000Z',
+			publishedUrls: ['https://example.invalid/1'],
+			publishCount: 3,
+		}],
+	}));
+
+	/** 前一日：最新一筆舊紀錄（亦無 history 欄位）：只承接此筆 */
+	await writeFile(join(dir, `${_day(1)}.json`), JSON.stringify({
+		date: _day(1),
+		entries: [{
+			path: unit,
+			completedAt: '2026-01-02T00:00:00.000Z',
+			publishedUrls: ['https://example.invalid/2'],
+			publishCount: 1,
+		}],
+	}));
+
+	const record = createCompletionRecord(dir, QUIET);
+
+	await record.updateOrAppend({
+		path: unit,
+		lastFile: `${unit}/f1.png`,
+		lastFileTime: 1,
+		publishedUrls: ['https://example.invalid/3'],
+		publishCount: 1,
+	});
+
+	const saved = JSON.parse(await readFile(join(dir, `${_day()}.json`), 'utf8')) as { entries: Record<string, unknown>[] };
+	const entry = saved.entries[0];
+
+	/** 鏈式只接前一筆：history = 前一日自身（1），不回頭累加兩日前 */
+	t.assert.equal(entry.historyPublishCount, 1);
+	t.assert.deepEqual(entry.historyPublishedUrls, ['https://example.invalid/2']);
+
+	/** 累計次數仍全量合計：兩日前 3 + 前日 1 + 今日 1 */
+	t.assert.equal(await record.publishedCount(unit), 5);
+
+	/** 快照今日條目（剔除動態 `completedAt`） */
+	t.assert.snapshot(_stripCompletedAt(saved.entries));
+});

@@ -28,7 +28,7 @@ export interface ICompletionEntry extends Partial<IDoneBoundary>
 	publishCount?: number;
 	/**
 	 * 跨日繼承的發布網址：寫入該路徑「當日首個條目」（{@link ICompletionRecord.append} / {@link ICompletionRecord.updateOrAppend}）時，
-	 * 由之前日期的紀錄合併帶入（各日自身網址聯集，不含當日）
+	 * 由最新一筆舊紀錄（其自身 + 其 `history*` 欄位）合併帶入，不含當日
 	 */
 	historyPublishedUrls?: string[];
 	/**
@@ -66,14 +66,14 @@ export interface ICompletionRecord
 	/**
 	 * 將完成任務寫入發布日期對應的紀錄檔（`YYYY-MM-DD.json`）：一律新增一筆
 	 *
-	 * 當日尚無該路徑條目、而之前日期已有紀錄時，以 `history*` 欄位繼承其累計發布（跨日）
+	 * 當日尚無該路徑條目、而之前日期已有紀錄時，以 `history*` 欄位鏈式承接最新一筆舊紀錄（自身 + 其 history，跨日）
 	 */
 	append(input: ICompletionInput): Promise<void>;
 	/**
 	 * 寫入發布事件：同日檔案內已有同路徑條目時就地更新（發布次數與網址累加、完成邊界取本次），
 	 * 否則新增一筆——同一路徑不因逐批發布而分裂為多筆紀錄
 	 *
-	 * 當日尚無該路徑條目、而之前日期已有紀錄時，以 `history*` 欄位繼承其累計發布（跨日）；
+	 * 當日尚無該路徑條目、而之前日期已有紀錄時，以 `history*` 欄位鏈式承接最新一筆舊紀錄（自身 + 其 history，跨日）；
 	 * 同日續寫時既有繼承欄位維持不變
 	 *
 	 * 同日檔案內容以記憶體快取，重複寫入不重新讀取檔案
@@ -108,8 +108,9 @@ function _nextDay(day: string): string
  *
  * 同路徑以 {@link ICompletionRecord.updateOrAppend} 寫入：既有條目就地更新並收斂重複筆，
  * 同一路徑不因逐批發布而分裂為多筆紀錄；{@link ICompletionRecord.append} 則一律新增一筆。
- * 跨日寫入（當日尚無該路徑條目）時，由之前日期的紀錄以 `history*` 欄位繼承累計發布，
- * 發布脈絡不因分檔而遺失；再次跨日時合併結果與前一日相同（自身 + 其 history）。
+ * 跨日寫入（當日尚無該路徑條目）時，以鏈式承接最新一筆舊紀錄的 `history*` 欄位
+ * （其自身 + 其 history，不回頭累加更舊檔案），發布脈絡不因分檔而遺失；
+ * 再次跨日時合併結果與前一日相同（自身 + 其 history）。
  *
  * 紀錄檔為歷史資料：不因進度檔的重跑判定而重置，跨執行持續累加。
  *
@@ -189,14 +190,14 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 	});
 
 	/**
-	 * 取得各路徑於指定日期「之前」全部紀錄檔的累計發布（網址聯集、次數合計）
+	 * 取得各路徑的跨日繼承內容：鏈式承接「最新一筆含該路徑的舊檔」
+	 *
+	 * 日期檔由新至舊處理：路徑首次出現即由該檔承接——合併該檔內同路徑條目
+	 * （自身 `publishCount` / `publishedUrls` + 其 `history*` 欄位），
+	 * 更舊檔案對該路徑不再累加，與「前一日自身 + 前一日 history」的合併定義一致。
 	 *
 	 * 首次呼叫掃描目錄建構記憶體快取（排除當日檔案），同日重複呼叫不重新 IO；
 	 * 寫入日期跨越時重建——前一日於跨日前寫入的條目須一併納入。
-	 *
-	 * 合計只取各筆自身的 `publishCount` / `publishedUrls`，不讀 `history*` 欄位：
-	 * 與 {@link ICompletionRecord.publishedCount} 的各日合計一致，
-	 * 等價於「前一日自身 + 前一日 history」的合併結果且不重複計算。
 	 *
 	 * @param date 目前寫入日期（其檔案排除於繼承範圍外）
 	 */
@@ -206,28 +207,42 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 
 		const next = new Map<string, { urls: Set<string>; count: number }>();
 
-		/** 檔名即日期（`YYYY-MM-DD.json`）：由舊至新處理，繼承網址依發布先後排列 */
+		/** 檔名即日期（`YYYY-MM-DD.json`）：由新至舊，最新出現該路徑的檔案優先承接 */
 		const files = (await readdir(dir, { withFileTypes: true }).catch(() => []))
 			.filter(item => item.isFile() && DAY_FILE_RE.test(item.name) && item.name !== `${date}.json`)
 			.map(item => item.name)
-			.sort();
+			.sort((a, b) => b.localeCompare(a));
 
 		for (const file of files)
 		{
+			/** 該檔內各路徑的合併結果（自身 + history）：僅尚未被較新檔案承接的路徑才採用 */
+			const local = new Map<string, { urls: Set<string>; count: number }>();
+
 			for (const entry of await loadDay(file.replace(/\.json$/, '')))
 			{
 				const path = normalize(entry.path);
-				let hit = next.get(path);
+
+				/** 已由較新檔案承接：鏈式只接最新一筆，不回頭累加 */
+				if (next.has(path)) continue;
+
+				let hit = local.get(path);
 
 				if (!hit)
 				{
 					hit = { urls: new Set<string>(), count: 0 };
-					next.set(path, hit);
+					local.set(path, hit);
 				}
 
+				/** 繼承欄位在前：合併後的網址維持由舊至新 */
+				for (const url of entry.historyPublishedUrls ?? []) hit.urls.add(url);
 				for (const url of entry.publishedUrls ?? []) hit.urls.add(url);
 
-				hit.count += countOf(entry);
+				hit.count += countOf(entry) + (entry.historyPublishCount ?? 0);
+			}
+
+			for (const [path, hit] of local)
+			{
+				next.set(path, hit);
 			}
 		}
 
@@ -238,7 +253,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 	};
 
 	/**
-	 * 跨日繼承：將指定日期之前該路徑的累計發布以 `history*` 欄位帶入新日期條目
+	 * 跨日繼承：將該路徑最新一筆舊紀錄的合併結果（自身 + 其 history）以 `history*` 欄位帶入新日期條目
 	 *
 	 * 無舊紀錄、或舊紀錄從未發布（次數 0 且無網址）時回傳 `undefined`（省略欄位）
 	 *
@@ -272,7 +287,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			const entries = await loadDay(date);
 			const entry = buildEntry(input, now);
 
-			/** 跨日寫入：由之前日期的紀錄繼承累計發布（同日無可繼承時省略） */
+			/** 跨日寫入：鏈式承接最新一筆舊紀錄的累計發布（同日無可繼承時省略） */
 			const history = await buildHistory(date, entry.path);
 
 			entries.push({ ...entry, ...(history ?? {}) });
@@ -336,7 +351,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			{
 				const entry = buildEntry(input, now);
 
-				/** 跨日寫入：由之前日期的紀錄繼承累計發布（同日已有條目時維持原繼承欄位） */
+				/** 跨日寫入：鏈式承接最新一筆舊紀錄的累計發布（同日已有條目時維持原繼承欄位） */
 				const history = await buildHistory(date, entry.path);
 
 				entries.push({ ...entry, ...(history ?? {}) });
