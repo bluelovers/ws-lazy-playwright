@@ -1,3 +1,59 @@
+exports[`append inherits cross-day history 1`] = `
+[
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/2"
+    ],
+    "publishCount": 1,
+    "lastFile": "D:/x/task/f1.png",
+    "lastFileTime": 1,
+    "historyPublishedUrls": [
+      "https://example.invalid/1"
+    ],
+    "historyPublishCount": 1
+  }
+]
+`;
+
+exports[`cross-day history inherited on new day entry 1`] = `
+[
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/2",
+      "https://example.invalid/3"
+    ],
+    "publishCount": 2,
+    "lastFile": "D:/x/task/f2.png",
+    "lastFileTime": 2,
+    "historyPublishedUrls": [
+      "https://example.invalid/1"
+    ],
+    "historyPublishCount": 2
+  }
+]
+`;
+
+exports[`cross-day history merges prior history 1`] = `
+[
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/3"
+    ],
+    "publishCount": 1,
+    "lastFile": "D:/x/task/f3.png",
+    "lastFileTime": 3,
+    "historyPublishedUrls": [
+      "https://example.invalid/1",
+      "https://example.invalid/2"
+    ],
+    "historyPublishCount": 2
+  }
+]
+`;
+
 exports[`publishedCount normalizes record paths 1`] = `
 [
   {
@@ -5,7 +61,11 @@ exports[`publishedCount normalizes record paths 1`] = `
     "publishedUrls": [],
     "publishCount": 1,
     "lastFile": "D:/sd-forge/output/x/task/f.png",
-    "lastFileTime": 1
+    "lastFileTime": 1,
+    "historyPublishedUrls": [
+      "https://example.invalid/1"
+    ],
+    "historyPublishCount": 2
   }
 ]
 `;

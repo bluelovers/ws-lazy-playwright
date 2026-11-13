@@ -26,6 +26,18 @@ export interface ICompletionEntry extends Partial<IDoneBoundary>
 	publishedUrls: string[];
 	/** 該筆完成對此單位的發布次數（各筆合計即為該目錄發布過的總次數）；舊紀錄省略，計算時以 `publishedUrls` 數量補上 */
 	publishCount?: number;
+	/**
+	 * 跨日繼承的發布網址：寫入該路徑「當日首個條目」（{@link ICompletionRecord.append} / {@link ICompletionRecord.updateOrAppend}）時，
+	 * 由之前日期的紀錄合併帶入（各日自身網址聯集，不含當日）
+	 */
+	historyPublishedUrls?: string[];
+	/**
+	 * 跨日繼承的發布次數：與 {@link ICompletionEntry.historyPublishedUrls} 同批帶入
+	 *
+	 * 不計入 {@link ICompletionRecord.publishedCount}——各日仍以檔案內自身次數合計，
+	 * 繼承欄位僅為跨日傳承，計入即重複計算
+	 */
+	historyPublishCount?: number;
 }
 
 /** 寫入輸入：`completedAt` 由寫入當下補上；完成邊界（{@link IDoneBoundary}）必填 */
@@ -51,16 +63,23 @@ export interface ICompletionResume
 /** 完成紀錄寫入器：完成任務依發布日期分檔保存 */
 export interface ICompletionRecord
 {
-	/** 將完成任務寫入發布日期對應的紀錄檔（`YYYY-MM-DD.json`）：一律新增一筆 */
+	/**
+	 * 將完成任務寫入發布日期對應的紀錄檔（`YYYY-MM-DD.json`）：一律新增一筆
+	 *
+	 * 當日尚無該路徑條目、而之前日期已有紀錄時，以 `history*` 欄位繼承其累計發布（跨日）
+	 */
 	append(input: ICompletionInput): Promise<void>;
 	/**
 	 * 寫入發布事件：同日檔案內已有同路徑條目時就地更新（發布次數與網址累加、完成邊界取本次），
 	 * 否則新增一筆——同一路徑不因逐批發布而分裂為多筆紀錄
 	 *
+	 * 當日尚無該路徑條目、而之前日期已有紀錄時，以 `history*` 欄位繼承其累計發布（跨日）；
+	 * 同日續寫時既有繼承欄位維持不變
+	 *
 	 * 同日檔案內容以記憶體快取，重複寫入不重新讀取檔案
 	 */
 	updateOrAppend(input: ICompletionInput): Promise<void>;
-	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0；路徑以 `normalize` 標準化比對）；供發布次數上限的累計判定 */
+	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0；路徑以 `normalize` 標準化比對）；`history*` 繼承欄位不計入（繼承即重複）；供發布次數上限的累計判定 */
 	publishedCount(path: string): Promise<number>;
 }
 
@@ -89,6 +108,8 @@ function _nextDay(day: string): string
  *
  * 同路徑以 {@link ICompletionRecord.updateOrAppend} 寫入：既有條目就地更新並收斂重複筆，
  * 同一路徑不因逐批發布而分裂為多筆紀錄；{@link ICompletionRecord.append} 則一律新增一筆。
+ * 跨日寫入（當日尚無該路徑條目）時，由之前日期的紀錄以 `history*` 欄位繼承累計發布，
+ * 發布脈絡不因分檔而遺失；再次跨日時合併結果與前一日相同（自身 + 其 history）。
  *
  * 紀錄檔為歷史資料：不因進度檔的重跑判定而重置，跨執行持續累加。
  *
@@ -105,6 +126,12 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 
 	/** 各單位的累計發布次數：首次查詢時掃描目錄內全部紀錄檔建構，其後由寫入同步累加 */
 	let counts: Map<string, number> | undefined;
+
+	/** 各路徑於「寫入日期之前」全部紀錄檔的累計發布（網址聯集、次數合計）：跨日繼承用 */
+	let historyByPath: Map<string, { urls: Set<string>; count: number }> | undefined;
+
+	/** {@link historyByPath} 建構時的寫入日期：跨日後重建，以納入前一日於跨日前寫入的條目 */
+	let historyDate: string | undefined;
 
 	/** 單筆條目的發布次數：舊紀錄無 `publishCount` 欄位時以 `publishedUrls` 數量計算 */
 	const countOf = (entry: ICompletionEntry): number => entry.publishCount ?? entry.publishedUrls?.length ?? 0;
@@ -161,6 +188,82 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 		lastFileTime: input.lastFileTime,
 	});
 
+	/**
+	 * 取得各路徑於指定日期「之前」全部紀錄檔的累計發布（網址聯集、次數合計）
+	 *
+	 * 首次呼叫掃描目錄建構記憶體快取（排除當日檔案），同日重複呼叫不重新 IO；
+	 * 寫入日期跨越時重建——前一日於跨日前寫入的條目須一併納入。
+	 *
+	 * 合計只取各筆自身的 `publishCount` / `publishedUrls`，不讀 `history*` 欄位：
+	 * 與 {@link ICompletionRecord.publishedCount} 的各日合計一致，
+	 * 等價於「前一日自身 + 前一日 history」的合併結果且不重複計算。
+	 *
+	 * @param date 目前寫入日期（其檔案排除於繼承範圍外）
+	 */
+	const loadHistory = async (date: string): Promise<Map<string, { urls: Set<string>; count: number }>> =>
+	{
+		if (historyByPath && historyDate === date) return historyByPath;
+
+		const next = new Map<string, { urls: Set<string>; count: number }>();
+
+		/** 檔名即日期（`YYYY-MM-DD.json`）：由舊至新處理，繼承網址依發布先後排列 */
+		const files = (await readdir(dir, { withFileTypes: true }).catch(() => []))
+			.filter(item => item.isFile() && DAY_FILE_RE.test(item.name) && item.name !== `${date}.json`)
+			.map(item => item.name)
+			.sort();
+
+		for (const file of files)
+		{
+			for (const entry of await loadDay(file.replace(/\.json$/, '')))
+			{
+				const path = normalize(entry.path);
+				let hit = next.get(path);
+
+				if (!hit)
+				{
+					hit = { urls: new Set<string>(), count: 0 };
+					next.set(path, hit);
+				}
+
+				for (const url of entry.publishedUrls ?? []) hit.urls.add(url);
+
+				hit.count += countOf(entry);
+			}
+		}
+
+		historyByPath = next;
+		historyDate = date;
+
+		return next;
+	};
+
+	/**
+	 * 跨日繼承：將指定日期之前該路徑的累計發布以 `history*` 欄位帶入新日期條目
+	 *
+	 * 無舊紀錄、或舊紀錄從未發布（次數 0 且無網址）時回傳 `undefined`（省略欄位）
+	 *
+	 * @param date 目前寫入日期
+	 * @param path 標準化後的執行單位路徑
+	 */
+	const buildHistory = async (date: string, path: string): Promise<Pick<ICompletionEntry, 'historyPublishedUrls' | 'historyPublishCount'> | undefined> =>
+	{
+		const hit = (await loadHistory(date)).get(path);
+
+		if (!hit || (!hit.count && !hit.urls.size)) return undefined;
+
+		_logPhase(
+			EnumPostPhase.AutoPost,
+			options,
+			`completion history inherited: ${path} (+${hit.count} from prior days)`,
+			'debug',
+		);
+
+		return {
+			historyPublishedUrls: [...hit.urls],
+			historyPublishCount: hit.count,
+		};
+	};
+
 	return {
 		append: async (input: ICompletionInput) =>
 		{
@@ -169,7 +272,10 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			const entries = await loadDay(date);
 			const entry = buildEntry(input, now);
 
-			entries.push(entry);
+			/** 跨日寫入：由之前日期的紀錄繼承累計發布（同日無可繼承時省略） */
+			const history = await buildHistory(date, entry.path);
+
+			entries.push({ ...entry, ...(history ?? {}) });
 
 			await flushDay(date, entries);
 			bumpCount(entry.path, countOf(entry));
@@ -228,7 +334,12 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			}
 			else
 			{
-				entries.push(buildEntry(input, now));
+				const entry = buildEntry(input, now);
+
+				/** 跨日寫入：由之前日期的紀錄繼承累計發布（同日已有條目時維持原繼承欄位） */
+				const history = await buildHistory(date, entry.path);
+
+				entries.push({ ...entry, ...(history ?? {}) });
 			}
 
 			await flushDay(date, entries);
