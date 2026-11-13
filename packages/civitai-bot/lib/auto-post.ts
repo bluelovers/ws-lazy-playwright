@@ -3,7 +3,8 @@ import { DRY_RUN_FROM_BATCH, MAX_PER_BATCH, MAX_PACK_BYTES } from './types/const
 import { _folderKindIsTaskLike, expandFolder } from './path-kind/folder';
 import { _logPhase, _withBatch } from './util/logger';
 import { createPostPage, ensureDropzone, publishPost } from './civitai/page';
-import { packBySize, reportBatch } from './util/report';
+import { reportBatch } from './util/report';
+import { packBySize } from './workflow/upload-split';
 import { collectUploadOrder } from './scan-collect/upload-order';
 import { reconcileUpload } from './workflow/upload';
 import { uploadPack } from './civitai/page-upload';
