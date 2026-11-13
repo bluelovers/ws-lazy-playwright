@@ -30,6 +30,8 @@ export const NOTIFICATION_LOG_RULES: readonly INotificationLogRule[] = [
 	{ title: /Failed to create post/i, method: 'error' },
 	/** 已達上限（如「You've reached today's limit of 150 posts.」；同時觸發停止任務） */
 	{ description: LIMIT_RE, method: 'error' },
+	/** Buzz 餘額異動（如「User Buzz Update - 2 Buzz has been added to your Buzz account」）：一般資訊，非錯誤 */
+	{ title: /User Buzz Update/i, method: 'info' },
 ];
 
 /**
