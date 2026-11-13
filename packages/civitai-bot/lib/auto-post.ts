@@ -1,11 +1,11 @@
 import type { Page } from 'playwright';
 import { DRY_RUN_FROM_BATCH, MAX_PER_BATCH, MAX_PACK_BYTES } from './types/const';
-import { _folderKindIsTaskLike, expandFolder, toTaskFolder } from './path-kind/folder';
-import { _logPhase, _withBatch } from './logger';
+import { _folderKindIsTaskLike, expandFolder } from './path-kind/folder';
+import { _logPhase, _withBatch } from './util/logger';
 import { createPostPage, ensureDropzone, publishPost } from './civitai/page';
-import { packBySize, reportBatch } from './report';
+import { packBySize, reportBatch } from './util/report';
 import { collectUploadOrder } from './scan-collect/upload-order';
-import { reconcileUpload } from './upload';
+import { reconcileUpload } from './workflow/upload';
 import { uploadPack } from './civitai/page-upload';
 import {
 	EnumPostPhase,
@@ -15,71 +15,11 @@ import {
 	type IMessageOptions,
 	type IRunContext,
 	type IRunSwitches,
-	type ITaskFolder,
 	type ITaskRangeOptions,
 	type IUploadItem,
 } from './types/types';
-import { iterateFolderInput, prependFolder } from './path-kind/source';
-import { iterateTaskDirs } from './scan-collect/scan';
-import { findAddedFiles, type ITaskProgress } from './progress';
-import type { ICompletionRecord } from './record';
-
-/**
- * 完整階段：以生成器 (Generator) 逐項取得來源清單並轉為標準資料夾物件
- *
- * - 指定 `ctx.source`（globStream / globAsync / Iterable / Generator / 構建函式）：以其為準
- * - 未指定：以 `ctx.taskBase` + `ctx.range` 掃描
- *
- * 兩分支皆延遲產出 (Lazy Yield)：呼叫端以 `for await` 逐項消費，不建立中間陣列 (Intermediate Array)。
- *
- * @param ctx 執行期 context（{@link IRunContext}）：需含任務基準路徑 `taskBase`，由呼叫端逐路徑併入
- */
-export async function* collectFolders(
-	ctx: IRunContext & { taskBase: string },
-): AsyncGenerator<ITaskFolder>
-{
-	const { taskBase, range, options, source } = ctx;
-
-	if (source !== undefined)
-	{
-		yield* iterateFolderInput(source, {
-			messageOptions: options,
-		});
-	}
-	else
-	{
-		for await (const path of iterateTaskDirs(taskBase, range, options))
-		{
-			yield toTaskFolder(path);
-		}
-	}
-}
-
-/**
- * 完整階段：探測來源串流首項，回傳可交給 {@link autoPost} 的完整串流
- *
- * 以 `next()` 探測首項：空串流回傳 `undefined` 並記錄
- * （呼叫端提前中止，不啟動瀏覽器）；有首項則以 {@link prependFolder} 接回，
- * 維持單次 `for await` 延遲產出 (Lazy Yield)，不建立中間陣列。
- *
- * @param folders 來源串流（由 {@link collectFolders} 逐項產出）
- * @param ctx 執行期 context（{@link IRunContext}，僅取訊息控制 `options`）
- */
-export async function startFolderStream(
-	folders: AsyncGenerator<ITaskFolder>,
-	ctx?: IRunContext,
-): Promise<AsyncGenerator<ITaskFolder> | undefined>
-{
-	const head = await folders.next();
-
-	if (head.done)
-	{
-		_logPhase(EnumPostPhase.AutoPost, ctx?.options, 'no folders to run');
-		return undefined;
-	}
-
-	return prependFolder(head.value, folders);
-}
+import { findAddedFiles, type ITaskProgress } from './record/progress';
+import type { ICompletionRecord } from './record/record';
 
 /**
  * 完整階段（AutoPost）：確認上傳區後依來源串流分批自動發文
@@ -99,7 +39,7 @@ export async function startFolderStream(
  * 有任一批次確認發布即標記完成並更新完成邊界（最後處理檔案 + 時間戳）。
  * 無任何批次發布成功的單位不標記完成、不寫完成紀錄；只要有任一批次發布成功即寫入紀錄，
  * 未完成的部分以完成邊界（僅至實際發布的最後檔案）交由重跑比對新增，避免重複發布已發布的圖片。
- * agent-scheduler 任務受發布次數上限（{@link IRunSwitches.agsMaxPublish}）截斷時忽略剩餘圖片，
+ * agent-scheduler 任務受發布次數上限（{@link IRunSwitches['agsMaxPublish']}）截斷時忽略剩餘圖片，
  * 完成邊界僅至實際發布的最後檔案，被忽略者可於日後比對為新增再行執行。
  * 指定 {@link IRunSwitches.agsMaxPublishTotal} 時上限改以完成紀錄的累計發布次數判定：
  * 已達上限的單位直接忽略（不再發布），截斷判定亦含其已發布過的次數。

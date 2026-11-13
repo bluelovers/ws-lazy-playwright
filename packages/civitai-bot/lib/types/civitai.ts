@@ -1,5 +1,4 @@
 import type { ILogMethod } from '@lazy-playwright/logger';
-import { LIMIT_RE } from '../util/re';
 
 /** 系統提示記錄規則：依標題 / 內文模式決定 log method（與 {@link NOTIFICATION_LOG_RULES} 同源） */
 export interface INotificationLogRule
@@ -41,6 +40,13 @@ export const PUBLISH_SELECTOR = 'button[data-tour="post:publish"]';
 export const NOTIFICATION_SELECTOR = '.mantine-Notifications-notification';
 
 /**
+ * 系統提示中代表「已達上限」的特徵（如「You've reached today's limit of 150 posts.」）
+ *
+ * 命中即停止任務。
+ */
+export const LIMIT_RE = /reached\b[^.]*\blimit|daily limit|upload limit/i;
+
+/**
  * 系統提示記錄規則表（由上而下取第一筆命中；皆未命中以 `warn` 記錄）
  *
  * 單筆規則中已存在的模式皆須命中（AND），未存在的模式略過。
@@ -68,4 +74,7 @@ export const PUBLISHED_URL_PATTERNS: readonly IPublishedUrlPattern[] = [
 	{ name: 'posts', pattern: /\/posts\/\d+/ },
 	{ name: 'models', pattern: /\/models\/\d+/ },
 ];
+
+/** 等待區計數文字特徵（`N / 20 files`，20 為站台上限）：存在判定與數量擷取共用 */
+export const UPLOAD_COUNT_RE = /(\d+)\s*\/\s*20 files/;
 

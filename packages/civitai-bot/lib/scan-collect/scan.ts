@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { dirname, join } from 'upath2';
 import { _folderKindIsDayLike, _folderKindIsTaskLike, toTaskFolder } from '../path-kind/folder';
-import { _logPhase } from '../logger';
+import { _logPhase } from '../util/logger';
 import { EnumFolderKind, EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from '../types/types';
 import { fsExists } from '../util/fs';
 import { sortNames } from '../util/array';

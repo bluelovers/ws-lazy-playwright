@@ -14,10 +14,4 @@ export const TASK_DIR_RE = /_task\(/;
 /** agent-scheduler 任務目錄特徵（`agent-scheduler`），用以辨識任務資料夾 */
 export const AGENT_SCHEDULER_DIR_RE = /\/agent-scheduler\/?$/;
 
-/**
- * 系統提示中代表「已達上限」的特徵（如「You've reached today's limit of 150 posts.」）
- *
- * 命中即停止任務。
- */
 
-export const LIMIT_RE = /reached\b[^.]*\blimit|daily limit|upload limit/i;

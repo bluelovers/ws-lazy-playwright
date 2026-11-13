@@ -1,8 +1,8 @@
 import type { Page } from 'playwright';
-import { _logPhase } from '../logger';
+import { _logPhase } from '../util/logger';
 import { NOTIFICATION_LOG_RULES, NOTIFICATION_SELECTOR } from '../types/civitai';
 import { type IMessageOptions, EnumPostPhase } from '../types/types';
-import { LIMIT_RE } from '../util/re';
+import { LIMIT_RE } from '../types/civitai';
 import type { ILogMethod } from '@lazy-playwright/logger';
 
 /**

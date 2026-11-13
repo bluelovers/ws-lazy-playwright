@@ -11,7 +11,7 @@ import {
 	PUBLISHED_URL_PATTERNS,
 	PUBLISH_SELECTOR,
 } from '../types/civitai';
-import { _logPhase } from '../logger';
+import { _logPhase } from '../util/logger';
 import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from '../types/types';
 import { _ask } from '../util/cli-interface';
 import { checkNotifications } from './notifications';

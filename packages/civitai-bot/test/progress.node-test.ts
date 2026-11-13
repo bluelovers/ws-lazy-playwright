@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'upath2';
-import { findAddedFiles, loadTaskProgress } from '#/lib/progress';
+import { findAddedFiles, loadTaskProgress } from '#/lib/record/progress';
 import { __TEST_TEMP } from './__root';
 import { test, TestContext } from 'node:test';
 

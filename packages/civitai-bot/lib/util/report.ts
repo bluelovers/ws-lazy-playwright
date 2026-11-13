@@ -1,7 +1,7 @@
 import { basename, relative } from 'upath2';
 import { _logPhase, _logPhaseData, _withBatch } from './logger';
-import { EnumPostPhase, EnumUploadKind, type IMessageOptions, type IRunContext } from './types/types';
-import { classify, GRID_PREFIX, XYZ_GRID_PREFIX } from './scan-collect/upload-order';
+import { EnumPostPhase, EnumUploadKind, type IMessageOptions, type IRunContext } from '../types/types';
+import { classify, GRID_PREFIX, XYZ_GRID_PREFIX } from '../scan-collect/upload-order';
 
 /** 依總大小貪心切包：單次上傳總和不超過 `maxBytes`
  *

@@ -1,7 +1,7 @@
 import { normalize } from 'upath2';
-import { _logPhase } from './logger';
-import { readJsonFile, writeJsonAtomic } from './util/fs';
-import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types/types';
+import { _logPhase } from '../util/logger';
+import { readJsonFile, writeJsonAtomic } from '../util/fs';
+import { EnumPostPhase, type IMessageOptions, type IUploadItem } from '../types/types';
 
 /** 進度檔格式版本；格式變更時遞增，舊版檔案一律重新開始 */
 const PROGRESS_VERSION = 2;

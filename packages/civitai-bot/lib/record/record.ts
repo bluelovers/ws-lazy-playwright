@@ -1,11 +1,11 @@
 import { readdir } from 'node:fs/promises';
 import { dirname, join, normalize } from 'upath2';
-import { _folderKindIsDayLike, expandFolder, toTaskFolder } from './path-kind/folder';
-import { _logPhase } from './logger';
+import { _folderKindIsDayLike, expandFolder, toTaskFolder } from '../path-kind/folder';
+import { _logPhase } from '../util/logger';
 import { normalizeDoneBoundary, type IDoneBoundary, type IDoneEntry, type ITaskProgress } from './progress';
-import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types/types';
-import { DAY_FILE_RE } from './util/re';
-import { readJsonFile, writeJsonAtomic } from './util/fs';
+import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from '../types/types';
+import { DAY_FILE_RE } from '../util/re';
+import { readJsonFile, writeJsonAtomic } from '../util/fs';
 
 /**
  * 完成任務條目：紀錄檔的單筆內容

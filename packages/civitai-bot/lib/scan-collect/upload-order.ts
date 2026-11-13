@@ -2,7 +2,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { join } from 'upath2';
 import { IMAGE_EXT_RE } from '../util/re';
 import { sortNames } from '../util/array';
-import { _logPhase } from '../logger';
+import { _logPhase } from '../util/logger';
 import { EnumStableDiffusionFolder } from '../types/sd-webui';
 import {
 	EnumFolderKind,

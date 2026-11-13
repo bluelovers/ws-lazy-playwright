@@ -1,14 +1,10 @@
 /// <reference types="node" />
 
 import { console } from 'debug-color2';
-// @ts-ignore
 import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
-import { EnumLogLabel } from '#/lib/logger';
-// @ts-ignore
+import { EnumLogLabel } from '#/lib/util/logger';
 import { iterateFolderInput } from '#/lib/path-kind/source';
-// @ts-ignore
 import { expandFolder } from '#/lib/path-kind/folder';
-// @ts-ignore
 import type { IFolderInput } from '#/lib/types/types';
 import { globStream, async as globAsync } from 'fast-glob';
 

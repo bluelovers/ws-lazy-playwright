@@ -1,6 +1,6 @@
-import { _logPhase, _withBatch } from './logger';
-import { reportBatch } from './report';
-import { EnumPostPhase, type IMessageOptions, type IRunContext, type IUploadItem } from './types/types';
+import { _logPhase, _withBatch } from '../util/logger';
+import { reportBatch } from '../util/report';
+import { EnumPostPhase, type IMessageOptions, type IRunContext, type IUploadItem } from '../types/types';
 
 /**
  * 上傳階段：數量不符時，假設缺少者為已設定檔案中的最後 N 張

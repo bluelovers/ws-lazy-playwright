@@ -1,7 +1,7 @@
 import { ITSPickExtra } from "ts-type";
-import type { IAutoPostCli } from '../cli';
-import type { ICompletionRecord } from '../record';
-import type { ITaskProgress } from '../progress';
+import type { IAutoPostCli } from '../cli/cli';
+import type { ICompletionRecord } from '../record/record';
+import type { ITaskProgress } from '../record/progress';
 import type { AbstractBrowserAutomation } from 'lazy-playwright-impl/lib/core/browser-automation';
 
 /** 單一待上傳檔案：路徑、大小（供 5MB 總和切包）與時間戳（供新增檔案比對） */

@@ -1,6 +1,6 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'upath2';
-import { createCompletionRecord, findStartAfterLastPublish } from '#/lib/record';
+import { createCompletionRecord, findStartAfterLastPublish } from '#/lib/record/record';
 import { __TEST_TEMP } from './__root';
 import { test, TestContext } from 'node:test';
 
