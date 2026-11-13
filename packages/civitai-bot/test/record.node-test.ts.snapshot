@@ -129,28 +129,28 @@ exports[`start point scoped to task base 1`] = `
     },
     "done": [
       {
-        "path": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)",
         "lastFile": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)/a.png",
-        "lastFileTime": 1
+        "lastFileTime": 1,
+        "path": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)"
       },
       {
-        "path": "D:/sd-forge/output/txt2img-images/2026-11-12",
         "lastFile": "D:/sd-forge/output/txt2img-images/2026-11-12/b.png",
-        "lastFileTime": 2
+        "lastFileTime": 2,
+        "path": "D:/sd-forge/output/txt2img-images/2026-11-12"
       }
     ]
   },
   "rootScoped": {
     "done": [
       {
-        "path": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)",
         "lastFile": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)/a.png",
-        "lastFileTime": 1
+        "lastFileTime": 1,
+        "path": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)"
       },
       {
-        "path": "D:/sd-forge/output/txt2img-images/2026-11-12",
         "lastFile": "D:/sd-forge/output/txt2img-images/2026-11-12/b.png",
-        "lastFileTime": 2
+        "lastFileTime": 2,
+        "path": "D:/sd-forge/output/txt2img-images/2026-11-12"
       }
     ]
   }

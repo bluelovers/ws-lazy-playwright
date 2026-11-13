@@ -5,11 +5,14 @@ import { FILE_INPUT_SELECTOR } from '../types/civitai';
 import { checkNotifications } from './notifications';
 
 
+/** 等待區計數文字特徵（`N / 20 files`，20 為站台上限）：存在判定與數量擷取共用 */
+const UPLOAD_COUNT_RE = /(\d+)\s*\/\s*20 files/;
+
 /** 讀取當前等待區計數文字 `N / 20 files` 的 N；未出現時回傳 0 */
 export async function _readUploadCount(page: Page): Promise<number>
 {
-	const text = await page.locator('p').filter({ hasText: /\/\s*20 files/ }).last().textContent().catch(() => null);
-	const matched = text?.match(/(\d+)\s*\/\s*20 files/);
+	const text = await page.locator('p').filter({ hasText: UPLOAD_COUNT_RE }).last().textContent().catch(() => null);
+	const matched = text?.match(UPLOAD_COUNT_RE);
 
 	return matched ? Number(matched[1]) : 0;
 }

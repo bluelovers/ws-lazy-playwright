@@ -1,7 +1,6 @@
-import { _logPhase } from './logger';
+import { _logPhase, _withBatch } from './logger';
 import { reportBatch } from './report';
 import { EnumPostPhase, type IMessageOptions, type IRunContext, type IUploadItem } from './types/types';
-import { debug } from 'node:console';
 
 /**
  * 上傳階段：數量不符時，假設缺少者為已設定檔案中的最後 N 張
@@ -30,7 +29,7 @@ export function reconcileUpload(
 ): IUploadItem[]
 {
 	const options = ctx?.options;
-	const message: IMessageOptions = { ...options, batchNo };
+	const message: IMessageOptions = _withBatch(options, batchNo);
 	const missing = takeMissing(setPaths, actual);
 
 	if (missing.length)

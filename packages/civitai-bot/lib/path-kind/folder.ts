@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { basename, dirname, join, normalize } from 'upath2';
 import { AGENT_SCHEDULER_DIR_RE, DAY_DIR_RE, TASK_DIR_RE } from '../util/re';
+import { sortNames } from '../util/array';
 import { _logPhase } from '../logger';
 import {
 	EnumFolderKind,
@@ -10,6 +11,9 @@ import {
 	type IMessageOptions,
 	type ITaskFolder,
 } from '../types/types';
+
+/** 以 kind 子集收窄的資料夾物件：各模式判定（day-like / task-like 等）共用的收窄型別 */
+type ITaskFolderOf<K extends EnumFolderKind> = Omit<ITaskFolder, 'kind'> & { kind: K };
 
 /** 由路徑推導所屬天：自身為天目錄，或為天目錄下的任務 */
 export function _deriveDay(name: string, parent: string): string | undefined
@@ -77,16 +81,12 @@ export function toTaskFolder(entry: IFolderInputEntry): ITaskFolder
 	return { path, kind, day, task };
 }
 
-export function _folderKindIsNotDayLike(folder: ITaskFolder): folder is Omit<typeof folder, 'kind'> & {
-	kind: Exclude<typeof folder['kind'], EnumFolderKind.Day | EnumFolderKind.AgentSchedulerDay>
-}
+export function _folderKindIsNotDayLike(folder: ITaskFolder): folder is ITaskFolderOf<Exclude<ITaskFolder['kind'], EnumFolderKind.Day | EnumFolderKind.AgentSchedulerDay>>
 {
 	return !_folderKindIsDayLike(folder);
 }
 
-export function _folderKindIsDayLike(folder: ITaskFolder): folder is Omit<typeof folder, 'kind'> & {
-	kind: EnumFolderKind.Day | EnumFolderKind.AgentSchedulerDay
-}
+export function _folderKindIsDayLike(folder: ITaskFolder): folder is ITaskFolderOf<EnumFolderKind.Day | EnumFolderKind.AgentSchedulerDay>
 {
 	return folder.kind === EnumFolderKind.Day || folder.kind === EnumFolderKind.AgentSchedulerDay;
 }
@@ -96,9 +96,7 @@ export function _folderKindIsDayLike(folder: ITaskFolder): folder is Omit<typeof
  *
  * 天目錄的任務子目錄與發布次數上限等任務專屬邏輯皆以此兩種模式為準
  */
-export function _folderKindIsTaskLike(folder: ITaskFolder): folder is Omit<typeof folder, 'kind'> & {
-	kind: EnumFolderKind.AgentSchedulerDayTask | EnumFolderKind.AgentSchedulerTask
-}
+export function _folderKindIsTaskLike(folder: ITaskFolder): folder is ITaskFolderOf<EnumFolderKind.AgentSchedulerDayTask | EnumFolderKind.AgentSchedulerTask>
 {
 	return folder.kind === EnumFolderKind.AgentSchedulerDayTask || folder.kind === EnumFolderKind.AgentSchedulerTask;
 }
@@ -120,10 +118,11 @@ export async function* expandFolder(folder: ITaskFolder, options?: IMessageOptio
 		return;
 	}
 
-	const tasks = (await readdir(folder.path, { withFileTypes: true }).catch(() => []))
-		.filter(entry => entry.isDirectory() && TASK_DIR_RE.test(entry.name))
-		.map(entry => entry.name)
-		.sort((a, b) => a.localeCompare(b));
+	const tasks = sortNames(
+		(await readdir(folder.path, { withFileTypes: true }).catch(() => []))
+			.filter(entry => entry.isDirectory() && TASK_DIR_RE.test(entry.name))
+			.map(entry => entry.name),
+	);
 
 	if (!tasks.length)
 	{

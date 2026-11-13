@@ -4,6 +4,7 @@ import { _folderKindIsDayLike, _folderKindIsTaskLike, toTaskFolder } from '../pa
 import { _logPhase } from '../logger';
 import { EnumFolderKind, EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from '../types/types';
 import { fsExists } from '../util/fs';
+import { sortNames } from '../util/array';
 
 /**
  * 完整階段：以生成器 (Generator) 逐日解析任務範圍，依序產出任務資料夾路徑
@@ -57,10 +58,11 @@ export async function* iterateTaskDirs(
 		return;
 	}
 
-	const dayDirs = (await readdir(root, { withFileTypes: true }).catch(() => []))
-		.filter(entry => entry.isDirectory() && _folderKindIsDayLike(toTaskFolder(join(root, entry.name))))
-		.map(entry => entry.name)
-		.sort((a, b) => a.localeCompare(b))
+	const dayDirs = sortNames(
+		(await readdir(root, { withFileTypes: true }).catch(() => []))
+			.filter(entry => entry.isDirectory() && _folderKindIsDayLike(toTaskFolder(join(root, entry.name))))
+			.map(entry => entry.name),
+	)
 		.filter(name => name >= startDay)
 		.filter(name => !range.endDay || name <= range.endDay);
 
@@ -75,10 +77,11 @@ export async function* iterateTaskDirs(
 
 		const items = await readdir(join(root, day), { withFileTypes: true }).catch(() => []);
 
-		let names = items
-			.filter(entry => entry.isDirectory() && _folderKindIsTaskLike(toTaskFolder(join(root, day, entry.name))))
-			.map(entry => entry.name)
-			.sort((a, b) => a.localeCompare(b));
+		let names = sortNames(
+			items
+				.filter(entry => entry.isDirectory() && _folderKindIsTaskLike(toTaskFolder(join(root, day, entry.name))))
+				.map(entry => entry.name),
+		);
 
 		/** `startTask` 僅套用於首個天；找不到時保留該天全部任務並記錄 */
 		if (!startTaskApplied && range.startTask)

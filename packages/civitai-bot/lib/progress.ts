@@ -1,6 +1,6 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, normalize } from 'upath2';
+import { normalize } from 'upath2';
 import { _logPhase } from './logger';
+import { readJsonFile, writeJsonAtomic } from './util/fs';
 import { EnumPostPhase, type IMessageOptions, type IUploadItem } from './types/types';
 
 /** 進度檔格式版本；格式變更時遞增，舊版檔案一律重新開始 */
@@ -47,6 +47,16 @@ interface IProgressFile
 	done: IDoneEntry[];
 	checkpoint?: ITaskCheckpoint;
 	updatedAt: string;
+}
+
+/**
+ * 標準化完成邊界：路徑與邊界檔案的分隔符統一
+ *
+ * 紀錄檔與掃描結果的分隔符不同時仍可比對；進度與完成紀錄共用此單一實作。
+ */
+export function normalizeDoneBoundary(boundary: IDoneBoundary): IDoneBoundary
+{
+	return { ...boundary, lastFile: normalize(boundary.lastFile) };
 }
 
 /**
@@ -130,17 +140,8 @@ export async function loadTaskProgress(
 		throw new TypeError(`loadTaskProgress: basePath is required, got ${JSON.stringify(basePath)} (${file})`);
 	}
 
-	let saved: IProgressFile | undefined;
-
-	try
-	{
-		saved = JSON.parse(await readFile(file, 'utf8')) as IProgressFile;
-	}
-	catch
-	{
-		/** 檔案不存在或內容損毀：視為無進度 */
-		saved = undefined;
-	}
+	/** 檔案不存在或內容損毀：視為無進度 */
+	const saved = await readJsonFile<IProgressFile>(file);
 
 	let done = new Map<string, IDoneEntry>();
 	let checkpoint: ITaskCheckpoint | undefined;
@@ -152,7 +153,7 @@ export async function loadTaskProgress(
 		{
 			const path = normalize(entry.path);
 
-			return [path, { ...entry, path, lastFile: normalize(entry.lastFile) }] as [string, IDoneEntry];
+			return [path, { ...normalizeDoneBoundary(entry), path }] as [string, IDoneEntry];
 		}));
 
 		const savedCheckpoint = saved.checkpoint;
@@ -188,9 +189,7 @@ export async function loadTaskProgress(
 			updatedAt: new Date().toISOString(),
 		};
 
-		await mkdir(dirname(file), { recursive: true });
-		await writeFile(`${file}.tmp`, JSON.stringify(payload, undefined, '\t'));
-		await rename(`${file}.tmp`, file);
+		await writeJsonAtomic(file, payload);
 	};
 
 	return {
@@ -225,7 +224,7 @@ export async function loadTaskProgress(
 		{
 			const key = normalize(path);
 
-			done.set(key, { ...boundary, path: key, lastFile: normalize(boundary.lastFile) });
+			done.set(key, { ...normalizeDoneBoundary(boundary), path: key });
 
 			/** 標記完成即清除同單位檢查點：該單位已無待執行佇列 */
 			if (checkpoint?.path === key)
@@ -248,7 +247,7 @@ export async function loadTaskProgress(
 
 				if (done.has(path)) continue;
 
-				done.set(path, { ...entry, path, lastFile: normalize(entry.lastFile) });
+				done.set(path, { ...normalizeDoneBoundary(entry), path });
 				added++;
 			}
 

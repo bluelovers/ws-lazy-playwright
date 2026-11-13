@@ -1,7 +1,7 @@
 import { basename, relative } from 'upath2';
-import { _logPhase, _logPhaseData } from './logger';
-import { EnumPostPhase, EnumUploadKind, type IRunContext } from './types/types';
-import { classify } from './scan-collect/upload-order';
+import { _logPhase, _logPhaseData, _withBatch } from './logger';
+import { EnumPostPhase, EnumUploadKind, type IMessageOptions, type IRunContext } from './types/types';
+import { classify, GRID_PREFIX, XYZ_GRID_PREFIX } from './scan-collect/upload-order';
 
 /** 依總大小貪心切包：單次上傳總和不超過 `maxBytes`
  *
@@ -44,12 +44,9 @@ export function reportBatch(batchNo: number, files: readonly string[], note: str
 {
 	const options = ctx?.options;
 	const { taskBase } = ctx ?? {};
+	const message: IMessageOptions = _withBatch(options, batchNo);
 
-	const counts = new Map<EnumUploadKind, number>([
-		[EnumUploadKind.XyzGrid, 0],
-		[EnumUploadKind.Grid, 0],
-		[EnumUploadKind.Other, 0],
-	]);
+	const counts = new Map<EnumUploadKind, number>(Object.values(EnumUploadKind).map(kind => [kind, 0]));
 
 	for (const file of files)
 	{
@@ -62,20 +59,18 @@ export function reportBatch(batchNo: number, files: readonly string[], note: str
 
 	_logPhase(
 		EnumPostPhase.Upload,
-		{ ...options, batchNo },
+		message,
 		`[${note}]`
-		+ ` xyz_grid-: ${counts.get(EnumUploadKind.XyzGrid)}`
-		+ `, grid-: ${counts.get(EnumUploadKind.Grid)}`
-		+ `, 其他: ${counts.get(EnumUploadKind.Other)}`
+		+ ` ${XYZ_GRID_PREFIX}: ${counts.get(EnumUploadKind.XyzGrid)}`
+		+ `, ${GRID_PREFIX}: ${counts.get(EnumUploadKind.Grid)}`
+		+ `, others: ${counts.get(EnumUploadKind.Other)}`
 		+ `, total: ${files.length}`
 	);
 	files.length && _logPhaseData(
-		EnumPostPhase.Upload,
-		{ ...options, batchNo },
+		message,
 		{
 			start: boundaryPath(files[0]),
 			end: files.length > 1 ? boundaryPath(files[files.length - 1]) : undefined,
 		},
-		'dir'
 	);
 }

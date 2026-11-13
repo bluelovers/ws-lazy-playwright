@@ -1,5 +1,25 @@
+import type { ILogMethod } from '@lazy-playwright/logger';
 import { LIMIT_RE } from '../util/re';
-import { INotificationLogRule, IPublishedUrlPattern } from './const';
+
+/** 系統提示記錄規則：依標題 / 內文模式決定 log method（與 {@link NOTIFICATION_LOG_RULES} 同源） */
+export interface INotificationLogRule
+{
+	/** 標題模式（省略即不比對標題） */
+	title?: RegExp;
+	/** 內文模式（省略即不比對內文） */
+	description?: RegExp;
+	/** 命中時使用的 log method */
+	method: ILogMethod;
+}
+
+/** 發布後落地頁特徵：`name` 供不同模式提醒識別使用（與 {@link PUBLISHED_URL_PATTERNS} 同源） */
+export interface IPublishedUrlPattern
+{
+	/** 模式名稱（不同模式提醒輸出用） */
+	name: string;
+	/** 網址特徵 */
+	pattern: RegExp;
+}
 
 /**
  * 建立貼文頁（上傳頁面）網址

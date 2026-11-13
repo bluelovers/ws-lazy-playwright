@@ -1,10 +1,11 @@
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { dirname, join, normalize } from 'upath2';
 import { _folderKindIsDayLike, expandFolder, toTaskFolder } from './path-kind/folder';
 import { _logPhase } from './logger';
-import type { IDoneBoundary, IDoneEntry, ITaskProgress } from './progress';
+import { normalizeDoneBoundary, type IDoneBoundary, type IDoneEntry, type ITaskProgress } from './progress';
 import { EnumPostPhase, type IMessageOptions, type ITaskRangeOptions } from './types/types';
 import { DAY_FILE_RE } from './util/re';
+import { readJsonFile, writeJsonAtomic } from './util/fs';
 
 /**
  * 完成任務條目：紀錄檔的單筆內容
@@ -50,6 +51,9 @@ export interface ICompletionInput extends IDoneBoundary
 	/** 該筆完成的發布次數；省略時以 `publishedUrls` 數量補上 */
 	publishCount?: number;
 }
+
+/** 發布次數來源（寫入輸入 {@link ICompletionInput} 與條目 {@link ICompletionEntry} 共用） */
+type IPublishCountSource = Pick<ICompletionInput, 'publishCount' | 'publishedUrls'>;
 
 /** 從完成紀錄重建的續跑狀態（{@link findStartAfterLastPublish} 回傳） */
 export interface ICompletionResume
@@ -100,6 +104,27 @@ function _nextDay(day: string): string
 }
 
 /**
+ * 列出紀錄目錄的日期檔名（由新至舊）；`exclude` 指定時排除該檔名（跨日繼承排除當日檔）
+ *
+ * 目錄不存在或無法讀取時回傳空陣列。
+ */
+async function _listDayFiles(dir: string, exclude?: string): Promise<string[]>
+{
+	return (await readdir(dir, { withFileTypes: true }).catch(() => []))
+		.filter(item => item.isFile() && DAY_FILE_RE.test(item.name) && item.name !== exclude)
+		.map(item => item.name)
+		.sort((a, b) => b.localeCompare(a));
+}
+
+/** 讀取指定日期檔的條目清單；檔案不存在或內容損毀時回傳空陣列 */
+async function _readDayFile(dir: string, file: string): Promise<ICompletionEntry[]>
+{
+	const saved = await readJsonFile<{ entries?: ICompletionEntry[] }>(join(dir, file));
+
+	return Array.isArray(saved?.entries) ? saved.entries : [];
+}
+
+/**
  * 完整階段：建立完成紀錄寫入器
  *
  * 完成任務依發布日期分檔保存（`<dir>/YYYY-MM-DD.json`，內容含該任務取得的發布網址與完成邊界）。
@@ -134,8 +159,8 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 	/** {@link historyByPath} 建構時的寫入日期：跨日後重建，以納入前一日於跨日前寫入的條目 */
 	let historyDate: string | undefined;
 
-	/** 單筆條目的發布次數：舊紀錄無 `publishCount` 欄位時以 `publishedUrls` 數量計算 */
-	const countOf = (entry: ICompletionEntry): number => entry.publishCount ?? entry.publishedUrls?.length ?? 0;
+	/** 單筆記錄的發布次數：舊紀錄無 `publishCount` 欄位時以 `publishedUrls` 數量計算（寫入輸入與條目共用） */
+	const countOf = (entry: IPublishCountSource): number => entry.publishCount ?? entry.publishedUrls?.length ?? 0;
 
 	/**
 	 * 載入指定日期的條目清單：優先取記憶體快取（{@link days}），
@@ -147,11 +172,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 
 		if (cached) return cached;
 
-		const saved = await readFile(join(dir, `${date}.json`), 'utf8')
-			.then(text => JSON.parse(text) as { entries?: ICompletionEntry[] })
-			.catch(() => undefined);
-
-		const entries = Array.isArray(saved?.entries) ? saved.entries : [];
+		const entries = await _readDayFile(dir, `${date}.json`);
 
 		days.set(date, entries);
 
@@ -161,11 +182,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 	/** 條目清單落盤（暫存檔改名）：中途失敗時正式檔案仍保留上一次的完整內容 */
 	const flushDay = async (date: string, entries: ICompletionEntry[]): Promise<void> =>
 	{
-		const file = join(dir, `${date}.json`);
-
-		await mkdir(dir, { recursive: true });
-		await writeFile(`${file}.tmp`, JSON.stringify({ date, entries }, undefined, '\t'));
-		await rename(`${file}.tmp`, file);
+		await writeJsonAtomic(join(dir, `${date}.json`), { date, entries });
 	};
 
 	/** 已建構累計次數時同步累加（尚未建構者由下次查詢掃描檔案取得） */
@@ -184,9 +201,8 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 		task: input.task,
 		completedAt: now.toISOString(),
 		publishedUrls: [...(input.publishedUrls ?? [])],
-		publishCount: input.publishCount ?? input.publishedUrls?.length ?? 0,
-		lastFile: normalize(input.lastFile),
-		lastFileTime: input.lastFileTime,
+		publishCount: countOf(input),
+		...normalizeDoneBoundary({ lastFile: input.lastFile, lastFileTime: input.lastFileTime }),
 	});
 
 	/**
@@ -208,10 +224,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 		const next = new Map<string, { urls: Set<string>; count: number }>();
 
 		/** 檔名即日期（`YYYY-MM-DD.json`）：由新至舊，最新出現該路徑的檔案優先承接 */
-		const files = (await readdir(dir, { withFileTypes: true }).catch(() => []))
-			.filter(item => item.isFile() && DAY_FILE_RE.test(item.name) && item.name !== `${date}.json`)
-			.map(item => item.name)
-			.sort((a, b) => b.localeCompare(a));
+		const files = await _listDayFiles(dir, `${date}.json`);
 
 		for (const file of files)
 		{
@@ -305,7 +318,7 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			const entries = await loadDay(date);
 
 			/** 本次發布事件的次數：既有條目累加此值 */
-			const delta = input.publishCount ?? input.publishedUrls?.length ?? 0;
+			const delta = countOf(input);
 			const path = normalize(input.path);
 
 			/** 同路徑的既有條目（含舊版逐批寫入留下的重複筆）：全部收斂為一筆 */
@@ -374,17 +387,9 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 			{
 				const next = new Map<string, number>();
 
-				const files = (await readdir(dir, { withFileTypes: true }).catch(() => []))
-					.filter(item => item.isFile() && DAY_FILE_RE.test(item.name))
-					.map(item => item.name);
-
-				for (const file of files)
+				for (const file of await _listDayFiles(dir))
 				{
-					const saved = await readFile(join(dir, file), 'utf8')
-						.then(text => JSON.parse(text) as { entries?: ICompletionEntry[] })
-						.catch(() => undefined);
-
-					for (const item of saved?.entries ?? [])
+					for (const item of await _readDayFile(dir, file))
 					{
 						/** 紀錄檔內的路徑先標準化，防止分隔符不同而比對失敗 */
 						const path = normalize(item.path);
@@ -483,21 +488,14 @@ export async function findStartAfterLastPublish(
 	options?: IMessageOptions,
 ): Promise<ICompletionResume | undefined>
 {
-	const files = (await readdir(dir, { withFileTypes: true }).catch(() => []))
-		.filter(item => item.isFile() && DAY_FILE_RE.test(item.name))
-		.map(item => item.name)
-		.sort((a, b) => b.localeCompare(a));
+	const files = await _listDayFiles(dir);
 
 	/** 由舊至新讀取全部條目：起始點取最後發布者、完成邊界同路徑取最新者 */
 	const entries: ICompletionEntry[] = [];
 
 	for (const file of [...files].reverse())
 	{
-		const saved = await readFile(join(dir, file), 'utf8')
-			.then(text => JSON.parse(text) as { entries?: ICompletionEntry[] })
-			.catch(() => undefined);
-
-		entries.push(...(saved?.entries ?? []));
+		entries.push(...await _readDayFile(dir, file));
 	}
 
 	let start: Pick<ITaskRangeOptions, 'startDay' | 'startTask'> | undefined;
@@ -544,7 +542,10 @@ export async function findStartAfterLastPublish(
 		/** 紀錄檔內的路徑先標準化：同一路徑取最新條目時不因分隔符而分裂成兩筆 */
 		const path = normalize(entry.path);
 
-		doneMap.set(path, { path, lastFile: normalize(entry.lastFile), lastFileTime: entry.lastFileTime });
+		doneMap.set(path, {
+			...normalizeDoneBoundary({ lastFile: entry.lastFile, lastFileTime: entry.lastFileTime }),
+			path,
+		});
 	}
 
 	const done = [...doneMap.values()];

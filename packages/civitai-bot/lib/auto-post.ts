@@ -1,7 +1,7 @@
 import type { Page } from 'playwright';
 import { DRY_RUN_FROM_BATCH, MAX_PER_BATCH, MAX_PACK_BYTES } from './types/const';
 import { _folderKindIsTaskLike, expandFolder, toTaskFolder } from './path-kind/folder';
-import { _logPhase } from './logger';
+import { _logPhase, _withBatch } from './logger';
 import { createPostPage, ensureDropzone, publishPost } from './civitai/page';
 import { packBySize, reportBatch } from './report';
 import { collectUploadOrder } from './scan-collect/upload-order';
@@ -241,7 +241,7 @@ export async function autoPost(
 				const task = queue.slice(0, MAX_PER_BATCH);
 				queue = queue.slice(MAX_PER_BATCH);
 
-				const message: IMessageOptions = { ...options, batchNo };
+				const message: IMessageOptions = _withBatch(options, batchNo);
 
 				/** 第 2 批起為 dry run：僅報告批次內容，不上傳、不進入發布階段；可由開關解除 */
 				if (dryRunEnabled && batchNo >= DRY_RUN_FROM_BATCH)

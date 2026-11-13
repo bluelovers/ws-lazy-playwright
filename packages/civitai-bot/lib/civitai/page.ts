@@ -5,10 +5,11 @@ import {
 	ENABLE_PUBLISH,
 	PUBLISH_URL_TIMEOUT,
 } from '../types/const';
-import { PUBLISHED_URL_PATTERNS } from '../types/civitai';
 import {
 	CREATE_URL,
-	DROPZONE_SELECTOR, PUBLISH_SELECTOR
+	DROPZONE_SELECTOR,
+	PUBLISHED_URL_PATTERNS,
+	PUBLISH_SELECTOR,
 } from '../types/civitai';
 import { _logPhase } from '../logger';
 import { EnumPostPhase, EnumPublishResult, type IMessageOptions } from '../types/types';
@@ -154,6 +155,9 @@ const READY_STABLE_MS = 3000;
 /** 狀態複查間隔（ms）：穩定期內每秒複查三狀態 */
 const READY_POLL_MS = 1000;
 
+/** 發布流程的等待逾時（ms）：按鈕出現、就緒複查、按鈕消失與提示競速共用 */
+const PUBLISH_STEP_TIMEOUT = 30_000;
+
 /** 讀取 publish 按鈕三狀態快照；按鈕未渲染時回傳 `null` */
 async function _readPublishState(page: Page): Promise<IPublishButtonState | null>
 {
@@ -206,7 +210,7 @@ function _isSameState(a: IPublishButtonState | null, b: IPublishButtonState | nu
 async function _waitPublishReady(
 	page: Page,
 	options?: IMessageOptions,
-	timeout = 30_000,
+	timeout = PUBLISH_STEP_TIMEOUT,
 ): Promise<boolean>
 {
 	const deadline = Date.now() + timeout;
@@ -320,7 +324,7 @@ export async function publishPost(
 	const publishBtn = page.locator(PUBLISH_SELECTOR);
 
 	/** 發布按鈕在上載完成後才渲染；以等待取代猜測點擊目標 */
-	await publishBtn.waitFor({ state: 'visible', timeout: 30_000 });
+	await publishBtn.waitFor({ state: 'visible', timeout: PUBLISH_STEP_TIMEOUT });
 
 	await page.waitForTimeout(2000);
 
@@ -339,14 +343,14 @@ export async function publishPost(
 	await publishBtn.click();
 
 	/** 按鈕消失（跳轉啟動）等待：與點擊後的提示檢查競速共用 */
-	const hidden = publishBtn.waitFor({ state: 'hidden', timeout: 30_000 }).catch(() => undefined);
+	const hidden = publishBtn.waitFor({ state: 'hidden', timeout: PUBLISH_STEP_TIMEOUT }).catch(() => undefined);
 
 	/**
 	 * 點擊後：競速等待系統提示出現（如發布失敗、今日上限提示）與按鈕消失，
 	 * 先到者結束並即時記錄提示；結束後仍須等按鈕消失才進入落地檢查
 	 */
 	await Promise.race([
-		checkNotifications(page, options, EnumPostPhase.Publish, 'after', 30_000),
+		checkNotifications(page, options, EnumPostPhase.Publish, 'after', PUBLISH_STEP_TIMEOUT),
 		hidden,
 	]);
 

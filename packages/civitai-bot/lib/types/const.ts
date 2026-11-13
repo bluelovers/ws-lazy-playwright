@@ -1,25 +1,3 @@
-import type { ILogMethod } from '@lazy-playwright/logger';
-
-/** 系統提示記錄規則：依標題 / 內文模式決定 log method */
-export interface INotificationLogRule
-{
-	/** 標題模式（省略即不比對標題） */
-	title?: RegExp;
-	/** 內文模式（省略即不比對內文） */
-	description?: RegExp;
-	/** 命中時使用的 log method */
-	method: ILogMethod;
-}
-
-/** 發布後落地頁特徵：`name` 供不同模式提醒識別使用 */
-export interface IPublishedUrlPattern
-{
-	/** 模式名稱（不同模式提醒輸出用） */
-	name: string;
-	/** 網址特徵 */
-	pattern: RegExp;
-}
-
 /** 點擊 publish 後等待網址跳轉為已發布貼文的逾時時間（僅等待網址更新，不等待載入完成） */
 export const PUBLISH_URL_TIMEOUT = 15_000;
 
