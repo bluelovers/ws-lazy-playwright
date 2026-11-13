@@ -8,7 +8,7 @@ import { __TEST_TEMP, __TEST_TEMP_STORAGE } from 'lazy-playwright-impl/test/__ro
 import { createPostPage } from '#/lib/civitai/page';
 import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 import { EnumLogLabel, _logPhase } from '#/lib/util/logger';
-import { autoPost, collectFolders, startFolderStream } from '#/lib/auto-post';
+import { autoPost } from '#/lib/auto-post';
 import { loadTaskProgress } from '#/lib/record/progress';
 import { createCompletionRecord, resumeFromCompletion } from '#/lib/record/record';
 import { IAutoPostCli, parseAutoPostCli } from '#/lib/cli/cli';
@@ -17,6 +17,7 @@ import { globStream, async as globAsync } from 'fast-glob';
 import { hideBin } from 'yargs/helpers';
 import type { ITSValueOrArrayMaybeReadonly } from 'ts-type';
 import { LimitReachedError } from '#/lib/civitai/notifications';
+import { collectFolders, startFolderStream } from '#/lib/scan-collect/collect';
 
 /** 任務範圍預設值：可在此指定起始天 / 結束天 / 起始任務 / 最大任務天數；`--max-tasks <n>` 由 CLI 合併 */
 const TASK_RANGE: ITaskRangeOptions = {
@@ -218,7 +219,7 @@ export async function autoUploadDemo(
 
 			/** 掃描範圍：指定 `--from-last-publish` 時以完成紀錄重建續跑狀態，否則沿用任務範圍 */
 			const scanRange = ctx.cli.fromLastPublish
-				? await resumeFromCompletion(progress, taskBase, ctx.range, ctx.recordDir, ctx.options)
+				? await resumeFromCompletion(progress, taskBase, ctx.range, record, ctx.options)
 				: ctx.range;
 
 			/**

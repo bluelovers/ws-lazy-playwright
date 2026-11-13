@@ -209,14 +209,15 @@ test('start point scoped to task base', async (t: TestContext) => {
 		],
 	}));
 
-	/** 以 agent-scheduler 為範圍：取該路徑的任務條目推導起始點 */
-	const scoped = await findStartAfterLastPublish(dir, 'D:/sd-forge/output/agent-scheduler', QUIET);
+	/** 以 record 讀取條目：以 agent-scheduler 為範圍，取該路徑的任務條目推導起始點 */
+	const record = createCompletionRecord(dir, QUIET);
+	const scoped = await findStartAfterLastPublish(record, 'D:/sd-forge/output/agent-scheduler', QUIET);
 
 	t.assert.equal(scoped?.start?.startDay, '2026-11-11');
 	t.assert.equal(scoped?.start?.startTask, '15-23-16_task(x)');
 
 	/** 以 txt2img-images 為範圍：最新條目為天目錄（無 task），不推導起始點，Folder 分支得以執行 */
-	const rootScoped = await findStartAfterLastPublish(dir, 'D:/sd-forge/output/txt2img-images', QUIET);
+	const rootScoped = await findStartAfterLastPublish(record, 'D:/sd-forge/output/txt2img-images', QUIET);
 
 	t.assert.equal(rootScoped?.start, undefined);
 

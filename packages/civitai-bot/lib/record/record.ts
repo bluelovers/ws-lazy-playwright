@@ -85,6 +85,11 @@ export interface ICompletionRecord
 	updateOrAppend(input: ICompletionInput): Promise<void>;
 	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0；路徑以 `normalize` 標準化比對）；`history*` 繼承欄位不計入（繼承即重複）；供發布次數上限的累計判定 */
 	publishedCount(path: string): Promise<number>;
+	/**
+	 * 讀取全部日期檔的條目（由舊至新；同日已載入者取記憶體快取，不重新 IO）：
+	 * 供續跑狀態重建（{@link findStartAfterLastPublish}）讀取，呼叫端不自行掃描紀錄目錄
+	 */
+	entries(): Promise<ICompletionEntry[]>;
 }
 
 /** 以本地時區取得發布日期（`YYYY-MM-DD`） */
@@ -403,6 +408,19 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 
 			return counts.get(normalize(path)) ?? 0;
 		},
+
+		entries: async () =>
+		{
+			/** 由舊至新讀取全部日期檔：起始點取最後發布者、完成邊界同路徑取最新者 */
+			const all: ICompletionEntry[] = [];
+
+			for (const file of [...await _listDayFiles(dir)].reverse())
+			{
+				all.push(...await loadDay(file.replace(/\.json$/, '')));
+			}
+
+			return all;
+		},
 	};
 }
 
@@ -466,7 +484,7 @@ async function _deriveStartAfter(
 /**
  * 完整階段：以完成紀錄重建續跑狀態（起始點 + 完成邊界）
  *
- * 自完成紀錄目錄讀取全部日期檔案（由舊至新），重建兩部分：
+ * 自完成紀錄（{@link ICompletionRecord.entries}，由舊至新）重建兩部分：
  *
  * 1. 起始點：取最後一筆 `publishedUrls` 非空的條目（即最後一次發布成功），再依其路徑定位：
  *    - 條目含完成邊界（新紀錄）→ `startTask` 為其本身（含），由完成邊界比對新增檔案，
@@ -478,25 +496,18 @@ async function _deriveStartAfter(
  * 無任何紀錄、或既無可推導起始點也無可重建邊界時回傳 `undefined` 並記錄，
  * 呼叫端維持原範圍。
  *
- * @param dir 完成紀錄目錄（{@link createCompletionRecord} 的寫入目錄）
+ * @param record 完成紀錄（{@link createCompletionRecord} 實例）：條目由其讀取，本函式不自行掃描目錄
  * @param scope 起始點範圍：僅由該路徑底下的條目推導（完成邊界仍全量重建，供跨路徑補齊進度）
  * @param options 訊息控制（獨立物件，不併入其他參數）
  */
 export async function findStartAfterLastPublish(
-	dir: string,
+	record: ICompletionRecord,
 	scope: string,
 	options?: IMessageOptions,
 ): Promise<ICompletionResume | undefined>
 {
-	const files = await _listDayFiles(dir);
-
 	/** 由舊至新讀取全部條目：起始點取最後發布者、完成邊界同路徑取最新者 */
-	const entries: ICompletionEntry[] = [];
-
-	for (const file of [...files].reverse())
-	{
-		entries.push(...await _readDayFile(dir, file));
-	}
+	const entries = await record.entries();
 
 	let start: Pick<ITaskRangeOptions, 'startDay' | 'startTask'> | undefined;
 	let publishedFound = false;
@@ -529,7 +540,7 @@ export async function findStartAfterLastPublish(
 
 	if (!publishedFound)
 	{
-		_logPhase(EnumPostPhase.AutoPost, options, `no successful publish record under ${scope} (${dir}): start point not applied`, 'warn');
+		_logPhase(EnumPostPhase.AutoPost, options, `no successful publish record under ${scope}: start point not applied`, 'warn');
 	}
 
 	/** 完成邊界：同一路徑以最新條目為準；舊紀錄無邊界者略過 */
@@ -552,7 +563,7 @@ export async function findStartAfterLastPublish(
 
 	if (done.length)
 	{
-		_logPhase(EnumPostPhase.AutoPost, options, `completion boundaries restored: ${done.length} (${dir})`);
+		_logPhase(EnumPostPhase.AutoPost, options, `completion boundaries restored: ${done.length}`);
 	}
 
 	/** 既無可推導起始點也無可重建邊界：無可套用的續跑狀態 */
@@ -567,7 +578,7 @@ export async function findStartAfterLastPublish(
 /**
  * 完整階段：以完成紀錄重建續跑狀態，回傳掃描用任務範圍
  *
- * - 完成邊界寫入進度（{@link ITaskProgress.seed}：僅補缺漏路徑、不覆寫既有）→ 已完成任務不重發
+ * - 完成邊界寫入進度（{@link ITaskProgress['seed']}：僅補缺漏路徑、不覆寫既有）→ 已完成任務不重發
  * - 起始點僅於「無可接續紀錄」（無完成任務、無中斷檢查點）時覆寫範圍；
  *   有可續跑紀錄時以進度為準，維持原範圍並記錄
  * - 無完成紀錄（{@link findStartAfterLastPublish} 回傳 `undefined`）時維持原範圍
@@ -575,14 +586,14 @@ export async function findStartAfterLastPublish(
  * @param progress 任務進度（可續跑狀態由其判定）
  * @param taskBase 任務基準路徑：起始點僅由其根目錄底下的條目推導
  * @param range 原任務範圍（未覆寫時原樣回傳）
- * @param dir 完成紀錄目錄（{@link createCompletionRecord} 的寫入目錄）
+ * @param record 完成紀錄（{@link createCompletionRecord} 實例）：條目由其讀取，不自行掃描目錄
  * @param options 訊息控制（獨立物件，不併入其他參數）
  */
 export async function resumeFromCompletion(
 	progress: ITaskProgress,
 	taskBase: string,
 	range: ITaskRangeOptions,
-	dir: string,
+	record: ICompletionRecord,
 	options?: IMessageOptions,
 ): Promise<ITaskRangeOptions>
 {
@@ -598,7 +609,7 @@ export async function resumeFromCompletion(
 	const base = toTaskFolder(taskBase);
 	const scope = _folderKindIsDayLike(base) ? dirname(taskBase) : taskBase;
 
-	const resume = await findStartAfterLastPublish(dir, scope, options);
+	const resume = await findStartAfterLastPublish(record, scope, options);
 
 	if (!resume)
 	{
