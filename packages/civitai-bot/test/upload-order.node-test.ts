@@ -40,6 +40,9 @@ test('collectUploadOrder folder unit', async (t: TestContext) => {
 		]);
 
 		t.assert.deepStrictEqual(order.length, 2);
+
+		/** 快照收集順序（剔除 mtime：檔案時間戳不保證穩定） */
+		t.assert.snapshot(order.map(({ path, size }) => ({ path, size })));
 	}
 
 	t.assert.equal(units, 1);

@@ -104,7 +104,8 @@ export async function startFolderStream(
  * 指定 {@link IRunSwitches.agsMaxPublishTotal} 時上限改以完成紀錄的累計發布次數判定：
  * 已達上限的單位直接忽略（不再發布），截斷判定亦含其已發布過的次數。
  * 完成任務同時寫入完成紀錄（{@link ICompletionRecord}）：依發布日期分檔保存，含發布網址與完成邊界；
- * 每次發布成功當下即寫入一筆（不等單位全部完成），批次後續中斷也不遺失已發布的紀錄。
+ * 每次發布成功當下即以 `updateOrAppend` 寫入（同路徑就地更新，不等單位全部完成），
+ * 批次後續中斷也不遺失已發布的紀錄，且同一路徑不會分裂為多筆紀錄。
  * 上傳與發布前後檢查系統提示：提示顯示已達上限時拋出錯誤中止整個流程，由呼叫端停止任務。
  *
  * 第 {@link DRY_RUN_FROM_BATCH} 批起（批次序號跨任務累計）為 dry run：僅報告批次內容，不上傳、不進入發布階段。
@@ -302,12 +303,12 @@ export async function autoPost(
 					 * 後續批次若中斷（頁面關閉、例外），已發布的紀錄不遺失，
 					 * 重跑由完成邊界比對新增而不重複發布已發布的圖片
 					 *
-					 * 每筆為一次發布事件，`publishCount` 固定為 1，
-					 * 各筆合計即為該單位的發布總次數
+					 * 以 `updateOrAppend` 寫入：同路徑既有條目就地更新（次數與網址累加），
+					 * 同一路徑不因逐批發布而分裂為多筆紀錄；本次事件次數固定為 1
 					 */
 					if (lastPublished)
 					{
-						await record?.append({
+						await record?.updateOrAppend({
 							path: unit.path,
 							day: unit.day,
 							task: unit.task,

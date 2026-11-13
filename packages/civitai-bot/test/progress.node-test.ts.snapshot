@@ -1,0 +1,52 @@
+exports[`checkpoint keeps lastPublished boundary 1`] = `
+{
+  "path": "D:/x/unit",
+  "remaining": [],
+  "batchNo": 2,
+  "publishedUrls": [
+    "https://example.invalid/1"
+  ],
+  "publishCount": 1,
+  "lastPublished": {
+    "path": "D:/x/a.png",
+    "size": 1,
+    "mtime": 100
+  }
+}
+`;
+
+exports[`findAddedFiles matches boundary across separators 1`] = `
+[
+  {
+    "path": "D:/x/b.png",
+    "size": 1,
+    "mtime": 50
+  }
+]
+`;
+
+exports[`loadTaskProgress normalizes record paths 1`] = `
+{
+  "size": 1,
+  "hasCheckpoint": true,
+  "done": {
+    "path": "D:/sd-forge/output/txt2img-images/2026-11-09",
+    "lastFile": "D:/sd-forge/output/txt2img-images/2026-11-09/02027.png",
+    "lastFileTime": 1
+  },
+  "checkpoint": {
+    "path": "D:/sd-forge/output/txt2img-images/2026-11-10",
+    "remaining": [],
+    "batchNo": 3,
+    "publishedUrls": []
+  }
+}
+`;
+
+exports[`seed normalizes entry paths 1`] = `
+{
+  "path": "D:/base/unit",
+  "lastFile": "D:/base/unit/f.png",
+  "lastFileTime": 1
+}
+`;

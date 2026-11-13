@@ -104,6 +104,9 @@ importers:
       '@bluelovers/string-natural-compare':
         specifier: ^2.0.17
         version: 2.0.17
+      '@lazy-node/is-writeable-path':
+        specifier: ^1.0.21
+        version: 1.0.21
       '@lazy-playwright/logger':
         specifier: ^1.0.0
         version: link:../@lazy-playwright/logger
@@ -122,9 +125,24 @@ importers:
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
+      find-up-paths:
+        specifier: ^1.0.20
+        version: 1.0.20(ts-toolbelt@9.6.0)
+      fs-stat:
+        specifier: ^1.0.29
+        version: 1.0.29
       lazy-playwright-impl:
         specifier: ^1.0.0
         version: link:../lazy-playwright-impl
+      path-in-dir:
+        specifier: ^1.0.13
+        version: 1.0.13(ts-toolbelt@9.6.0)
+      path-is-same:
+        specifier: ^1.0.29
+        version: 1.0.29(ts-toolbelt@9.6.0)
+      path-parents:
+        specifier: ^1.0.36
+        version: 1.0.36(ts-toolbelt@9.6.0)
       playwright:
         specifier: ^1.65.0
         version: 1.65.0
@@ -781,9 +799,15 @@ packages:
     resolution: {integrity: sha512-LaNjtRWUBY++zB5nE/NwcaoMylSPk+S+ZHNB1TzdbMJMny6dynpAGt7X/tl/QYq3TIeE6nxHppbo2LGymrG5Pw==}
     engines: {node: '>=10'}
 
+  path-dir-normalize@1.0.33:
+    resolution: {integrity: sha512-8HNC9fS2147pny860Dzx0sMqJqpMbQrDJUDJJNllEUPgiwyfKo9NdvyH0UCQeSkdqOD5ZBtyXF2H218QyknbZg==}
+
   path-exists@4.0.0:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
     engines: {node: '>=8'}
+
+  path-in-dir@1.0.13:
+    resolution: {integrity: sha512-Y99FHpvnDGbfmnWVsWl2WQRkUIJCGjg06fRCzz50Oy+k6IIAWz2zOtvAvroCBYPOC4aVTW2OOV2Kk0j+paECyg==}
 
   path-is-network-drive@1.0.24:
     resolution: {integrity: sha512-sux7NWiMq/ul8EEQTQbdM1m/zr+Rrq11/P9tEBgxMgTnVHS8f54tQm0kfrTxkvPNg/OVkRjHNgSia5VxnawOZg==}
@@ -1685,7 +1709,23 @@ snapshots:
     dependencies:
       p-limit: 3.1.0
 
+  path-dir-normalize@1.0.33(ts-toolbelt@9.6.0):
+    dependencies:
+      path-strip-sep: 1.0.21
+      tslib: 2.9.1
+      upath2: 3.1.25(ts-toolbelt@9.6.0)
+    transitivePeerDependencies:
+      - ts-toolbelt
+
   path-exists@4.0.0: {}
+
+  path-in-dir@1.0.13(ts-toolbelt@9.6.0):
+    dependencies:
+      path-dir-normalize: 1.0.33(ts-toolbelt@9.6.0)
+      tslib: 2.9.1
+      upath2: 3.1.25(ts-toolbelt@9.6.0)
+    transitivePeerDependencies:
+      - ts-toolbelt
 
   path-is-network-drive@1.0.24:
     dependencies:

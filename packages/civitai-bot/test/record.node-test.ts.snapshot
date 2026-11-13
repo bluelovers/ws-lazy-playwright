@@ -1,0 +1,113 @@
+exports[`publishedCount normalizes record paths 1`] = `
+[
+  {
+    "path": "D:/sd-forge/output/x/task",
+    "publishedUrls": [],
+    "publishCount": 1,
+    "lastFile": "D:/sd-forge/output/x/task/f.png",
+    "lastFileTime": 1
+  }
+]
+`;
+
+exports[`publishedCount sums per-publish entries 1`] = `
+[
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/0"
+    ],
+    "publishCount": 1,
+    "lastFile": "D:/x/task/f0.png",
+    "lastFileTime": 0
+  },
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/1"
+    ],
+    "publishCount": 1,
+    "lastFile": "D:/x/task/f1.png",
+    "lastFileTime": 1
+  },
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/2"
+    ],
+    "publishCount": 1,
+    "lastFile": "D:/x/task/f2.png",
+    "lastFileTime": 2
+  }
+]
+`;
+
+exports[`start point scoped to task base 1`] = `
+{
+  "scoped": {
+    "start": {
+      "startDay": "2026-11-11",
+      "startTask": "15-23-16_task(x)"
+    },
+    "done": [
+      {
+        "path": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)",
+        "lastFile": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)/a.png",
+        "lastFileTime": 1
+      },
+      {
+        "path": "D:/sd-forge/output/txt2img-images/2026-11-12",
+        "lastFile": "D:/sd-forge/output/txt2img-images/2026-11-12/b.png",
+        "lastFileTime": 2
+      }
+    ]
+  },
+  "rootScoped": {
+    "done": [
+      {
+        "path": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)",
+        "lastFile": "D:/sd-forge/output/agent-scheduler/2026-11-11/15-23-16_task(x)/a.png",
+        "lastFileTime": 1
+      },
+      {
+        "path": "D:/sd-forge/output/txt2img-images/2026-11-12",
+        "lastFile": "D:/sd-forge/output/txt2img-images/2026-11-12/b.png",
+        "lastFileTime": 2
+      }
+    ]
+  }
+}
+`;
+
+exports[`updateOrAppend collapses legacy duplicate entries 1`] = `
+[
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/0",
+      "https://example.invalid/1",
+      "https://example.invalid/2",
+      "https://example.invalid/3"
+    ],
+    "publishCount": 4,
+    "lastFile": "D:/x/task/f3.png",
+    "lastFileTime": 3
+  }
+]
+`;
+
+exports[`updateOrAppend keeps one entry per path 1`] = `
+[
+  {
+    "path": "D:/x/task",
+    "publishedUrls": [
+      "https://example.invalid/0",
+      "https://example.invalid/1",
+      "https://example.invalid/2"
+    ],
+    "publishCount": 3,
+    "lastFile": "D:/x/task/f2.png",
+    "lastFileTime": 2
+  }
+]
+`;

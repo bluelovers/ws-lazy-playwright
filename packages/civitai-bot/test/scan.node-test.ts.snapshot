@@ -1,0 +1,16 @@
+exports[`iterateTaskDirs day base 1`] = `
+[
+  "D:/Users/WebstormProjects/ws-playwright/ws-lazy-playwright/packages/civitai-bot/test/fixtures/txt2img-images/2026-11-09",
+  "D:/Users/WebstormProjects/ws-playwright/ws-lazy-playwright/packages/civitai-bot/test/fixtures/txt2img-images/2026-11-10"
+]
+`;
+
+exports[`iterateTaskDirs folder base 1`] = `
+[
+  "D:/Users/WebstormProjects/ws-playwright/ws-lazy-playwright/packages/civitai-bot/test/fixtures/txt2img-images"
+]
+`;
+
+exports[`iterateTaskDirs root base without startDay 1`] = `
+[]
+`;

@@ -35,6 +35,14 @@ test('loadTaskProgress normalizes record paths', async (t: TestContext) => {
 	t.assert.equal(progress.size, 1);
 	t.assert.ok(progress.done(unit));
 	t.assert.ok(progress.checkpoint('D:/sd-forge/output/txt2img-images/2026-11-10'));
+
+	/** 快照載入後的進度狀態：路徑標準化為正斜線、檢查點保留 */
+	t.assert.snapshot({
+		size: progress.size,
+		hasCheckpoint: progress.hasCheckpoint,
+		done: progress.done(unit),
+		checkpoint: progress.checkpoint('D:/sd-forge/output/txt2img-images/2026-11-10'),
+	});
 });
 
 /** 完成邊界為反斜線：仍定位其後的新增檔案，而非退回時間戳比對 */
@@ -51,6 +59,9 @@ test('findAddedFiles matches boundary across separators', (t: TestContext) => {
 	});
 
 	t.assert.deepEqual(added.map(item => item.path), ['D:/x/b.png']);
+
+	/** 快照比對結果（完整項目）：走邊界定位，未退回時間戳比對 */
+	t.assert.snapshot(added);
 });
 
 /** 完成紀錄補入的反斜線路徑：以正斜線查詢命中 */
@@ -65,6 +76,9 @@ test('seed normalizes entry paths', async (t: TestContext) => {
 	}]);
 
 	t.assert.ok(progress.done('D:/base/unit'));
+
+	/** 快照補入後的完成記錄：反斜線輸入標準化為正斜線 */
+	t.assert.snapshot(progress.done('D:/base/unit'));
 });
 
 /** 檢查點須持久化完成邊界：續跑時本次未再發布成功，仍能取得邊界而不誤判整批完成 */
@@ -91,4 +105,7 @@ test('checkpoint keeps lastPublished boundary', async (t: TestContext) => {
 
 	t.assert.equal(checkpoint?.publishCount, 1);
 	t.assert.equal(checkpoint?.lastPublished?.path, 'D:/x/a.png');
+
+	/** 快照重載後的檢查點：完成邊界已持久化 */
+	t.assert.snapshot(checkpoint);
 });

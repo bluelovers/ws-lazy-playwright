@@ -1,0 +1,12 @@
+exports[`collectUploadOrder folder unit 1`] = `
+[
+  {
+    "path": "D:/Users/WebstormProjects/ws-playwright/ws-lazy-playwright/packages/civitai-bot/test/fixtures/txt2img-images/02027.png",
+    "size": 120
+  },
+  {
+    "path": "D:/Users/WebstormProjects/ws-playwright/ws-lazy-playwright/packages/civitai-bot/test/fixtures/txt2img-images/03050.png",
+    "size": 120
+  }
+]
+`;

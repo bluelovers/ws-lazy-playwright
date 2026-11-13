@@ -51,8 +51,15 @@ export interface ICompletionResume
 /** 完成紀錄寫入器：完成任務依發布日期分檔保存 */
 export interface ICompletionRecord
 {
-	/** 將完成任務寫入發布日期對應的紀錄檔（`YYYY-MM-DD.json`） */
+	/** 將完成任務寫入發布日期對應的紀錄檔（`YYYY-MM-DD.json`）：一律新增一筆 */
 	append(input: ICompletionInput): Promise<void>;
+	/**
+	 * 寫入發布事件：同日檔案內已有同路徑條目時就地更新（發布次數與網址累加、完成邊界取本次），
+	 * 否則新增一筆——同一路徑不因逐批發布而分裂為多筆紀錄
+	 *
+	 * 同日檔案內容以記憶體快取，重複寫入不重新讀取檔案
+	 */
+	updateOrAppend(input: ICompletionInput): Promise<void>;
 	/** 查詢執行單位的累計發布次數（新舊紀錄合計，未記錄過時為 0；路徑以 `normalize` 標準化比對）；供發布次數上限的累計判定 */
 	publishedCount(path: string): Promise<number>;
 }
@@ -77,12 +84,15 @@ function _nextDay(day: string): string
  * 完整階段：建立完成紀錄寫入器
  *
  * 完成任務依發布日期分檔保存（`<dir>/YYYY-MM-DD.json`，內容含該任務取得的發布網址與完成邊界）。
- * 同日檔案以「讀取既有內容 → 追加 → 暫存檔改名」寫入：
- * 中途失敗或中斷時，正式檔案仍保留上一次的完整內容，不寫入半份資料。
+ * 同日檔案以「讀取既有內容 → 寫入 → 暫存檔改名」寫入，且內容以記憶體快取：
+ * 中途失敗或中斷時，正式檔案仍保留上一次的完整內容，不寫入半份資料；同日重複寫入不重新讀取檔案。
+ *
+ * 同路徑以 {@link ICompletionRecord.updateOrAppend} 寫入：既有條目就地更新並收斂重複筆，
+ * 同一路徑不因逐批發布而分裂為多筆紀錄；{@link ICompletionRecord.append} 則一律新增一筆。
  *
  * 紀錄檔為歷史資料：不因進度檔的重跑判定而重置，跨執行持續累加。
  *
- * 每筆含該次完成的發布次數（`publishCount`），{@link ICompletionRecord.publishedCount} 據此合計單位的
+ * 每筆含該次完成的發布次數（`publishCount`），{@link ICompletionRecord} 據此合計單位的
  * 累計發布次數（舊紀錄無此欄位者以 `publishedUrls` 數量計算），供發布次數上限的累計判定。
  *
  * @param dir 紀錄目錄（不存在時建立）
@@ -99,49 +109,137 @@ export function createCompletionRecord(dir: string, options?: IMessageOptions): 
 	/** 單筆條目的發布次數：舊紀錄無 `publishCount` 欄位時以 `publishedUrls` 數量計算 */
 	const countOf = (entry: ICompletionEntry): number => entry.publishCount ?? entry.publishedUrls?.length ?? 0;
 
+	/**
+	 * 載入指定日期的條目清單：優先取記憶體快取（{@link days}），
+	 * 未載入才讀取檔案——同日重複寫入（含 {@link ICompletionRecord.updateOrAppend}）不重新 IO 讀取
+	 */
+	const loadDay = async (date: string): Promise<ICompletionEntry[]> =>
+	{
+		const cached = days.get(date);
+
+		if (cached) return cached;
+
+		const saved = await readFile(join(dir, `${date}.json`), 'utf8')
+			.then(text => JSON.parse(text) as { entries?: ICompletionEntry[] })
+			.catch(() => undefined);
+
+		const entries = Array.isArray(saved?.entries) ? saved.entries : [];
+
+		days.set(date, entries);
+
+		return entries;
+	};
+
+	/** 條目清單落盤（暫存檔改名）：中途失敗時正式檔案仍保留上一次的完整內容 */
+	const flushDay = async (date: string, entries: ICompletionEntry[]): Promise<void> =>
+	{
+		const file = join(dir, `${date}.json`);
+
+		await mkdir(dir, { recursive: true });
+		await writeFile(`${file}.tmp`, JSON.stringify({ date, entries }, undefined, '\t'));
+		await rename(`${file}.tmp`, file);
+	};
+
+	/** 已建構累計次數時同步累加（尚未建構者由下次查詢掃描檔案取得） */
+	const bumpCount = (path: string, delta: number): void =>
+	{
+		if (counts)
+		{
+			counts.set(path, (counts.get(path) ?? 0) + delta);
+		}
+	};
+
+	/** 依寫入輸入建立新條目：路徑標準化、完成時間取寫入當下 */
+	const buildEntry = (input: ICompletionInput, now: Date): ICompletionEntry => ({
+		path: normalize(input.path),
+		day: input.day,
+		task: input.task,
+		completedAt: now.toISOString(),
+		publishedUrls: [...(input.publishedUrls ?? [])],
+		publishCount: input.publishCount ?? input.publishedUrls?.length ?? 0,
+		lastFile: normalize(input.lastFile),
+		lastFileTime: input.lastFileTime,
+	});
+
 	return {
 		append: async (input: ICompletionInput) =>
 		{
 			const now = new Date();
 			const date = _dateOf(now);
-			const file = join(dir, `${date}.json`);
-
-			let entries = days.get(date);
-
-			if (!entries)
-			{
-				const saved = await readFile(file, 'utf8')
-					.then(text => JSON.parse(text) as { entries?: ICompletionEntry[] })
-					.catch(() => undefined);
-
-				entries = Array.isArray(saved?.entries) ? saved.entries : [];
-				days.set(date, entries);
-			}
-
-			const entry: ICompletionEntry = {
-				path: normalize(input.path),
-				day: input.day,
-				task: input.task,
-				completedAt: now.toISOString(),
-				publishedUrls: [...(input.publishedUrls ?? [])],
-				publishCount: input.publishCount ?? input.publishedUrls?.length ?? 0,
-				lastFile: normalize(input.lastFile),
-				lastFileTime: input.lastFileTime,
-			};
+			const entries = await loadDay(date);
+			const entry = buildEntry(input, now);
 
 			entries.push(entry);
 
-			await mkdir(dir, { recursive: true });
-			await writeFile(`${file}.tmp`, JSON.stringify({ date, entries }, undefined, '\t'));
-			await rename(`${file}.tmp`, file);
-
-			/** 已建構累計次數時同步累加（尚未建構者由下次查詢掃描檔案取得） */
-			if (counts)
-			{
-				counts.set(entry.path, (counts.get(entry.path) ?? 0) + countOf(entry));
-			}
+			await flushDay(date, entries);
+			bumpCount(entry.path, countOf(entry));
 
 			_logPhase(EnumPostPhase.AutoPost, options, `completion recorded: ${input.path} -> ${date}.json`, 'info');
+		},
+
+		updateOrAppend: async (input: ICompletionInput) =>
+		{
+			const now = new Date();
+			const date = _dateOf(now);
+			const entries = await loadDay(date);
+
+			/** 本次發布事件的次數：既有條目累加此值 */
+			const delta = input.publishCount ?? input.publishedUrls?.length ?? 0;
+			const path = normalize(input.path);
+
+			/** 同路徑的既有條目（含舊版逐批寫入留下的重複筆）：全部收斂為一筆 */
+			const matches = entries.filter(item => normalize(item.path) === path);
+
+			if (matches.length)
+			{
+				const merged = matches[0];
+
+				/** 次數取全部同路徑條目的合計（重複筆收斂不遺失次數）再加本次事件 */
+				merged.publishCount = matches.reduce((sum, item) => sum + countOf(item), 0) + delta;
+
+				/** 網址取聯集：既有與本次發布的網址皆保留 */
+				const urls = new Set<string>();
+
+				for (const item of matches)
+				{
+					for (const url of item.publishedUrls ?? []) urls.add(url);
+				}
+				for (const url of input.publishedUrls ?? []) urls.add(url);
+
+				merged.publishedUrls = [...urls];
+				merged.completedAt = now.toISOString();
+				merged.day = input.day ?? merged.day;
+				merged.task = input.task ?? merged.task;
+
+				/** 完成邊界取本次事件：本次為該路徑最新的發布進度 */
+				merged.lastFile = normalize(input.lastFile);
+				merged.lastFileTime = input.lastFileTime;
+
+				/** 移除其餘同路徑重複筆，並移至清單末端——條目順序即發布新舊（供起始點取最後發布者） */
+				for (let i = entries.length - 1; i >= 0; i--)
+				{
+					if (entries[i] !== merged && normalize(entries[i].path) === path)
+					{
+						entries.splice(i, 1);
+					}
+				}
+				entries.splice(entries.indexOf(merged), 1);
+				entries.push(merged);
+			}
+			else
+			{
+				entries.push(buildEntry(input, now));
+			}
+
+			await flushDay(date, entries);
+			bumpCount(path, delta);
+
+			_logPhase(
+				EnumPostPhase.AutoPost,
+				options,
+				`completion ${matches.length ? 'merged' : 'recorded'}: ${input.path} -> ${date}.json`,
+				'info',
+			);
 		},
 
 		publishedCount: async (path: string) =>
