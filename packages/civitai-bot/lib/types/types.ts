@@ -130,7 +130,7 @@ export enum EnumPostPhase
 {
 	/** 上傳階段：將圖片送入等待區並等待計數完成，不涉及任何按鈕點擊 */
 	Upload = 'upload',
-	/** 發布階段：上傳完成後的 publish 按鈕操作，受 `ENABLE_PUBLISH` 控制，絕不按 save */
+	/** 發布階段：上傳完成後的 publish 按鈕操作，受 `ENABLE_PUBLISH` 控制 */
 	Publish = 'publish',
 	/** 完整階段：上傳階段 + 發布階段串起的整個自動發文流程 */
 	AutoPost = 'auto-post',
@@ -181,7 +181,7 @@ export interface IMessageOptions
  */
 export interface IRunSwitches
 {
-	/** 是否執行發布；解除 `ENABLE_PUBLISH` 預設停用（絕不按 save 的安全規則不變） */
+	/** 是否執行發布；解除 `ENABLE_PUBLISH` 預設停用 */
 	enablePublish?: boolean;
 	/** 是否停用 dry run；解除後每批實際上傳並進入發布階段 */
 	disableDryRun?: boolean;

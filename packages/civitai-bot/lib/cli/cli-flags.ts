@@ -29,7 +29,7 @@ export interface IParsedFlags
  * - `--max-tasks <n>`：最大任務數，須為正整數
  * - `--from-last-publish`：以完成紀錄補齊進度缺漏的完成邊界（已完成任務不重發）；
  *   另於無可接續紀錄時找尋新任務起始點（覆寫 startDay / startTask）
- * - `--publish`：解除發布停用（預設停用；絕不按 save 的安全規則不變）
+ * - `--publish`：解除發布停用（預設停用）
  * - `--no-dry-run`：解除 dry run（預設第 2 批起僅報告；由 yargs 布林選單 `--dry-run` 的否定旗標解析）
  * - `--close`：執行結束後關閉瀏覽器（`automation.close()`）
  * - `--create-url <url>`：變更上傳（建立貼文）頁面網址

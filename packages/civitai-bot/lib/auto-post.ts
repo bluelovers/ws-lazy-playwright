@@ -32,7 +32,7 @@ import type { ICompletionRecord } from './record/record';
  * 2. （上傳階段）其餘檔案以 5MB 總和切包陸續上傳，累計至 18 張
  * 3. （上傳階段）`reconcileUpload` 比對數量：符合預期以 success 記錄，
  *    缺漏者（假設為最後幾張）排回佇列進入下一次完整階段，本次以實際數量進入發布階段
- * 4. （發布階段）僅檢查開關，絕不按 save；發布完成（網址跳轉為貼文頁 / 模型頁等落地頁）後
+ * 4. （發布階段）僅檢查開關；發布完成（網址跳轉為貼文頁 / 模型頁等落地頁）後
  *    重開建立貼文頁執行下一批次
  *
  * 進度（{@link ITaskProgress}）：已完成的單位於掃描後比對新增檔案——無新增即跳過，有新增僅處理新增者；
@@ -215,7 +215,7 @@ export async function autoPost(
 				/** （上傳階段）比對數量：缺漏者排回佇列；結果與批次報告由該函式輸出 */
 				queue = [...reconcileUpload(batchNo, ctx, task, setPaths, actual), ...queue];
 
-				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後），絕不按 save */
+				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後） */
 				const publishResult = await publishPost(currentPage, message, cli.switches.enablePublish);
 
 				if (publishResult === EnumPublishResult.Published)

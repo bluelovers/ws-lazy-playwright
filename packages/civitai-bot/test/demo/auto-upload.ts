@@ -131,7 +131,7 @@ export interface IAutoUploadRunContext extends IRunContext
  *
  * 系統提示顯示已達上限（{@link LimitReachedError}）時停止任務。
  *
- * 第 2 批起為 dry run；不按 save（草稿）；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
+ * 第 2 批起為 dry run；publish 由 `ENABLE_PUBLISH` 控制，預設停用。
  * CLI 參數（{@link parseAutoPostCli}）可覆寫任務基準路徑、最大任務數與上傳頁面網址，
  * 解除發布停用與 dry run，以完成紀錄重建續跑狀態，並於結束後關閉瀏覽器。
  *

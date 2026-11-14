@@ -290,7 +290,7 @@ async function _waitPublishReady(
 /**
  * 發布階段：點擊 publish 按鈕並等待跳轉為已發布落地頁（僅在發布開關為 `true` 時執行）
  *
- * 安全規則：絕不點擊 save（草稿）按鈕；publish 僅在開關開啟時點擊，
+ * 安全規則：publish 僅在開關開啟時點擊，
  * 且只會在上傳階段的 waiter 結束後被呼叫。
  *
  * 點擊前須按鈕真正就緒（{@link _waitPublishReady}）：讀取中（`[data-loading]`）
