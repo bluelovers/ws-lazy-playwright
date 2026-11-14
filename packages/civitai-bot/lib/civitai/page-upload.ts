@@ -84,10 +84,12 @@ export async function uploadPack(
 	options?: IMessageOptions
 ): Promise<number>
 {
-	const baseline = await _readUploadCount(page);
-
 	/** 上傳前：檢查系統提示（如先前操作遺留的失敗訊息） */
 	await checkNotifications(page, options, EnumPostPhase.Upload, 'before');
+
+	await page.waitForTimeout(500);
+
+	const baseline = await _readUploadCount(page);
 
 	_logPhase(EnumPostPhase.Upload, options, `files set: ${files.length} (total ${expectedTotal})`, 'debug');
 
@@ -95,6 +97,8 @@ export async function uploadPack(
 
 	const uploaded = await waitForUpload(page, baseline, files.length, options);
 	const actual = expectedTotal - (files.length - uploaded);
+
+	await page.waitForTimeout(500);
 
 	/** 上傳後：檢查系統提示（如檔案被拒、上傳失敗訊息） */
 	await checkNotifications(page, options, EnumPostPhase.Upload, 'after');

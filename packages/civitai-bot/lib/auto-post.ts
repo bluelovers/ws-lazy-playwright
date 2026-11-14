@@ -205,6 +205,8 @@ export async function autoPost(
 					/** 前次數量不符即中止本次上傳階段的後續上傳 */
 					if (actual < setPaths.length) break;
 
+					await currentPage.waitForTimeout(1000);
+
 					const files = pack.map(item => item.path);
 					setPaths = [...setPaths, ...files];
 					actual = await uploadPack(currentPage, files, setPaths.length, message);
