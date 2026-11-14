@@ -86,6 +86,9 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/** 主頁面 (Main Page) */
 	protected _page: ITSNullable<Page>;
 
+	/** 最後一次開啟的分頁；僅由標記為新頁面的 {@link _bindPage} 更新，未開啟過時為 `undefined` */
+	protected _lastOpenedPage: ITSNullable<Page>;
+
 	/** 目前狀態；預設為準備期，於 context 決定後由 {@link _lockContext} 鎖定 */
 	protected _state: EnumAutomationState = EnumAutomationState.Preparing;
 
@@ -154,6 +157,27 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			throw new RangeError('page is not in the current context');
 		}
 		this._page = next;
+	}
+
+	getPageByIndex(index: number): Page
+	{
+		const pages = this.context.pages();
+		if (index < 0)
+		{
+			index = pages.length + index;
+		}
+		return pages[index];
+	}
+
+	/**
+	 * 最後一次開啟的分頁
+	 *
+	 * 追蹤「新開啟」的分頁（`newPage` 與 context 的 `page` 事件）；
+	 * 主 context 鎖定時接續的既有頁面不計入，分頁關閉後清除引用。
+	 */
+	getLastOpenedPage(): Page | undefined
+	{
+		return this._lastOpenedPage ??= this.getPageByIndex(-1);
 	}
 
 	/** 目前狀態 */
@@ -329,7 +353,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	{
 		const page = await createNewPage(this, options);
 
-		this._bindPage(page);
+		this._bindPage(page, true);
 
 		return page;
 	}
@@ -374,6 +398,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this._browser = undefined;
 		this._context = undefined;
 		this._page = undefined;
+		this._lastOpenedPage = undefined;
 		this._pages.clear();
 
 		await closeBrowserSafely({
@@ -467,6 +492,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 				}
 			}
 
+			/** 最後開啟頁面已不屬於追蹤集合（非主 context 殘留）時一併清除 */
+			if (this._lastOpenedPage && !this._pages.has(this._lastOpenedPage))
+			{
+				this._lastOpenedPage = undefined;
+			}
+
 			this._context = primary;
 
 			await this._bindContext(primary);
@@ -525,7 +556,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 
 		this._context = context;
 
-		context.on('page', page => this._bindPage(page));
+		context.on('page', page => this._bindPage(page, true));
 
 		/** 主 context 關閉時釋放引用，避免持有已關閉的 context */
 		context.on('close', () =>
@@ -541,9 +572,15 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		this._wirePageLiveOnOnContext(context);
 	}
 
-	protected _bindPage(page: Page): void
+	protected _bindPage(page: Page, isNewPage = false): void
 	{
 		this._pages.add(page);
+
+		/** 新開啟的分頁才更新「最後開啟」引用，既有頁面接續追蹤不計入 */
+		if (isNewPage)
+		{
+			this._lastOpenedPage = page;
+		}
 
 		/** 鎖定後，尚無主頁面時由新開啟的頁面接任 */
 		if (this._state === EnumAutomationState.Locked && !this._page)
@@ -554,6 +591,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		page.on('close', () =>
 		{
 			this._pages.delete(page);
+
+			/** 已關閉的分頁不再作為「最後開啟」結果 */
+			if (this._lastOpenedPage === page)
+			{
+				this._lastOpenedPage = undefined;
+			}
 
 			/** 主頁面關閉後，由下一個頁面自動繼承 */
 			if (this._page === page)
