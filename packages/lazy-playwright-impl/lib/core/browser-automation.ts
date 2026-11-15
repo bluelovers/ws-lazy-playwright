@@ -21,6 +21,7 @@ import { ITSNullable } from 'ts-type';
 import { IWindowSize } from '@lazy-playwright/browser-config/lib/opt-window-size';
 import { filterUnsupportedCliArgs } from '@lazy-playwright/browser-config/lib/opt-cli-args-filter';
 import type { IBrowserLaunchArgs, IBrowserLaunchArgsWriteable } from '@lazy-playwright/browser-config/lib/types/browser-setting';
+import { playwrightModuleRegistry, IPlaywrightModuleTargetInput, resolveBrowserType, DEFAULT_PLAYWRIGHT_MODULE_ID } from '@lazy-playwright/module-registry';
 
 /**
  * 實例狀態 (Automation State)
@@ -195,8 +196,36 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 	/** 將輸入選項轉為 Playwright 的啟動選項，子類別可於此疊加引擎專屬設定 */
 	protected abstract _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>;
 
-	/** 以處理後的選項建立瀏覽器實例，子類別決定實際使用的 browser type */
-	protected abstract _initializeBrowser(options: LaunchOptions): Promise<Browser>;
+	/** 目前使用的相容模組；`options.module` 未提供時使用預設 `playwright` */
+	protected get _moduleTarget(): IPlaywrightModuleTargetInput
+	{
+		return this._options.module ?? DEFAULT_PLAYWRIGHT_MODULE_ID;
+	}
+
+	protected _resolveModule()
+	{
+		const module = playwrightModuleRegistry.resolve(this._moduleTarget, this.browserKind);
+		const browserType = resolveBrowserType(module, this.browserKind);
+
+		return { module, browserType };
+	}
+
+	/**
+	 * 由註冊表解析相容模組，並以其宣告的啟動入口建立瀏覽器
+	 *
+	 * 有通道 (Channel) 變體（Chrome / MSEdge）時走 chromium 入口並以 channel 啟動；模組不支援該瀏覽器種類時直接拋錯。
+	 */
+	protected async _initializeBrowser(options: LaunchOptions): Promise<Browser>
+	{
+		const { browserType } = this._resolveModule();
+
+		if (this.browserChannel)
+		{
+			return browserType.launch({ ...options, channel: this.browserChannel });
+		}
+
+		return browserType.launch(options);
+	}
 
 	/**
 	 * 過濾目標瀏覽器不支援的 CLI 參數（基底方法）
@@ -665,4 +694,5 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 			_pageLiveOn({ context }, null, listener);
 		}
 	}
+
 }

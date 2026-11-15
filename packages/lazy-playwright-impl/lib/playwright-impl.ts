@@ -24,12 +24,6 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 {
 	readonly engine: EnumAutomationEngine = EnumAutomationEngine.Playwright;
 
-	/** 目前使用的相容模組；`options.module` 未提供時使用預設 `playwright` */
-	protected get _moduleTarget(): IPlaywrightModuleTargetInput
-	{
-		return this._options.module ?? DEFAULT_PLAYWRIGHT_MODULE_ID;
-	}
-
 	protected async _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
 	{
 		const { args, ...baseOptions } = options;
@@ -70,23 +64,5 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 				'--lang=zh-TW',
 			])],
 		};
-	}
-
-	/**
-	 * 由註冊表解析相容模組，並以其宣告的啟動入口建立瀏覽器
-	 *
-	 * 有通道 (Channel) 變體（Chrome / MSEdge）時走 chromium 入口並以 channel 啟動；模組不支援該瀏覽器種類時直接拋錯。
-	 */
-	protected async _initializeBrowser(options: LaunchOptions): Promise<Browser>
-	{
-		const module = playwrightModuleRegistry.resolve(this._moduleTarget, this.browserKind);
-		const browserType = resolveBrowserType(module, this.browserKind);
-
-		if (this.browserChannel)
-		{
-			return browserType.launch({ ...options, channel: this.browserChannel });
-		}
-
-		return browserType.launch(options);
 	}
 }
