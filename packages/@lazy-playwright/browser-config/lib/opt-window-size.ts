@@ -32,7 +32,7 @@ export const enum EnumWindowSizeSource
 }
 
 /** 決定視窗尺寸參數的輸入 */
-export type IResolveWindowSizeOptions = Partial<Pick<IHandleBrowserKindResult, 'browserEngine' | 'baseKind'> &
+export type IResolveWindowSizeOptions = Partial<Pick<IHandleBrowserKindResult, 'browserEngine' | 'browserKind'> &
 {
 	/** 建立選項指定的預設視窗尺寸 */
 	windowSize?: IWindowSize;
@@ -92,10 +92,10 @@ function _toSize(width: string | undefined, height: string | undefined): IWindow
 	return w && h ? { width: w, height: h } : undefined;
 }
 
-/** 依 baseKind 解析視窗尺寸；缺旗標、缺值或數值不合法時回傳 `undefined` */
-function _parse(baseKind: IBrowserKind, args: IBrowserLaunchArgs): IWindowSize | undefined
+/** 依 browserKind 解析視窗尺寸；缺旗標、缺值或數值不合法時回傳 `undefined` */
+function _parse(browserKind: IBrowserKind, args: IBrowserLaunchArgs): IWindowSize | undefined
 {
-	if (baseKind === EnumAutomationEngine.Firefox)
+	if (browserKind === EnumAutomationEngine.Firefox)
 	{
 		return _toSize(_readFlagValue(args, '-width'), _readFlagValue(args, '-height'));
 	}
@@ -109,10 +109,10 @@ function _parse(baseKind: IBrowserKind, args: IBrowserLaunchArgs): IWindowSize |
 	return _toSize(width, height);
 }
 
-/** 依 baseKind 輸出對應的視窗尺寸命令參數 */
-export function _windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): IBrowserLaunchArgsWriteable
+/** 依 browserKind 輸出對應的視窗尺寸命令參數 */
+export function _windowSizeArgs(browserKind: IBrowserKind, size: IWindowSize): IBrowserLaunchArgsWriteable
 {
-	if (baseKind === EnumAutomationEngine.Firefox)
+	if (browserKind === EnumAutomationEngine.Firefox)
 	{
 		/** 數值需轉為字串：啟動參數契約為 `string[]`，過濾等字串操作遇數值會拋錯 */
 		return ['-width', String(size.width), '-height', String(size.height)];
@@ -133,15 +133,15 @@ export function _windowSizeArgs(baseKind: IBrowserKind, size: IWindowSize): IBro
 export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveWindowSizeResult
 {
 	const { windowSize, args = [] } = options;
-	const { baseKind } = options.baseKind ? options : _handleBrowserKind(options.browserEngine);
+	const { browserKind } = options.browserKind ? options : _handleBrowserKind(options.browserEngine);
 
-	const own = _parse(baseKind, args);
+	const own = _parse(browserKind, args);
 
 	if (own)
 	{
 		/** 自身風格參數已存在 → 空 payload，不重複輸出 */
 		return {
-			baseKind,
+			browserKind,
 			placement: EnumSettingPlacement.Args,
 			args: [],
 			size: own,
@@ -152,9 +152,9 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 	if (windowSize)
 	{
 		return {
-			baseKind,
+			browserKind,
 			placement: EnumSettingPlacement.Args,
-			args: _windowSizeArgs(baseKind, windowSize),
+			args: _windowSizeArgs(browserKind, windowSize),
 			size: windowSize,
 			source: EnumWindowSizeSource.Option,
 		};
@@ -164,7 +164,7 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 	 * 另一風格的 baseKind：自身風格無尺寸參數時改以它讀取，
 	 * 使 `-width/-height` 與 `--window-size` 兩種寫法皆能解析出尺寸。
 	 */
-	const crossBaseKind: IBrowserKind = baseKind === EnumAutomationEngine.Firefox
+	const crossBaseKind: IBrowserKind = browserKind === EnumAutomationEngine.Firefox
 		? EnumAutomationEngine.Chromium
 		: EnumAutomationEngine.Firefox;
 	const cross = _parse(crossBaseKind, args);
@@ -172,15 +172,15 @@ export function resolveWindowSize(options: IResolveWindowSizeOptions): IResolveW
 	if (cross)
 	{
 		return {
-			baseKind,
+			browserKind,
 			placement: EnumSettingPlacement.Args,
-			args: _windowSizeArgs(baseKind, cross),
+			args: _windowSizeArgs(browserKind, cross),
 			size: cross,
 			source: EnumWindowSizeSource.CrossStyle,
 		};
 	}
 
-	return { baseKind, placement: EnumSettingPlacement.Args, args: [] };
+	return { browserKind, placement: EnumSettingPlacement.Args, args: [] };
 }
 
 /**

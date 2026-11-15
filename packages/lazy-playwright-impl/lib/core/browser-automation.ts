@@ -104,12 +104,12 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		 * 皆未指定時由 `engine` 決定。
 		 */
 		const nativeFirefox = options.channel === EnumAutomationEngine.Firefox;
-		const { baseKind, channel } = _handleBrowserKind(
+		const { browserKind, channel } = _handleBrowserKind(
 			nativeFirefox ? EnumAutomationEngine.Firefox : options.engine ?? DEFAULT_BROWSER_KIND,
 			nativeFirefox ? undefined : options.channel,
 		);
 
-		this.browserKind = baseKind;
+		this.browserKind = browserKind;
 		this.browserChannel = channel;
 		this.storage = new BrowserStorageManager(options.storage);
 		this.bridge = new PageBridge(this, options.bridge);

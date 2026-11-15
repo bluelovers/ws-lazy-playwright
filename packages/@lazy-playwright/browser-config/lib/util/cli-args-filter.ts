@@ -8,8 +8,8 @@ export interface IFilterCliArgsContext
 	readonly index: number;
 	/** 完整的參數陣列（唯讀），可用於相對位置等跨參數判定 */
 	readonly args: IBrowserLaunchArgs;
-	/** 目前過濾所屬的瀏覽器種類（`baseKind`），供依瀏覽器自定化判定 */
-	readonly baseKind: IBrowserKind;
+	/** 目前過濾所屬的瀏覽器種類（`browserKind`），供依瀏覽器自定化判定 */
+	readonly browserKind: IBrowserKind;
 }
 
 /**
@@ -85,7 +85,7 @@ function _matchCliArg(
 export function filterCliArgsByPrefixes(
 	args: IBrowserLaunchArgs,
 	matchers: Iterable<IFilterCliArgsByValue>,
-	baseKind: IBrowserKind,
+	browserKind: IBrowserKind,
 ): IBrowserLaunchArgsWriteable
 {
 	/** 一次物化，避免一次性 Iterable（如 generator）在逐參數比對時被耗盡 */
@@ -102,7 +102,7 @@ export function filterCliArgsByPrefixes(
 			continue;
 		}
 
-		if (!_matchCliArg(arg, matcherList, { index, args, baseKind }))
+		if (!_matchCliArg(arg, matcherList, { index, args, browserKind }))
 		{
 			result.push(arg);
 			continue;
@@ -126,7 +126,7 @@ export function filterCliArgsByPrefixes(
 	return result;
 }
 
-/** 各瀏覽器不支援的 CLI 參數條件登記表（key：`baseKind`） */
+/** 各瀏覽器不支援的 CLI 參數條件登記表（key：`browserKind`） */
 const _unsupportedCliArgsPrefixes = new Map<IBrowserKind, Set<IFilterCliArgsByValue>>();
 
 /**
@@ -135,14 +135,14 @@ const _unsupportedCliArgsPrefixes = new Map<IBrowserKind, Set<IFilterCliArgsByVa
  * 條件可為字面前綴、`RegExp` 或判定函式（見 {@link IFilterCliArgsByValue}）；
  * 各瀏覽器模組於載入時自行註冊；以 `Set` 累加，重複註冊不需重建容器。
  */
-export function registerUnsupportedCliArgs(baseKind: IBrowserKind, matchers: Iterable<IFilterCliArgsByValue>): void
+export function registerUnsupportedCliArgs(browserKind: IBrowserKind, matchers: Iterable<IFilterCliArgsByValue>): void
 {
-	let registered = _unsupportedCliArgsPrefixes.get(baseKind);
+	let registered = _unsupportedCliArgsPrefixes.get(browserKind);
 
 	if (!registered)
 	{
 		registered = new Set<IFilterCliArgsByValue>();
-		_unsupportedCliArgsPrefixes.set(baseKind, registered);
+		_unsupportedCliArgsPrefixes.set(browserKind, registered);
 	}
 
 	for (const matcher of matchers)
@@ -161,7 +161,7 @@ export function registerUnsupportedCliArgs(baseKind: IBrowserKind, matchers: Ite
  *
  * @internal
  */
-export function _filterUnsupportedCliArgsCore(baseKind: IBrowserKind, args: IBrowserLaunchArgs): IBrowserLaunchArgsWriteable
+export function _filterUnsupportedCliArgsCore(browserKind: IBrowserKind, args: IBrowserLaunchArgs): IBrowserLaunchArgsWriteable
 {
-	return filterCliArgsByPrefixes(args, _unsupportedCliArgsPrefixes.get(baseKind) ?? [], baseKind);
+	return filterCliArgsByPrefixes(args, _unsupportedCliArgsPrefixes.get(browserKind) ?? [], browserKind);
 }

@@ -78,7 +78,7 @@ export function _isBrowserKindSupported<T extends IPlaywrightModule, K extends I
  */
 export function resolveBrowserType(module: IPlaywrightModule, kind: IBrowserKind): IPlaywrightBrowserType
 {
-	kind = _handleBrowserKind(kind).baseKind;
+	kind = _handleBrowserKind(kind).browserKind;
 
 	const browserType = _isBrowserKindSupported(module, kind)
 		? module.api[kind]

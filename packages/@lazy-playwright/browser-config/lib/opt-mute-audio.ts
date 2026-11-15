@@ -23,7 +23,7 @@ export type IMuteAudioSetting = ITSAnyOfUnion<IBrowserLaunchArgsSetting | IFiref
 
 /** 靜音音頻的解析輸入 */
 export type IResolveMuteAudioOptions = {
-	/** 引擎 / 瀏覽器種類，由 {@link _handleBrowserKind} 歸一化為 `baseKind` */
+	/** 引擎 / 瀏覽器種類，由 {@link _handleBrowserKind} 歸一化為 `browserKind` */
 	browserEngine: EnumAutomationEngine;
 } & Omit<IMuteAudioSetting, 'placement'>;
 
@@ -38,15 +38,15 @@ export type IResolveMuteAudioOptions = {
 export function resolveMuteAudio(options: IResolveMuteAudioOptions): IBrowserSettingResult<IMuteAudioSetting>
 {
 	const { browserEngine, args = [], firefoxUserPrefs } = options;
-	const { baseKind } = _handleBrowserKind(browserEngine);
+	const { browserKind } = _handleBrowserKind(browserEngine);
 
-	if (baseKind === EnumAutomationEngine.Firefox)
+	if (browserKind === EnumAutomationEngine.Firefox)
 	{
 		/** 已設定過全域音量時回傳空物件，交由消費端統一合併 */
 		const applied = firefoxUserPrefs != null && 'media.volume_scale' in firefoxUserPrefs;
 
 		return {
-			baseKind,
+			browserKind,
 			placement: EnumSettingPlacement.FirefoxUserPrefs,
 			firefoxUserPrefs: applied ? {} : _FIREFOX_MUTE_AUDIO_PREFS,
 		};
@@ -56,7 +56,7 @@ export function resolveMuteAudio(options: IResolveMuteAudioOptions): IBrowserSet
 	const applied = args.includes('--mute-audio');
 
 	return {
-		baseKind,
+		browserKind,
 		placement: EnumSettingPlacement.Args,
 		args: applied ? [] : _CHROMIUM_MUTE_AUDIO_ARGS,
 	};

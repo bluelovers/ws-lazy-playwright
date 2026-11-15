@@ -13,10 +13,10 @@ export async function createBrowserAutomation(
 )
 {
 	const engine = options.engine ?? DEFAULT_AUTOMATION_ENGINE;
-	/** 以 `_handleBrowserKind` 歸一化引擎值，再以 baseKind 分派實作類別 */
-	const { baseKind } = _handleBrowserKind(engine);
+	/** 以 `_handleBrowserKind` 歸一化引擎值，再以 browserKind 分派實作類別 */
+	const { browserKind } = _handleBrowserKind(engine);
 
-	switch (baseKind)
+	switch (browserKind)
 	{
 		case EnumAutomationEngine.Chromium:
 		{

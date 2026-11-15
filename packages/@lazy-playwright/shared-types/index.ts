@@ -98,7 +98,7 @@ export interface IHandleBrowserKindResult
 	/** 引擎 */
 	browserEngine: EnumAutomationEngine;
 	/** 歸一化後的基礎種類 */
-	baseKind: IBrowserKind;
+	browserKind: IBrowserKind;
 	/** 最終通道；Chrome / MS Edge 未指定通道時補入自身值 */
 	channel?: IBrowserKindChannel;
 }
@@ -113,7 +113,7 @@ export interface IHandleBrowserKindResult
  */
 export function _handleBrowserKind(browserEngine: EnumAutomationEngine, channel?: IBrowserKindChannel): IHandleBrowserKindResult
 {
-	let baseKind: IBrowserKind;
+	let browserKind: IBrowserKind;
 
 	/**
 	 * 引擎名稱與實際啟動的瀏覽器未必相同，此處統一歸一化為基礎種類
@@ -124,21 +124,21 @@ export function _handleBrowserKind(browserEngine: EnumAutomationEngine, channel?
 			channel ||= EnumAutomationEngine.Chrome;
 		case EnumAutomationEngine.Playwright:
 		case EnumAutomationEngine.Chromium:
-			baseKind = EnumAutomationEngine.Chromium;
+			browserKind = EnumAutomationEngine.Chromium;
 			break;
 
 		case EnumAutomationEngine.MSEdge:
 			channel ||= EnumAutomationEngine.MSEdge;
-			baseKind = EnumAutomationEngine.Chromium;
+			browserKind = EnumAutomationEngine.Chromium;
 			break;
 
 		case EnumAutomationEngine.Firefox:
 		case EnumAutomationEngine.Camoufox:
-			baseKind = EnumAutomationEngine.Firefox;
+			browserKind = EnumAutomationEngine.Firefox;
 			break;
 
 		case EnumAutomationEngine.Webkit:
-			baseKind = EnumAutomationEngine.Webkit;
+			browserKind = EnumAutomationEngine.Webkit;
 			break;
 		default:
 			throw new Error(`Unsupported browser kind: ${browserEngine}`);
@@ -146,7 +146,7 @@ export function _handleBrowserKind(browserEngine: EnumAutomationEngine, channel?
 
 	return {
 		browserEngine,
-		baseKind,
+		browserKind,
 		channel,
 	};
 }

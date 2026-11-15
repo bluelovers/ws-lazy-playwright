@@ -71,4 +71,4 @@ export type IBrowserSetting<TContextOptions extends BrowserContextOptions = Brow
  * payload 為空（空陣列 / 空物件）表示設定已存在或不適用，
  * 可統一以附加 / 淺層合併處理而無需特殊分支。
  */
-export type IBrowserSettingResult<TSetting extends IBrowserSetting = IBrowserSetting> = TSetting & Pick<IHandleBrowserKindResult, 'baseKind'>;
+export type IBrowserSettingResult<TSetting extends IBrowserSetting = IBrowserSetting> = TSetting & Pick<IHandleBrowserKindResult, 'browserKind'>;

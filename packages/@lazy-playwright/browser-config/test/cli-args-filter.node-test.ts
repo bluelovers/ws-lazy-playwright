@@ -78,16 +78,16 @@ describe('filterCliArgsByPrefixes', () =>
 		t.assert.snapshot({ first, second });
 	});
 
-	it('判定函式可取得 context（index / args / baseKind）', (t: TestContext) =>
+	it('判定函式可取得 context（index / args / browserKind）', (t: TestContext) =>
 	{
-		const seen: Array<{ index: number; args: readonly string[]; baseKind: IBrowserKind }> = [];
+		const seen: Array<{ index: number; args: readonly string[]; browserKind: IBrowserKind }> = [];
 
 		const actual = filterCliArgsByPrefixes(['--keep', '--drop'], [
 			(arg, ctx) =>
 			{
 				if (ctx)
 				{
-					seen.push({ index: ctx.index, args: ctx.args, baseKind: ctx.baseKind });
+					seen.push({ index: ctx.index, args: ctx.args, browserKind: ctx.browserKind });
 				}
 				return arg === '--drop';
 			},
@@ -95,8 +95,8 @@ describe('filterCliArgsByPrefixes', () =>
 
 		t.assert.deepStrictEqual(actual, ['--keep']);
 		t.assert.deepStrictEqual(seen, [
-			{ index: 0, args: ['--keep', '--drop'], baseKind: EnumAutomationEngine.Firefox },
-			{ index: 1, args: ['--keep', '--drop'], baseKind: EnumAutomationEngine.Firefox },
+			{ index: 0, args: ['--keep', '--drop'], browserKind: EnumAutomationEngine.Firefox },
+			{ index: 1, args: ['--keep', '--drop'], browserKind: EnumAutomationEngine.Firefox },
 		]);
 		t.assert.snapshot({ actual, seen });
 	});
