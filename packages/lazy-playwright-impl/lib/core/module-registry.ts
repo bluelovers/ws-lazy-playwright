@@ -1,6 +1,6 @@
 import { chromium, firefox, webkit, type BrowserType } from 'playwright';
-import { EnumAutomationEngine, type IBrowserKind } from '@lazy-playwright/shared-types';
-import { ITSPickExtra } from 'ts-type';
+import { _handleBrowserKind, EnumAutomationEngine, type IBrowserKind } from '@lazy-playwright/shared-types';
+import { ITSPickExtra, ITSRequiredPick } from 'ts-type';
 
 /**
  * browser type 的最小啟動契約（結構相容 Playwright 的 `launch`）
@@ -10,11 +10,11 @@ import { ITSPickExtra } from 'ts-type';
 export type IPlaywrightBrowserType = ITSPickExtra<BrowserType, 'launch'>;
 
 /** 相容於 Playwright 的模組 API；各入口可缺漏，實際支援由模組宣告或入口存在與否判定 */
-export interface IPlaywrightCompatibleApi
+export interface IPlaywrightCompatibleApi<T extends IPlaywrightBrowserType = IPlaywrightBrowserType>
 {
-	chromium?: IPlaywrightBrowserType;
-	firefox?: IPlaywrightBrowserType;
-	webkit?: IPlaywrightBrowserType;
+	[EnumAutomationEngine.Chromium]?: T;
+	[EnumAutomationEngine.Firefox]?: T;
+	[EnumAutomationEngine.Webkit]?: T;
 }
 
 /**
@@ -36,12 +36,12 @@ export interface IPlaywrightCompatibleApi
  * 	supportedBrowsers: [EnumAutomationEngine.Chromium],
  * });
  */
-export interface IPlaywrightModule
+export interface IPlaywrightModule<T extends IPlaywrightBrowserType = IPlaywrightBrowserType>
 {
 	/** 模組識別碼：註冊與依參數切換的依據 */
 	id: IPlaywrightModuleId;
 	/** 類 Playwright 的啟動 API */
-	api: IPlaywrightCompatibleApi;
+	api: IPlaywrightCompatibleApi<T>;
 	/** 明確宣告支援的瀏覽器種類；省略時以 api 具備的入口判定 */
 	supportedBrowsers?: readonly IBrowserKind[];
 	/** 明確宣告不支援的瀏覽器種類，優先於 supportedBrowsers（例：patchright 僅 chromium） */
@@ -53,21 +53,10 @@ export const DEFAULT_PLAYWRIGHT_MODULE_ID = EnumAutomationEngine.Playwright;
 
 export type IPlaywrightModuleId = typeof DEFAULT_PLAYWRIGHT_MODULE_ID | (string & {});
 
-/** 瀏覽器種類 → api 欄位的單一事實對應（Chrome / MSEdge 已於建立時歸一化為 chromium） */
-const _browserKindApiKeyMap: Readonly<Record<IBrowserKind, keyof IPlaywrightCompatibleApi>> = {
-	[EnumAutomationEngine.Chromium]: 'chromium',
-	[EnumAutomationEngine.Firefox]: 'firefox',
-	[EnumAutomationEngine.Webkit]: 'webkit',
-};
-
-/** 取得瀏覽器種類對應的 api 欄位 */
-export function getBrowserKindApiKey(kind: IBrowserKind): keyof IPlaywrightCompatibleApi
-{
-	return _browserKindApiKeyMap[kind];
-}
-
 /** 判定模組是否支援指定瀏覽器種類 */
-export function isBrowserKindSupported(module: IPlaywrightModule, kind: IBrowserKind): boolean
+export function _isBrowserKindSupported<T extends IPlaywrightModule, K extends IBrowserKind = IBrowserKind>(module: T, kind: K): module is T & {
+	api: ITSRequiredPick<T['api'], K>
+}
 {
 	if (module.unsupportedBrowsers?.includes(kind))
 	{
@@ -79,7 +68,7 @@ export function isBrowserKindSupported(module: IPlaywrightModule, kind: IBrowser
 		return module.supportedBrowsers.includes(kind);
 	}
 
-	return !!module.api[getBrowserKindApiKey(kind)];
+	return !!module.api[kind];
 }
 
 /**
@@ -89,8 +78,10 @@ export function isBrowserKindSupported(module: IPlaywrightModule, kind: IBrowser
  */
 export function resolveBrowserType(module: IPlaywrightModule, kind: IBrowserKind): IPlaywrightBrowserType
 {
-	const browserType = isBrowserKindSupported(module, kind)
-		? module.api[getBrowserKindApiKey(kind)]
+	kind = _handleBrowserKind(kind).baseKind;
+
+	const browserType = _isBrowserKindSupported(module, kind)
+		? module.api[kind]
 		: undefined;
 
 	if (!browserType)
@@ -109,16 +100,16 @@ export function resolveBrowserType(module: IPlaywrightModule, kind: IBrowserKind
  */
 export class PlaywrightModuleRegistry
 {
-	private readonly _modules = new Map<string, IPlaywrightModule>();
+	protected readonly _modules = new Map<IPlaywrightModuleId, IPlaywrightModule>();
 
 	/** 已註冊的模組 id */
-	get ids(): readonly string[]
+	get ids(): readonly IPlaywrightModuleId[]
 	{
 		return [...this._modules.keys()];
 	}
 
 	/** 註冊相容模組；同 id 重複註冊會覆寫 */
-	register(module: IPlaywrightModule): this
+	register<T extends IPlaywrightBrowserType = IPlaywrightBrowserType>(module: IPlaywrightModule<T>): this
 	{
 		if (!module?.id)
 		{
@@ -130,15 +121,15 @@ export class PlaywrightModuleRegistry
 	}
 
 	/** 取得註冊的模組，未註冊回傳 undefined */
-	get(id: string): IPlaywrightModule | undefined
+	get<T extends IPlaywrightBrowserType = IPlaywrightBrowserType>(id: IPlaywrightModuleId): IPlaywrightModule<T> | undefined
 	{
-		return this._modules.get(id);
+		return this._modules.get(id) as IPlaywrightModule<T>;
 	}
 
 	/** 取得註冊的模組，未註冊時拋出含已註冊清單的錯誤 */
-	require(id: string): IPlaywrightModule
+	require<T extends IPlaywrightBrowserType = IPlaywrightBrowserType>(id: IPlaywrightModuleId): IPlaywrightModule<T>
 	{
-		const module = this._modules.get(id);
+		const module = this.get<T>(id);
 
 		if (!module)
 		{
@@ -154,11 +145,11 @@ export class PlaywrightModuleRegistry
 	 * @param target - 已註冊的模組 id，或直接提供的模組描述
 	 * @param browserKind - 預計啟動的瀏覽器種類
 	 */
-	resolve(target: string | IPlaywrightModule, browserKind: IBrowserKind): IPlaywrightModule
+	resolve<T extends IPlaywrightBrowserType = IPlaywrightBrowserType, K extends IBrowserKind = IBrowserKind>(target: IPlaywrightModuleId | IPlaywrightModule, browserKind: K)
 	{
-		const module = typeof target === 'string' ? this.require(target) : target;
+		const module: IPlaywrightModule<T> = typeof target === 'string' ? this.require(target) : target as IPlaywrightModule<T>;
 
-		if (!isBrowserKindSupported(module, browserKind))
+		if (!_isBrowserKindSupported(module, browserKind))
 		{
 			throw new Error(`Playwright module "${module.id}" does not support browser kind "${browserKind}"; registered: [${this.ids.join(', ')}]`);
 		}
