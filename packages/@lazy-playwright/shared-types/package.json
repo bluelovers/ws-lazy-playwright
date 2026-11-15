@@ -50,7 +50,7 @@
     "tsc:showConfig": "ynpx get-current-tsconfig -p"
   },
   "dependencies": {
-    "playwright": "^1.65.0",
+    "playwright": "^1.65.1",
     "ts-type": "^3.0.19",
     "tslib": ">=2.9.1"
   },
