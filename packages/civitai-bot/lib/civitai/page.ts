@@ -22,8 +22,13 @@ import { _readUploadCount } from './page-upload';
  *
  * 新分頁由 automation 的主 context 建立（與呼叫端共用同一 context），
  * 以 `automation.goto`（內部 `gotoPage`）導航（`checkMatch.href` 啟用時同網址略過導航）：
- * 判定回傳前經 `callback` 讀取等待區計數（{@link _readUploadCount}），
- * 尚有殘留檔案時以回傳值覆寫 `shouldGoto` 強制導航；
+ * 判定回傳前經 `callback` 讀取等待區計數（{@link _readUploadCount}）決定分頁去留——
+ *
+ * - 殘留檔案（count > 0）：原頁不關閉、不導航，覆寫 `shouldGoto` 與 `shouldNewPage`
+ *   另開新頁——殘留代表上次發布可能只是超時，原頁保留給使用者手動按發布
+ * - 無殘留（count = 0）：維持略過導航，重用現有空白建立貼文頁，
+ *   重複呼叫不累積多餘分頁
+ *
  * 導航後再讀取計數，殘留未清除時以 warn 提醒。
  *
  * 初始頁面與發布完成後的下一批次，皆由此取得新的建立貼文頁。
@@ -40,9 +45,13 @@ export async function createPostPage(automation: AbstractBrowserAutomation, url:
 		newPageMaybe: true,
 		checkMatch: {
 			href: true,
-			/** 判定前讀取等待區計數：如果沒有殘留檔案於上傳區內則繼續使用現有頁面 */
+			/** 判定前讀取等待區計數：決定殘留頁保留另開新頁、空白頁重用 */
 			callback: async (result) =>
 			{
+				/**
+				 * 僅同網址時才需要判定：異網址必導航並依 `newPageMaybe` 開新頁，
+				 * 舊頁原封保留，殘留檢查對該分支無從介入也不需要介入
+				 */
 				if (result.isSameUrl)
 				{
 					const count = await _readUploadCount(page);
@@ -52,7 +61,9 @@ export async function createPostPage(automation: AbstractBrowserAutomation, url:
 						/**
 						 * 殘留檔案代表上次發布可能只是超時，原頁保留給使用者手動發布：
 						 * 不關閉、不導航其上，改開新頁——須同時覆寫 `shouldGoto`，
-						 * 否則同網址時 `shouldGoto` 為 false，`shouldNewPage` 不會被理會
+						 *
+						 * 否則同網址時 `shouldGoto` 為 false，
+						 * `gotoPage` 僅於導航分支採用 `shouldNewPage`，覆寫不會生效
 						 */
 						result.shouldGoto = true;
 						result.shouldNewPage = true;
@@ -60,6 +71,7 @@ export async function createPostPage(automation: AbstractBrowserAutomation, url:
 					}
 					else
 					{
+						/** 空白頁安全：重用即可，維持不導航、不開新頁 */
 						result.shouldNewPage = false;
 						return result;
 					}

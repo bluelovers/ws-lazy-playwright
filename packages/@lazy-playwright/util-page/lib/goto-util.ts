@@ -238,6 +238,12 @@ export async function _checkShouldGotoUrl(targetUrl: string, currentPageUrl: str
 		}
 	}
 
+	/**
+	 * 分頁來源判定：`newPage` 強制開新頁；
+	 * `newPageMaybe` 僅在確定導航（`shouldGoto`）時才提議開新頁——
+	 * 略過導航代表既存頁面即目標頁，
+	 * 此時開新頁只會留下無用分頁
+	 */
 	if (options.newPage)
 	{
 		result.shouldNewPage = options.newPage;
@@ -327,6 +333,12 @@ export async function gotoPage(page: Page, url: string, options?: IGotoOptions, 
 
 		if (checkResult?.shouldNewPage && !isNewPage)
 		{
+			/**
+			 * `shouldNewPage` 只在此導航分支被採用：
+			 * 同網址略過導航時即使被覆寫為 true 也不會開新頁——
+			 *
+			 * 需要另開分頁的覆寫必須連同 `shouldGoto = true` 一併給出
+			 */
 			await _newPage();
 		}
 

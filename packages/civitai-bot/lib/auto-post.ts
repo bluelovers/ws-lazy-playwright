@@ -262,7 +262,12 @@ export async function autoPost(
 						});
 					}
 
-					/** 重開建立貼文頁：完成紀錄已先行落盤，此處失敗不遺失發布紀錄 */
+					/**
+					 * 重開建立貼文頁：完成紀錄已先行落盤，此處失敗不遺失發布紀錄；
+					 * 同步 `automation.page` 供呼叫端於本函式回傳後取得最終頁面——
+					 * 批次期間的換頁只存在於本函式內部，
+					 * 呼叫端持有的頁面變數不會隨發布自動更新
+					 */
 					currentPage = await createPostPage(automation, cli.switches.createUrl, currentPage);
 					automation.page = currentPage;
 
