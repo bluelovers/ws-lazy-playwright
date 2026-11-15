@@ -34,10 +34,10 @@ export type ICamoufoxNewContextOptionsInput = ITSAnyOfUnion<NewContextOptions | 
  * @see https://www.npmjs.com/package/camoufox
  * @see https://www.npmjs.com/package/camoufox-js
  */
-export async function newCamoufox(options?: ICamoufoxNewBrowserOptionsInput): Promise<Browser>
+export async function newCamoufox(options?: ICamoufoxNewBrowserOptionsInput, usePlaywright?: boolean): Promise<Browser>
 {
 	// const browser = await firefox.launch(options) as any;
-	const browser = await Camoufox(options);
+	const browser = await (usePlaywright ? firefox.launch(options as any) : Camoufox(options));
 
 	/**
 	 * camoufox 回傳的實例與宣告的 {@link Browser} 來自不同 playwright-core 版本，

@@ -92,7 +92,7 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 
 	protected override async _initializeBrowser(options: LaunchOptions): Promise<Browser>
 	{
-		return newCamoufox(options) as any;
+		return newCamoufox(options, this._options.channel === EnumAutomationEngine.Firefox) as any;
 	}
 
 	protected override async _newContext(options?: BrowserContextOptions, autoLaunchBrowser?: boolean)
