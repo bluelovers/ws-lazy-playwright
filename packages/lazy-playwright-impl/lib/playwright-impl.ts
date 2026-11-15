@@ -5,6 +5,7 @@ import { _playwrightArgsDisableFeatures } from '@lazy-playwright/browser-config/
 import { windowSizeLaunchArgs } from '@lazy-playwright/browser-config';
 import {
 	DEFAULT_PLAYWRIGHT_MODULE_ID,
+	IPlaywrightModuleTargetInput,
 	playwrightModuleRegistry,
 	resolveBrowserType,
 	type IPlaywrightModule,
@@ -24,7 +25,7 @@ export class PlaywrightBrowserAutomation extends AbstractBrowserAutomation
 	readonly engine: EnumAutomationEngine = EnumAutomationEngine.Playwright;
 
 	/** 目前使用的相容模組；`options.module` 未提供時使用預設 `playwright` */
-	protected get _moduleTarget(): string | IPlaywrightModule
+	protected get _moduleTarget(): IPlaywrightModuleTargetInput
 	{
 		return this._options.module ?? DEFAULT_PLAYWRIGHT_MODULE_ID;
 	}

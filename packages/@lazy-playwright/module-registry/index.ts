@@ -53,6 +53,8 @@ export const DEFAULT_PLAYWRIGHT_MODULE_ID = EnumAutomationEngine.Playwright;
 
 export type IPlaywrightModuleId = typeof DEFAULT_PLAYWRIGHT_MODULE_ID | (string & {});
 
+export type IPlaywrightModuleTargetInput = IPlaywrightModuleId | IPlaywrightModule;
+
 /** 判定模組是否支援指定瀏覽器種類 */
 export function _isBrowserKindSupported<T extends IPlaywrightModule, K extends IBrowserKind = IBrowserKind>(module: T, kind: K): module is T & {
 	api: ITSRequiredPick<T['api'], K>
@@ -145,7 +147,7 @@ export class PlaywrightModuleRegistry
 	 * @param target - 已註冊的模組 id，或直接提供的模組描述
 	 * @param browserKind - 預計啟動的瀏覽器種類
 	 */
-	resolve<T extends IPlaywrightBrowserType = IPlaywrightBrowserType, K extends IBrowserKind = IBrowserKind>(target: IPlaywrightModuleId | IPlaywrightModule, browserKind: K)
+	resolve<T extends IPlaywrightBrowserType = IPlaywrightBrowserType, K extends IBrowserKind = IBrowserKind>(target: IPlaywrightModuleTargetInput, browserKind: K)
 	{
 		const module: IPlaywrightModule<T> = typeof target === 'string' ? this.require(target) : target as IPlaywrightModule<T>;
 
