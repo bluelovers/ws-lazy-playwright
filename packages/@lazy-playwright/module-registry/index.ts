@@ -8,6 +8,9 @@ import { ITSPickExtra, ITSRequiredPick } from 'ts-type';
  * 外部邏輯只要提供相容的 `launch` 即可被組裝成類 Playwright API。
  */
 export type IPlaywrightBrowserType = ITSPickExtra<BrowserType, 'launch'>;
+export type IPlaywrightBrowserTypeInput = IPlaywrightBrowserType | {
+	launch: (options?: any) => Promise<any>;
+};
 
 /** 相容於 Playwright 的模組 API；各入口可缺漏，實際支援由模組宣告或入口存在與否判定 */
 export interface IPlaywrightCompatibleApi<T extends IPlaywrightBrowserType = IPlaywrightBrowserType>
@@ -111,11 +114,16 @@ export class PlaywrightModuleRegistry
 	}
 
 	/** 註冊相容模組；同 id 重複註冊會覆寫 */
-	register<T extends IPlaywrightBrowserType = IPlaywrightBrowserType>(module: IPlaywrightModule<T>): this
+	register<T extends IPlaywrightBrowserTypeInput = IPlaywrightBrowserType>(module: IPlaywrightModule<T>): this
 	{
 		if (!module?.id)
 		{
-			throw new TypeError('playwright module id is required');
+			throw new TypeError(`playwright module id is required: ${module?.id}`);
+		}
+
+		if (!module.api || Object.keys(module.api).length === 0)
+		{
+			throw new TypeError(`playwright module api is required: ${module.id}`);
 		}
 
 		this._modules.set(module.id, module);
@@ -135,7 +143,7 @@ export class PlaywrightModuleRegistry
 
 		if (!module)
 		{
-			throw new Error(`Playwright module "${id}" is not registered; registered: [${this.ids.join(', ')}]`);
+			throw new RangeError(`Playwright module "${id}" is not registered; registered: [${this.ids.join(', ')}]`);
 		}
 
 		return module;
@@ -153,10 +161,49 @@ export class PlaywrightModuleRegistry
 
 		if (!_isBrowserKindSupported(module, browserKind))
 		{
-			throw new Error(`Playwright module "${module.id}" does not support browser kind "${browserKind}"; registered: [${this.ids.join(', ')}]`);
+			throw new RangeError(`Playwright module "${module.id}" does not support browser kind "${browserKind}"; registered: [${this.ids.join(', ')}]`);
 		}
 
 		return module;
+	}
+
+	/**
+	 * 依瀏覽器種類挑選已註冊模組：支援該種類者中最後註冊者優先
+	 *
+	 * @param browserKind - 預計啟動的瀏覽器種類
+	 * @throws Error 無任何已註冊模組支援該種類時擲出，錯誤含已註冊清單
+	 */
+	resolveByBrowserKind<K extends IBrowserKind = IBrowserKind>(browserKind: K): IPlaywrightModule
+	{
+		const kind = _handleBrowserKind(browserKind).browserKind;
+
+		const module = [...this._modules.values()].reverse().find(m => _isBrowserKindSupported(m, kind));
+
+		if (!module)
+		{
+			throw new RangeError(`No Playwright module supports browser kind "${kind}"; registered: [${this.ids.join(', ')}]`);
+		}
+
+		return module;
+	}
+
+	/**
+	 * 依瀏覽器種類解析啟動入口 (Browser Type)：指定 target 時驗證該模組後回傳其入口，
+	 * 省略 target 時自動挑選支援該種類的已註冊模組
+	 *
+	 * @param browserKind - 預計啟動的瀏覽器種類
+	 * @param target - 可省略：已註冊的模組 id，或直接提供的模組描述
+	 * @throws Error 模組未註冊、不支援該種類，或無任何已註冊模組支援時擲出
+	 */
+	resolveBrowserTypeByKind<K extends IBrowserKind = IBrowserKind>(browserKind: K, target?: IPlaywrightModuleTargetInput): IPlaywrightBrowserType
+	{
+		const kind = _handleBrowserKind(browserKind).browserKind;
+
+		const module = target !== undefined
+			? this.resolve(target, kind)
+			: this.resolveByBrowserKind(kind);
+
+		return resolveBrowserType(module, kind);
 	}
 }
 
