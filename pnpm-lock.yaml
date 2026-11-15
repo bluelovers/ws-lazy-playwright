@@ -67,6 +67,9 @@ importers:
       playwright-core:
         specifier: <1.65 >=1.64.1
         version: 1.64.1
+      ts-type:
+        specifier: ^3.0.19
+        version: 3.0.19(ts-toolbelt@9.6.0)
       tslib:
         specifier: '>=2.8.1'
         version: 2.9.1

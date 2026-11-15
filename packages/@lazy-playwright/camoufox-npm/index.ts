@@ -31,6 +31,7 @@ export type ICamoufoxNewContextOptionsInput = ITSAnyOfUnion<NewContextOptions | 
  *
  * @param options - Camoufox 啟動選項
  * @returns 可供 Playwright API 操作的 Browser 實例
+ * 
  * @see https://www.npmjs.com/package/camoufox
  * @see https://www.npmjs.com/package/camoufox-js
  */
@@ -53,9 +54,11 @@ export async function newCamoufox(options?: ICamoufoxNewBrowserOptionsInput, use
  * @param options - {@link ICamoufoxNewContextOptionsInput}，Camoufox 專屬或 Playwright 的 context 選項
  * @returns 可供 Playwright API 操作的 BrowserContext 實例
  */
-export async function newCamoufoxContext(browser: ICamoufoxBrowserInput, options?: ICamoufoxNewContextOptionsInput)
+export async function newCamoufoxContext(browser: ICamoufoxBrowserInput, options?: ICamoufoxNewContextOptionsInput, usePlaywright?: boolean): Promise<BrowserContext>
 {
-	return NewContext(browser as any, options) as any as BrowserContext;
+	let context = await (usePlaywright ? browser.newContext(options as any) : NewContext(browser as any, options));
+
+	return context as any;
 }
 
 export default newCamoufox;

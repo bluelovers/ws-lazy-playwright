@@ -35,6 +35,15 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 		this._os = options.os;
 	}
 
+	/**
+	 * 是否以 Camoufox 啟動取決於是否呼叫 camoufox-js 的 `launchOptions`：
+	 * `channel: 'firefox'` 以原生 Firefox 啟動，略過 Camoufox 專屬啟動設定，
+	 */
+	protected _isUsingPlaywrightFirefox(): this is { _options: { channel: EnumAutomationEngine.Firefox } }
+	{
+		return this._options.channel === EnumAutomationEngine.Firefox;
+	}
+
 	protected override async _handleBrowserLaunchOptions(options: ILaunchOptions): Promise<LaunchOptions>
 	{
 		const firefoxUserPrefs = getCamoufoxFirefoxUserPrefs();
@@ -45,7 +54,7 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 		 * `channel: 'firefox'` 以原生 Firefox 啟動，略過 Camoufox 專屬啟動設定，
 		 * 其餘啟動設定處理與 Chromium CLI 參數過濾一律執行。
 		 */
-		const camoufoxOpts = this._options.channel === EnumAutomationEngine.Firefox
+		const camoufoxOpts = this._isUsingPlaywrightFirefox()
 			? {
 				..._sharedOpts,
 				firefoxUserPrefs: {
@@ -92,7 +101,7 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 
 	protected override async _initializeBrowser(options: LaunchOptions): Promise<Browser>
 	{
-		return newCamoufox(options, this._options.channel === EnumAutomationEngine.Firefox) as any;
+		return newCamoufox(options, this._isUsingPlaywrightFirefox()) as any;
 	}
 
 	protected override async _newContext(options?: BrowserContextOptions, autoLaunchBrowser?: boolean)
@@ -103,7 +112,7 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 			await this.launch();
 		}
 
-		const context = await newCamoufoxContext(this.browser, this._handleContextOptions(options));
+		const context = await newCamoufoxContext(this.browser, this._handleContextOptions(options), this._isUsingPlaywrightFirefox());
 		return context;
 	}
 
