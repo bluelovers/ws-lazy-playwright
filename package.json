@@ -36,6 +36,7 @@
     "ci:install:pnpm": "pnpm install --frozen-lockfile && pnpm add --workspace yarn-tool lerna ynpx pnpm typescript ts-node tsx ts-jest jest @bluelovers/jest-config @bluelovers/tsconfig @yarn-tool/require-resolve",
     "ci:install:yarn": "yarn install --frozen-lockfile && yarn add -W yarn-tool lerna ynpx pnpm typescript ts-node tsx ts-jest jest @bluelovers/jest-config @bluelovers/tsconfig @yarn-tool/require-resolve",
     "ci:build": "echo workspaces ci:build",
+    "ci:install:playwright": "yt ws run ci:install:playwright",
     "lerna:publish": "node --run prepublishOnly:root && lerna publish --no-private && pnpm run postpublishOnly",
     "lerna:publish:yes": "node --run lerna:publish:yes:patch --",
     "lerna:publish:yes:force": "lerna publish --no-private --yes --bump patch --force-publish",
