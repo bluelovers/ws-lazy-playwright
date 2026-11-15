@@ -59,5 +59,8 @@ export function getCamoufoxFirefoxUserPrefs(): IFirefoxUserPrefs
 		'privacy.resistFingerprinting': false,
 		/** 不強制進入無痕模式 */
 		'browser.privatebrowsing.autostart': false,
+
+		/** 新開視窗行為：3 = 在新分頁開啟 */
+		'browser.link.open_newwindow': 3,
 	};
 }

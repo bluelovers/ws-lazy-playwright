@@ -130,7 +130,7 @@ export abstract class AbstractBrowserAutomation implements IBrowserAutomation
 		 * 介面契約為非空，於第一個 context 建立前存取會得到 `undefined`；
 		 * 內部一律以 `_context` 判空。
 		 */
-		return this._context!;
+		return this._context! ?? this.browser?.contexts()[0];
 	}
 
 	/**

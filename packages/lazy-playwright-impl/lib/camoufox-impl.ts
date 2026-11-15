@@ -1,12 +1,12 @@
-import { launchOptions, Camoufox } from 'camoufox';
-import { type Browser, type LaunchOptions } from 'playwright';
+import { launchOptions, Camoufox, NewContext } from 'camoufox';
+import { BrowserContext, BrowserContextOptions, type Browser, type LaunchOptions } from 'playwright';
 import type { ICamoufoxBrowserAutomationOptions, EnumCamoufoxOs } from './camoufox-options';
 import type { ICamoufoxLaunchOptions } from '@lazy-playwright/browser-config/lib/firefox/camoufox-types';
 import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { getCamoufoxFirefoxUserPrefs } from '@lazy-playwright/browser-config/lib/firefox/firefox-prefs';
 import { PlaywrightBrowserAutomation } from './playwright-impl';
 import type { ILaunchOptions } from './types/types';
-import { newCamoufox } from '@lazy-playwright/camoufox-npm';
+import { ICamoufoxNewBrowserOptionsInput, newCamoufox, newCamoufoxContext } from '@lazy-playwright/camoufox-npm';
 
 /**
  * Camoufox 瀏覽器自動化實作
@@ -82,15 +82,29 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 
 		return {
 			...baseOptions,
+			from_options: camoufoxOpts,
 			...camoufoxOpts,
 			headless,
 			/** 參數過濾統一由 `launch()` 的基底方法觸發（含交叉解析後殘留的 `--window-size`） */
 			args: args ?? [],
-		};
+		} as ICamoufoxNewBrowserOptionsInput as LaunchOptions;
 	}
 
 	protected override async _initializeBrowser(options: LaunchOptions): Promise<Browser>
 	{
 		return newCamoufox(options) as any;
 	}
+
+	protected override async _newContext(options?: BrowserContextOptions, autoLaunchBrowser?: boolean)
+	{
+		/** 確保瀏覽器已啟動，後續 `this.browser` 才非空 */
+		if (autoLaunchBrowser)
+		{
+			await this.launch();
+		}
+
+		const context = await newCamoufoxContext(this.browser, this._handleContextOptions(options));
+		return context;
+	}
+
 }
