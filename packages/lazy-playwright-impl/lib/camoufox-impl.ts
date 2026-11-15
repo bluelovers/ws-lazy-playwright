@@ -1,11 +1,12 @@
-import { launchOptions } from 'camoufox-js';
-import { firefox, type Browser, type LaunchOptions } from 'playwright';
+import { launchOptions, Camoufox } from 'camoufox';
+import { type Browser, type LaunchOptions } from 'playwright';
 import type { ICamoufoxBrowserAutomationOptions, EnumCamoufoxOs } from './camoufox-options';
 import type { ICamoufoxLaunchOptions } from '@lazy-playwright/browser-config/lib/firefox/camoufox-types';
 import { EnumAutomationEngine } from '@lazy-playwright/shared-types';
 import { getCamoufoxFirefoxUserPrefs } from '@lazy-playwright/browser-config/lib/firefox/firefox-prefs';
 import { PlaywrightBrowserAutomation } from './playwright-impl';
 import type { ILaunchOptions } from './types/types';
+import { newCamoufox } from '@lazy-playwright/camoufox-npm';
 
 /**
  * Camoufox 瀏覽器自動化實作
@@ -90,6 +91,6 @@ export class CamoufoxBrowserAutomation extends PlaywrightBrowserAutomation
 
 	protected override async _initializeBrowser(options: LaunchOptions): Promise<Browser>
 	{
-		return firefox.launch(options);
+		return newCamoufox(options) as any;
 	}
 }

@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "@lazy-playwright/browser-config": "^1.0.0",
+    "@lazy-playwright/camoufox-npm": "^1.0.0",
     "@lazy-playwright/logger": "^1.0.0",
     "@lazy-playwright/module-registry": "^1.0.0",
     "@lazy-playwright/shared-types": "^1.0.0",
@@ -58,15 +59,14 @@
     "array-hyper-unique": "^2.1.10",
     "bluebird": "^3.7.2",
     "bluebird-allsettled": "^1.0.8",
-    "camoufox-js": "^0.13.0",
+    "camoufox": "^0.5.9",
     "debug-color2": "^1.3.2",
+    "fast-glob": "^3.3.3",
     "micromatch": "^4.0.8",
     "playwright": "^1.65.1",
     "ts-type": "^3.0.19",
     "tslib": ">=2.9.1",
     "upath2": "^3.1.25"
   },
-  "devDependencies": {
-    "fast-glob": "^3.3.3"
-  }
+  "devDependencies": {}
 }
