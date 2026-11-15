@@ -242,6 +242,13 @@ export async function autoUploadDemo(
 			automation.page = currentPage;
 
 			await autoPost(currentPage, stream, runCtx);
+
+			/**
+			 * autoPost 發布成功後於其內部重開建立貼文頁（不回傳結果）：
+			 * 以 `automation.page` 取回最終頁面，避免下一條路徑仍拿著
+			 * 已跳至落地頁的舊頁，使 `createPostPage` 判定網址不符而多開空頁
+			 */
+			currentPage = automation.page;
 		}
 	}
 	catch (error)

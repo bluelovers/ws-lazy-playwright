@@ -40,7 +40,7 @@ export async function createPostPage(automation: AbstractBrowserAutomation, url:
 		newPageMaybe: true,
 		checkMatch: {
 			href: true,
-			/** 判定前讀取等待區計數：有殘留檔案即覆寫結果、強制導航重新載入 */
+			/** 判定前讀取等待區計數：如果沒有殘留檔案於上傳區內則繼續使用現有頁面 */
 			callback: async (result) =>
 			{
 				if (result.isSameUrl)
@@ -49,6 +49,12 @@ export async function createPostPage(automation: AbstractBrowserAutomation, url:
 
 					if (count > 0)
 					{
+						/**
+						 * 殘留檔案代表上次發布可能只是超時，原頁保留給使用者手動發布：
+						 * 不關閉、不導航其上，改開新頁——須同時覆寫 `shouldGoto`，
+						 * 否則同網址時 `shouldGoto` 為 false，`shouldNewPage` 不會被理會
+						 */
+						result.shouldGoto = true;
 						result.shouldNewPage = true;
 						return result;
 					}
