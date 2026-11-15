@@ -84,6 +84,22 @@ importers:
         specifier: '>=2.8.1'
         version: 2.9.1
 
+  packages/@lazy-playwright/module-registry:
+    dependencies:
+      '@lazy-playwright/shared-types':
+        specifier: ^1.0.0
+        version: link:../shared-types
+      ts-type:
+        specifier: ^3.0.19
+        version: 3.0.19(ts-toolbelt@9.6.0)
+      tslib:
+        specifier: '>=2.8.1'
+        version: 2.9.1
+    devDependencies:
+      playwright:
+        specifier: ^1.65.0
+        version: 1.65.0
+
   packages/@lazy-playwright/shared-types:
     dependencies:
       playwright:
@@ -180,6 +196,9 @@ importers:
       '@lazy-playwright/logger':
         specifier: ^1.0.0
         version: link:../@lazy-playwright/logger
+      '@lazy-playwright/module-registry':
+        specifier: ^1.0.0
+        version: link:../@lazy-playwright/module-registry
       '@lazy-playwright/shared-types':
         specifier: ^1.0.0
         version: link:../@lazy-playwright/shared-types

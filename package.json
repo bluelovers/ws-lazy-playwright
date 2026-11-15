@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "keywords": [
+    "automation",
+    "browser-automation",
     "playwright",
     "create-by-yarn-tool"
   ],
