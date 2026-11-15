@@ -165,3 +165,5 @@ playwrightModuleRegistry.register({
 	id: DEFAULT_PLAYWRIGHT_MODULE_ID,
 	api: { chromium, firefox, webkit },
 });
+
+export default playwrightModuleRegistry;

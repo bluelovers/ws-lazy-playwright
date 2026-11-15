@@ -8,7 +8,7 @@ import {
 	playwrightModuleRegistry,
 	resolveBrowserType,
 	type IPlaywrightModule,
-} from './core/module-registry';
+} from '@lazy-playwright/module-registry';
 import type { ILaunchOptions } from './types/types';
 
 /**
