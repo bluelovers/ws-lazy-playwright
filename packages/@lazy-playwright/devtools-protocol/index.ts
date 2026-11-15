@@ -1,6 +1,6 @@
 import { CDPSession, Frame, Page } from 'playwright';
 import { EnumAutomationEngine, IHandleBrowserKindResult } from '@lazy-playwright/shared-types';
-import { _tryDetachCDPSession } from './util';
+import { _tryDetachCDPSession } from './lib/util';
 
 /**
  * 建構選項：提供瀏覽器種類 (Browser Kind)，
@@ -15,8 +15,10 @@ export interface IPageDevtoolsProtocolOptions extends Pick<IHandleBrowserKindRes
 export type IPageOrFrame = Page | Frame;
 
 /**
- * 對應 CDPSession.send 的三個參數位次：[0] 命令名稱 (Method)、
- * [1] 命令參數 (Params)、[2] 請求選項 (Options)
+ * 對應 CDPSession.send 的三個參數位次：
+ * [0] 命令名稱 (Method)
+ * [1] 命令參數 (Params)
+ * [2] 請求選項 (Options)
  */
 export type IProtocolCommandParameters = Parameters<CDPSession['send']>[0];
 export type IProtocolCommandParametersParams = Parameters<CDPSession['send']>[1];
