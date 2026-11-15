@@ -171,7 +171,7 @@ export async function autoUploadDemo(
 
 	/** 多路徑共用：整個執行只建立一次瀏覽器實例 */
 	const automation = await createBrowserAutomation({
-		// engine: EnumAutomationEngine.Playwright,
+		// engine: EnumAutomationEngine.Camoufox,
 		storage: {
 			file: { baseDir: storageBaseDir },
 			/** 建立 context 時自動還原登入狀態（Cookie / Session），不需自行組裝還原流程 */
@@ -239,6 +239,7 @@ export async function autoUploadDemo(
 			}
 
 			currentPage = await createPostPage(runCtx.automation, runCtx.cli.switches.createUrl, currentPage);
+			automation.page = currentPage;
 
 			await autoPost(currentPage, stream, runCtx);
 		}

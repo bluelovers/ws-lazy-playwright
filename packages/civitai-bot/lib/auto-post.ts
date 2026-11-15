@@ -263,7 +263,8 @@ export async function autoPost(
 					}
 
 					/** 重開建立貼文頁：完成紀錄已先行落盤，此處失敗不遺失發布紀錄 */
-					currentPage = await createPostPage(automation, cli.switches.createUrl);
+					currentPage = await createPostPage(automation, cli.switches.createUrl, currentPage);
+					automation.page = currentPage;
 
 					/** 達發布次數上限（累計模式含完成紀錄已發布的次數）：忽略剩餘圖片，完成邊界僅至實際發布的最後檔案 */
 					if (agsPublishLimit !== undefined && publishedBefore + publishCount >= agsPublishLimit)
