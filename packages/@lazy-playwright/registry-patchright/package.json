@@ -47,7 +47,7 @@
     "build:microbundle": "ynpx microbundle --target node",
     "build:tsdx": "ynpx @bluelovers/tsdx build --target node --name index",
     "ci:install": "node --run ci:install:playwright",
-    "ci:install:playwright": "patchright install chromium",
+    "ci:install:playwright": "patchright install",
     "ci:build": "echo ci:build",
     "preversion": "echo preversion && pnpm run test",
     "version": "echo version",
@@ -63,6 +63,7 @@
     "tslib": ">=2.8.1"
   },
   "devDependencies": {
+    "@lazy-playwright/shared-types": "^1.0.0",
     "lazy-playwright-impl": "^1.0.0",
     "patchright": "^1.64.3"
   },
