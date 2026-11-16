@@ -67,6 +67,7 @@
     "tsc:showConfig": "ynpx get-current-tsconfig -p"
   },
   "dependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/yargs": "^17.0.35",
     "ts-type": "^3.0.19",
     "tslib": "^2.9.1",
