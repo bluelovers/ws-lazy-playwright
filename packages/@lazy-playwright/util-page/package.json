@@ -15,7 +15,7 @@
   "scripts": {
     "coverage": "pnpm run test --coverage",
     "pretest": "echo pretest",
-    "test": "node --run test:playwright --",
+    "test": "node --run test:playwright && node --run test:node:bin -- **/*.node-test.ts",
     "test:jest": "jest --passWithNoTests",
     "test:jest:coverage": "node --run test:jest -- --coverage",
     "test:jest:snapshot": "node --run test:jest -- -u",
@@ -24,7 +24,7 @@
     "test:node:bin": "tsx --test --test-update-snapshots --",
     "test:node:bin:coverage": "node --run test:node:bin -- --experimental-test-coverage --",
     "test:node:coverage": "node --run test:node:bin:coverage -- **/*.node-spec.ts **/*.node-test.ts **/*.spec.ts **/*.test.ts",
-    "test:playwright": "playwright test playwright.spec.ts",
+    "test:playwright": "playwright test playwright-spec.ts",
     "test:playwright:headed": "node --run test:playwright -- --headed",
     "test:playwright:ui": "node --run test:playwright -- --ui",
     "test:snapshot": "pnpm run test -u",
