@@ -46,13 +46,17 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 			const record = await host.storage.sessions.save(id, ctx.context);
 			const report = diffStorageReport(before, createStorageReport(record));
 
+			const cli = formatStorageReportDiff(report);
+
+			console.log(cli);
+
 			return {
 				id,
 				kind: EnumStorageKind.Session,
 				cookies: record.payload.cookies.length,
 				origins: record.payload.origins.length,
 				report,
-				cli: formatStorageReportDiff(report),
+				// cli,
 			};
 		},
 
@@ -63,12 +67,16 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 			const record = await host.storage.cookies.save(id, ctx.context);
 			const report = diffStorageReport(before, createStorageReport(record));
 
+			const cli = formatStorageReportDiff(report);
+
+			console.log(cli);
+
 			return {
 				id,
 				kind: EnumStorageKind.Cookie,
 				cookies: record.payload.length,
 				report,
-				cli: formatStorageReportDiff(report),
+				// cli,
 			};
 		},
 
@@ -77,11 +85,15 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 			const id = _resolveStorageId(args);
 			const report = await readStorageReport(host.storage.persist, EnumStorageKind.Session, id);
 
+			const cli = report ? formatStorageReport(report) : `[${EnumStorageKind.Session}] ${id}: not found`;
+
+			console.log(cli);
+
 			return {
 				id,
 				kind: EnumStorageKind.Session,
-				report: report ?? null,
-				cli: report ? formatStorageReport(report) : `[${EnumStorageKind.Session}] ${id}: not found`,
+				report,
+				// cli,
 			};
 		},
 
@@ -90,11 +102,15 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 			const id = _resolveStorageId(args);
 			const report = await readStorageReport(host.storage.persist, EnumStorageKind.Cookie, id);
 
+			const cli = report ? formatStorageReport(report) : `[${EnumStorageKind.Cookie}] ${id}: not found`;
+
+			console.log(cli);
+
 			return {
 				id,
 				kind: EnumStorageKind.Cookie,
-				report: report ?? null,
-				cli: report ? formatStorageReport(report) : `[${EnumStorageKind.Cookie}] ${id}: not found`,
+				report,
+				// cli,
 			};
 		},
 	};

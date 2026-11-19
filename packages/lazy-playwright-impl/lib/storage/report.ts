@@ -118,15 +118,20 @@ function _collectItems(record: IStorageRecord): { items: IReportItem[]; cookies:
 /**
  * 依網域分組
  *
- * - 每個 `.` 開頭的網域自成一組（分組基底）
+ * - 分組鍵為「無上層 `.` 基底」的 `.` 開頭網域（如 `.civitai.com`）
+ * - `.` 開頭網域有所屬上層基底時併入該組（如 `.civitai.com` 存在時，`.advertising.civitai.com` 歸入 `.civitai.com`）
  * - 其餘網域歸入最長相符的基底組（如 `civitai.red` 歸入 `.civitai.red`）
  * - 找不到基底者自成一組
  */
 function _buildGroups(items: readonly IReportItem[]): IDomainGroupReport[]
 {
 	const distinct = [...new Set(items.map(item => item.domain))];
-	// 最長優先：讓 `x.y.example.com` 優先歸入 `.y.example.com` 而非 `.example.com`
-	const bases = distinct.filter(domain => domain.startsWith('.')).sort((a, b) => b.length - a.length);
+	const dotDomains = distinct.filter(domain => domain.startsWith('.'));
+	// 分組鍵：`.` 開頭且無上層 `.` 基底者；其餘 `.` 網域僅為組內成員
+	const bases = dotDomains
+		.filter(domain => !dotDomains.some(parent => parent !== domain && domain.endsWith(parent)))
+		// 最長優先：讓 `x.y.example.com` 優先歸入 `.y.example.com` 而非 `.example.com`
+		.sort((a, b) => b.length - a.length);
 
 	const groups = new Map<string, {
 		count: number;
@@ -137,9 +142,7 @@ function _buildGroups(items: readonly IReportItem[]): IDomainGroupReport[]
 
 	for (const item of items)
 	{
-		const key = item.domain.startsWith('.')
-			? item.domain
-			: bases.find(base => item.domain === base.slice(1) || item.domain.endsWith(base)) ?? item.domain;
+		const key = bases.find(base => item.domain === base.slice(1) || item.domain.endsWith(base)) ?? item.domain;
 
 		let group = groups.get(key);
 		if (!group)
