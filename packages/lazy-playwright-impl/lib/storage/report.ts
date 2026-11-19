@@ -24,9 +24,9 @@ export interface IDomainGroupReport
 	/** 組內各個別網域的資料數量 */
 	domains: Record<string, number>;
 	/** 組內 cookie 最早到期時間（人類可讀）；無有效到期時間時不提供 */
-	expiresMinText?: string;
+	expiresMinDate?: string;
 	/** 組內 cookie 最晚到期時間（人類可讀）；無有效到期時間時不提供 */
-	expiresMaxText?: string;
+	expiresMaxDate?: string;
 }
 
 /** 儲存紀錄的數量報告 */
@@ -39,7 +39,7 @@ export interface IStorageReport
 	/** 更新時間（epoch seconds，與 cookie expires 同尺度） */
 	updatedAtSeconds: number;
 	/** 更新時間（人類可讀） */
-	updatedAtText: string;
+	updatedAtDate: string;
 	/** cookie 數量 */
 	cookies: number;
 	/** origin 數量 */
@@ -174,11 +174,11 @@ function _buildGroups(items: readonly IReportItem[]): IDomainGroupReport[]
 
 			if (group.expiresMin !== undefined)
 			{
-				report.expiresMinText = _formatDate(group.expiresMin);
+				report.expiresMinDate = _formatDate(group.expiresMin);
 			}
 			if (group.expiresMax !== undefined)
 			{
-				report.expiresMaxText = _formatDate(group.expiresMax);
+				report.expiresMaxDate = _formatDate(group.expiresMax);
 			}
 
 			return report;
@@ -196,7 +196,7 @@ export function createStorageReport(record: IStorageRecord): IStorageReport
 		id: record.id,
 		updatedAt: record.updatedAt,
 		updatedAtSeconds: millisecondsToSeconds(record.updatedAt),
-		updatedAtText: _formatDate(record.updatedAt),
+		updatedAtDate: _formatDate(record.updatedAt),
 		cookies,
 		origins,
 		total: cookies + origins,
@@ -247,7 +247,7 @@ function _formatDelta(delta: number): string
 export function formatStorageReport(report: IStorageReport): string
 {
 	const lines = [
-		`[${report.kind}] ${report.id} @ ${report.updatedAtText}`,
+		`[${report.kind}] ${report.id} @ ${report.updatedAtDate}`,
 		`total ${report.total} (cookies ${report.cookies}, origins ${report.origins})`,
 	];
 
@@ -261,8 +261,8 @@ export function formatStorageReport(report: IStorageReport): string
 
 	for (const group of report.groups)
 	{
-		const expires = group.expiresMinText && group.expiresMaxText
-			? ` [expires ${group.expiresMinText} ~ ${group.expiresMaxText}]`
+		const expires = group.expiresMinDate && group.expiresMaxDate
+			? ` [expires ${group.expiresMinDate} ~ ${group.expiresMaxDate}]`
 			: '';
 
 		lines.push(`  ${group.domain}: ${group.count}${expires}`);
@@ -283,8 +283,8 @@ export function formatStorageReportDiff(diff: IStorageReportDiff): string
 	const lines = [
 		`[${after.kind}] ${after.id}`,
 		before
-			? `updatedAt: ${before.updatedAtText} -> ${after.updatedAtText}`
-			: `updatedAt: ${after.updatedAtText}`,
+			? `updatedAt: ${before.updatedAtDate} -> ${after.updatedAtDate}`
+			: `updatedAt: ${after.updatedAtDate}`,
 		`total: ${before?.total ?? 0} -> ${after.total} (${_formatDelta(diff.total)})`,
 	];
 
