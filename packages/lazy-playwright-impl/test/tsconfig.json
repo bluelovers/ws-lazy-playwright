@@ -21,7 +21,7 @@
   "include": [
     "../**/*.ts",
     "**/*.ts"
-  ],
+, "../../@lazy-playwright/camoufox-npm/test/demo/camoufox-pure.ts"  ],
   "exclude": [
     "node_modules",
     "__fixtures__",
