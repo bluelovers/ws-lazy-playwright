@@ -3,6 +3,8 @@ import { FileStoragePersist } from './persist';
 import { SessionStore } from './session-store';
 import type { IBrowserStorageManager, IStorageOptions, IStoragePersist } from './types';
 
+export * from './report';
+
 /**
  * 儲存管理器
  *

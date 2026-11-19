@@ -205,6 +205,8 @@ export async function autoUploadDemo(
 		/** 鎖定 automation 主 context（`storage.restore` 內建還原登入狀態）：後續新分頁皆於其中開頁發文 */
 		await automation.newContext();
 
+		await automation.gotoNewPage(automation.bridge.fakeApiBase);
+
 		/** 完成紀錄：完成任務依發布日期分檔保存（多路徑共用同一實例） */
 		const record = createCompletionRecord(ctx.recordDir, ctx.options);
 
