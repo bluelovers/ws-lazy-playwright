@@ -1,3 +1,4 @@
+import { consoleLoggerTimeAndLabel } from '@lazy-playwright/logger';
 import {
 	createStorageReport,
 	diffStorageReport,
@@ -7,6 +8,7 @@ import {
 } from '../storage';
 import { DEFAULT_STORAGE_ID, EnumStorageKind } from '../storage/types';
 import type { IBridgeCommandHandler } from './types';
+import { EnumLogLabel } from '../logger';
 
 /** 取得儲存 id：第一個字串參數，否則使用預設值 */
 function _resolveStorageId(args: readonly unknown[]): string
@@ -48,7 +50,7 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 
 			const cli = formatStorageReportDiff(report);
 
-			console.log(cli);
+			consoleLoggerTimeAndLabel.log(EnumLogLabel.Bridge, cli);
 
 			return {
 				id,
@@ -69,7 +71,7 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 
 			const cli = formatStorageReportDiff(report);
 
-			console.log(cli);
+			consoleLoggerTimeAndLabel.log(EnumLogLabel.Bridge, cli);
 
 			return {
 				id,
@@ -87,7 +89,7 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 
 			const cli = report ? formatStorageReport(report) : `[${EnumStorageKind.Session}] ${id}: not found`;
 
-			console.log(cli);
+			consoleLoggerTimeAndLabel.log(EnumLogLabel.Bridge, cli);
 
 			return {
 				id,
@@ -104,7 +106,7 @@ export function createDefaultBridgeCommands(): Record<string, IBridgeCommandHand
 
 			const cli = report ? formatStorageReport(report) : `[${EnumStorageKind.Cookie}] ${id}: not found`;
 
-			console.log(cli);
+			consoleLoggerTimeAndLabel.log(EnumLogLabel.Bridge, cli);
 
 			return {
 				id,
