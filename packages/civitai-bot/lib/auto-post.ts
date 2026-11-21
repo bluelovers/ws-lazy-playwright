@@ -31,7 +31,9 @@ import type { ICompletionRecord } from './record/record';
  * 1. （上傳階段）第一個檔案單獨上傳並等待完成
  * 2. （上傳階段）其餘檔案以 5MB 總和切包陸續上傳，累計至 18 張
  * 3. （上傳階段）`reconcileUpload` 比對數量：符合預期以 success 記錄，
- *    缺漏者（假設為最後幾張）排回佇列進入下一次完整階段，本次以實際數量進入發布階段
+ *    缺漏者（假設為最後幾張）排回佇列進入下一次完整階段，本次以實際數量進入發布階段；
+ *    第一張即失敗（actual 0）時等待區無可發布內容，跳過發布、缺漏者排回佇列由下一批次重試，
+ *    連續兩批皆無進度即中止本單位（不推進檢查點）
  * 4. （發布階段）僅檢查開關；發布完成（網址跳轉為貼文頁 / 模型頁等落地頁）後
  *    重開建立貼文頁執行下一批次
  *
@@ -174,6 +176,12 @@ export async function autoPost(
 			/** 本單位是否出現 dry run 批次：有即完成邊界僅至實際發布的最後檔案 */
 			let hasDryRun = false;
 
+			/**
+			 * 連續「無任何檔案上傳成功」的批次數（首張即失敗時）：
+			 * 缺漏者已排回佇列由下一批次重試，連續無進度即中止本單位避免無限重試
+			 */
+			let zeroUploadStreak = 0;
+
 			while (queue.length)
 			{
 				batchNo++;
@@ -214,6 +222,34 @@ export async function autoPost(
 
 				/** （上傳階段）比對數量：缺漏者排回佇列；結果與批次報告由該函式輸出 */
 				queue = [...reconcileUpload(batchNo, ctx, task, setPaths, actual), ...queue];
+
+				/**
+				 * （發布階段）第一張即上傳失敗（actual 0）：等待區無任何檔案，
+				 * publish 按鈕不會出現——與多檔缺漏相同把缺漏者排回佇列，
+				 * 跳過本次發布交由下一批次重試；連續兩批皆無進度即中止本單位
+				 * （不推進檢查點，留待下次執行續跑）
+				 */
+				if (!actual)
+				{
+					zeroUploadStreak++;
+
+					_logPhase(
+						EnumPostPhase.Publish,
+						message,
+						`nothing uploaded, skip publish (retry ${zeroUploadStreak}): ${unit.path}`,
+						'warn',
+					);
+
+					if (zeroUploadStreak >= 2)
+					{
+						unpublished = true;
+						break;
+					}
+
+					continue;
+				}
+
+				zeroUploadStreak = 0;
 
 				/** （發布階段）累計滿 18 張後檢查禁用開關（上傳 waiter 結束後） */
 				const publishResult = await publishPost(currentPage, message, cli.switches.enablePublish);
