@@ -54,7 +54,7 @@ export function resolveAutoPostCli(flags: IParsedFlags, defaults: Partial<IAutoP
 			...defaults.range,
 			...(flags.maxTasks !== undefined && { maxTasks: flags.maxTasks }),
 		},
-		fromLastPublish: flags.fromLastPublish ?? defaults.fromLastPublish,
+		fromLastPublish: flags.fromLastPublish ?? defaults.fromLastPublish ?? true,
 		closeAfter: flags.close ?? defaults.closeAfter,
 	};
 }

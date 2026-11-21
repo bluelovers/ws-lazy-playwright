@@ -270,6 +270,8 @@ export async function autoUploadDemo(
 			await automation.close();
 		}
 	}
+
+	consoleLoggerTimeAndLabel.info(EnumLogLabel.CivitaiBot, '[auto-upload] demo finished');
 }
 
 autoUploadDemo(CLI).catch(console.error);
