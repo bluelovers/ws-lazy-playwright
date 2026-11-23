@@ -39,9 +39,9 @@ const TASK_RANGE: ITaskRangeOptions = {
  * CLI `--task-base <path>` 可覆寫。
  */
 let DEFAULT_TASK_BASE: ITSValueOrArrayMaybeReadonly<string> = [
-	'D:\\sd-forge\\output\\agent-scheduler\\2026-11-09',
-	'D:\\sd-forge\\output\\txt2img-images\\2026-11-09',
-	'D:\\sd-forge\\output\\txt2img-images',
+	'D:/sd-forge/output/agent-scheduler/2026-11-23',
+	'D:/sd-forge/output/txt2img-images/2026-11-23',
+	'D:/sd-forge/output/txt2img-images',
 ];
 
 let DEFAULT_CREATE_URL: string;
