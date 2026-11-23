@@ -18,6 +18,7 @@ export async function restoreDemo()
 		engine: EnumAutomationEngine.Playwright,
 		storage: {
 			file: { baseDir: __TEST_TEMP_STORAGE },
+			restore: { id: STORAGE_ID },
 		},
 	});
 
@@ -29,22 +30,12 @@ export async function restoreDemo()
 			console.log(EnumLogLabel.Temp, 'restored context new page:', newPage.url());
 		});
 
-		const context = await automation.newContext();
+		await automation.newContext();
 
-		const applied = await automation.storage.cookies.apply(STORAGE_ID, context);
-		const restored = await automation.storage.sessions.restore(STORAGE_ID, context);
+		await automation.gotoNewPage(automation.bridge.fakeApiBase);
 
-		console.log(EnumLogLabel.Temp, 'cookies applied:', applied);
-		console.log(EnumLogLabel.Temp, 'session restored:', restored);
-
-		let page: Page;
-
-		page = await automation.newPage();
-		await page.goto(automation.bridge.fakeApiBase);
-
-		page = await context.newPage();
-		await page.goto('https://civitai.red/posts/create');
-		console.log(EnumLogLabel.Temp, 'title:', await page.title());
+		await automation.gotoNewPage('https://civitai.red/posts/create');
+		console.log(EnumLogLabel.Temp, 'title:', await automation.getLastOpenedPage().title());
 	}
 	finally
 	{
