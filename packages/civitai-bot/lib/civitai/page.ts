@@ -306,6 +306,29 @@ async function _waitPublishReady(
 }
 
 /**
+ * 上傳階段：`setInputFiles` 前的 publish 按鈕可用性閘門
+ *
+ * 首張單獨上傳完成後按鈕即渲染；若前一批次仍在處理（`[data-loading]` / 停用），
+ * 此時 `setInputFiles` 不會被站台受理，後續等待區計數將永不成長並回報缺漏。
+ *
+ * - 按鈕未渲染（首批上傳前）→ 無前批處理中，直接回傳 `true` 不等待
+ * - 按鈕已渲染 → 等待其真正就緒（{@link _waitPublishReady}，含 3 秒穩定期）
+ *
+ * @param page 已載入建立貼文頁的頁面
+ * @param options 訊息控制（獨立物件，不併入其他參數）
+ * @returns 就緒或按鈕未渲染回傳 `true`；逾時仍未就緒回傳 `false`
+ */
+export async function ensurePublishReady(page: Page, options?: IMessageOptions): Promise<boolean>
+{
+	const state = await _readPublishState(page);
+
+	/** 按鈕尚未渲染：首批上傳前無前批處理中，無需等待 */
+	if (state === null) return true;
+
+	return _waitPublishReady(page, options);
+}
+
+/**
  * 發布階段：點擊 publish 按鈕並等待跳轉為已發布落地頁（僅在發布開關為 `true` 時執行）
  *
  * 安全規則：publish 僅在開關開啟時點擊，

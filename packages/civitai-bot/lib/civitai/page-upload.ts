@@ -3,6 +3,7 @@ import { _logPhase } from '../util/logger';
 import { type IMessageOptions, EnumPostPhase } from '../types/types';
 import { FILE_INPUT_SELECTOR, UPLOAD_COUNT_RE } from '../types/civitai';
 import { checkNotifications } from './notifications';
+import { ensurePublishReady } from './page';
 
 
 /** 讀取當前等待區計數文字 `N / 20 files` 的 N；未出現時回傳 0 */
@@ -76,6 +77,10 @@ export async function waitForUpload(page: Page, baseline: number, needed: number
  *
  * 設定檔案前後皆檢查系統提示（{@link checkNotifications}）：
  * 如檔案被拒、數量上限等失敗訊息即時以 warn 記錄。
+ *
+ * 設定檔案前先檢查 publish 按鈕可用性（{@link ensurePublishReady}）：
+ * 前批仍在處理時 `setInputFiles` 不會被受理；逾時仍未就緒即跳過本包，
+ * 由呼叫端的缺漏比對排回佇列重試。
  */
 export async function uploadPack(
 	page: Page,
@@ -88,6 +93,24 @@ export async function uploadPack(
 	await checkNotifications(page, options, EnumPostPhase.Upload, 'before');
 
 	await page.waitForTimeout(500);
+
+	/**
+	 * 後續批次 `setInputFiles` 前的可用性閘門：
+	 * 前批仍在處理（publish 按鈕存在但停用 / 上傳中）時站台不受理新檔案，
+	 * 會造成 `files set` 後計數永不成長、回報缺漏（切包上傳尤易發生）。
+	 * 按鈕未渲染（首張單獨上傳前）此檢查立即通過，不影響原流程。
+	 */
+	if (!await ensurePublishReady(page, options))
+	{
+		_logPhase(
+			EnumPostPhase.Upload,
+			options,
+			`publish button not ready within timeout (${files.length} files)`,
+			'error',
+		);
+
+		// return expectedTotal - files.length;
+	}
 
 	const baseline = await _readUploadCount(page);
 
