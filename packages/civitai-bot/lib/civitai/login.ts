@@ -44,14 +44,14 @@ export interface ILoginState
  *    未登入：`a[href^="/login"]`（Sign In）存在。
  *    使用者名稱再由帳號選單內頭像佔位的 `title`（`<username>'s Avatar`）擷取。
  *
- * 回傳的 {@link ILoginState.source} 記錄實際命中的條件：
+ * 回傳的 {@link ILoginState['source']} 記錄實際命中的條件：
  * `'none'` 代表頁面尚未載入、`loggedIn` 不可信，呼叫端應重試。
  *
  * @param page 目前頁面
  */
 export async function checkLogin(page: Page): Promise<ILoginState>
 {
-	return page.evaluate(({ ACCOUNT_MENU_SELECTOR, SIGN_IN_SELECTOR, EnumLoginSource }): ILoginState =>
+	return page.evaluate(({ accontMenuSelector, signInSelector, source }): ILoginState =>
 	{
 		/** 由 `#__NEXT_DATA__` 取得 session：伺服器注入，與樣式無關 */
 		const readSession = (): { found: boolean; username: string | null; } =>
@@ -83,32 +83,34 @@ export async function checkLogin(page: Page): Promise<ILoginState>
 
 		if (session.found)
 		{
-			return { loggedIn: session.username !== null, username: session.username, source: EnumLoginSource.NextData };
+			return { loggedIn: session.username !== null, username: session.username, source: source.NextData };
 		}
 
 		/** DOM 備援：帳號選單按鈕 = 已登入 */
-		if (document.querySelector(ACCOUNT_MENU_SELECTOR))
+		if (document.querySelector(accontMenuSelector))
 		{
 			/** 使用者名稱備援：頭像佔位 `title="<username>'s Avatar"` */
-			const title = document.querySelector(`${ACCOUNT_MENU_SELECTOR} [title]`)?.getAttribute('title') ?? '';
+			const title = document.querySelector(`${accontMenuSelector} [title]`)?.getAttribute('title') ?? '';
 			const username = /^(.+)'s Avatar$/.exec(title)?.[1] ?? null;
 
-			return { loggedIn: true, username, source: EnumLoginSource.AccountMenu };
+			return { loggedIn: true, username, source: source.AccountMenu };
 		}
 
 		/** DOM 備援：Sign In 連結 = 未登入 */
-		if (document.querySelector(SIGN_IN_SELECTOR))
+		if (document.querySelector(signInSelector))
 		{
-			return { loggedIn: false, username: null, source: EnumLoginSource.SignIn };
+			return { loggedIn: false, username: null, source: source.SignIn };
 		}
 
 		/** 兩種特徵皆未出現（頁面未載入）：`loggedIn` 不可信，由呼叫端負責重試 */
-		return { loggedIn: false, username: null, source: EnumLoginSource.None };
+		return { loggedIn: false, username: null, source: source.None };
 	}, {
-		ACCOUNT_MENU_SELECTOR,
-		SIGN_IN_SELECTOR,
+		accontMenuSelector: ACCOUNT_MENU_SELECTOR,
+		signInSelector: SIGN_IN_SELECTOR,
 		/** enum 無法於瀏覽器端作用域取得：以參數傳入，回傳值即 enum 成員值 */
-		EnumLoginSource,
+		source: {
+			...EnumLoginSource,
+		},
 	});
 }
 
@@ -176,6 +178,8 @@ export async function waitForLogin(page: Page, options: IWaitForLoginOptions = {
 
 	const deadline = Date.now() + timeout;
 
+	_logPhase(EnumPostPhase.AutoPost, undefined, `waiting for login...`, ['debug']);
+
 	for (;;)
 	{
 		const state = await checkLogin(page);
@@ -191,7 +195,7 @@ export async function waitForLogin(page: Page, options: IWaitForLoginOptions = {
 		if (Date.now() >= deadline)
 		{
 			_logPhase(EnumPostPhase.AutoPost, undefined, `login timeout`, ['error']);
-			
+
 			return state;
 		}
 
