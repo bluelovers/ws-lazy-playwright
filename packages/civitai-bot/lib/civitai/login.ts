@@ -1,4 +1,6 @@
 import type { Page } from 'playwright';
+import { EnumPostPhase } from '../types/types';
+import { _logPhase } from '../util/logger';
 
 /** 帳號選單按鈕：`aria-label` 為穩定無障礙屬性，不受 CSS class hash 變動影響 */
 const ACCOUNT_MENU_SELECTOR = 'button[aria-label="Account menu"]';
@@ -162,7 +164,12 @@ export async function waitForLogin(page: Page, options: IWaitForLoginOptions = {
 		polling = LOGIN_POLL_MS;
 	}
 
-	if (timeout <= 0)
+	if (timeout === -1)
+	{
+		/** set to 30 minutes */
+		timeout = Date.now() + 30 * 60 * 1000;
+	}
+	else if (timeout <= 0)
 	{
 		timeout = LOGIN_WAIT_TIMEOUT;
 	}
@@ -176,13 +183,19 @@ export async function waitForLogin(page: Page, options: IWaitForLoginOptions = {
 		/** 達成期望狀態：可判定即回傳；`untilLoggedIn` 時須已登入 */
 		if (state.source !== EnumLoginSource.None && (!untilLoggedIn || state.loggedIn))
 		{
+			_logPhase(EnumPostPhase.AutoPost, undefined, `login detected: ${state.source}, username: ${state.username}`, ['success']);
+
 			return state;
 		}
 
 		if (Date.now() >= deadline)
 		{
+			_logPhase(EnumPostPhase.AutoPost, undefined, `login timeout`, ['error']);
+			
 			return state;
 		}
+
+		_logPhase(EnumPostPhase.AutoPost, { verbose: true }, `waiting for login...`, ['warn']);
 
 		await page.waitForTimeout(polling);
 	}

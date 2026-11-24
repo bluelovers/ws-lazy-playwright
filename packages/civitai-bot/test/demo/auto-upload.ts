@@ -18,6 +18,7 @@ import { hideBin } from 'yargs/helpers';
 import type { ITSValueOrArrayMaybeReadonly } from 'ts-type';
 import { LimitReachedError } from '#/lib/civitai/notifications';
 import { collectFolders, startFolderStream } from '#/lib/scan-collect/collect';
+import { waitForLogin } from '#/lib/civitai/login';
 
 /** 任務範圍預設值：可在此指定起始天 / 結束天 / 起始任務 / 最大任務天數；`--max-tasks <n>` 由 CLI 合併 */
 const TASK_RANGE: ITaskRangeOptions = {
@@ -206,6 +207,14 @@ export async function autoUploadDemo(
 		await automation.newContext();
 
 		await automation.gotoNewPage(automation.bridge.fakeApiBase);
+
+		currentPage = await createPostPage(automation, cli.switches.createUrl, currentPage);
+
+		/** 等待登入狀態 */
+		await waitForLogin(currentPage, {
+			untilLoggedIn: true,
+			timeout: -1,
+		});
 
 		/** 完成紀錄：完成任務依發布日期分檔保存（多路徑共用同一實例） */
 		const record = createCompletionRecord(ctx.recordDir, ctx.options);
