@@ -109,3 +109,81 @@ export async function checkLogin(page: Page): Promise<ILoginState>
 		EnumLoginSource,
 	});
 }
+
+/** 等待登入狀態判定的預設逾時（ms）：涵蓋頁面載入與 hydration 完成 */
+export const LOGIN_WAIT_TIMEOUT = 30_000;
+
+/** 狀態輪詢間隔（ms）：尚未達成期望狀態時重試 */
+const LOGIN_POLL_MS = 5_000;
+
+/** {@link waitForLogin} 選項（第二參數起一律以物件傳入） */
+export interface IWaitForLoginOptions
+{
+	/** 等待逾時（ms；預設 {@link LOGIN_WAIT_TIMEOUT}） */
+	timeout?: number;
+
+	/** 輪詢間隔（ms；預設 {@link LOGIN_POLL_MS}） */
+	polling?: number;
+	/**
+	 * `true`：持續等待直至**已登入**（`loggedIn` 為 `true` 且回傳快照可信）；
+	 * 未登入（`SignIn`）不算達成，持續輪詢至逾時。
+	 * `false`（預設）：狀態可判定（`source !== None`）即回傳。
+	 */
+	untilLoggedIn?: boolean;
+}
+
+/**
+ * 等待登入狀態可判定，或持續等待至已登入（輪詢 {@link checkLogin}）
+ *
+ * `source === None` 代表頁面尚未載入、結果不可信，故以輪詢取代單次讀取：
+ *
+ * - 預設（`untilLoggedIn: false`）：取得任一明確條件
+ *   （`NextData` / `AccountMenu` / `SignIn`）立即回傳，
+ *   呼叫端依 {@link ILoginState['loggedIn']} 決定後續動作。
+ * - `untilLoggedIn: true`：僅 `loggedIn` 為 `true` 才回傳；
+ *   明確的未登入（`SignIn`）或不可判定（`None`）皆繼續輪詢。
+ *
+ * 逾時回傳最後一次快照，**不拋錯**：
+ *
+ * - 預設模式：`source` 為 `None`、`loggedIn: false`，**不代表未登入**
+ * - `untilLoggedIn` 模式：最後快照可能為明確的未登入（`source: SignIn`）
+ *
+ * 呼叫端須檢查 {@link ILoginState['source']} 區分「未登入」與「未載入完成」。
+ *
+ * @param page 目前頁面（應已完成導航）
+ * @param options 選項（{@link IWaitForLoginOptions}；省略時以預設值執行）
+ */
+export async function waitForLogin(page: Page, options: IWaitForLoginOptions = {}): Promise<ILoginState>
+{
+	let { timeout = LOGIN_WAIT_TIMEOUT, polling = LOGIN_POLL_MS, untilLoggedIn = false } = options;
+
+	if (polling <= 0)
+	{
+		polling = LOGIN_POLL_MS;
+	}
+
+	if (timeout <= 0)
+	{
+		timeout = LOGIN_WAIT_TIMEOUT;
+	}
+
+	const deadline = Date.now() + timeout;
+
+	for (;;)
+	{
+		const state = await checkLogin(page);
+
+		/** 達成期望狀態：可判定即回傳；`untilLoggedIn` 時須已登入 */
+		if (state.source !== EnumLoginSource.None && (!untilLoggedIn || state.loggedIn))
+		{
+			return state;
+		}
+
+		if (Date.now() >= deadline)
+		{
+			return state;
+		}
+
+		await page.waitForTimeout(polling);
+	}
+}
