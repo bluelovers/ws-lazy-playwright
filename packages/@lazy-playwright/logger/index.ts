@@ -9,6 +9,8 @@ import { ITSReadonlyToWriteableArray } from 'ts-type';
 // export type ILogMethod = keyof Pick<Console2, 'log' | 'debug' | 'success' | 'warn' | 'info' | 'error'>;
 export type ILogMethod = Extract<IOptionsColorsProp, 'log' | 'debug' | 'success' | 'warn' | 'info' | 'error'>;
 
+const _logMethods: readonly IOptionsColorsProp[] = ['debug', 'error', 'info', 'log', 'trace', 'warn', 'success', 'ok', 'exception', 'fail'] as const;
+
 /**
  * logConsole 的 method 參數輸入形式：
  *
@@ -36,7 +38,7 @@ export interface IConsoleMethodInputResult<M extends IOptionsColorsProp = IOptio
  */
 export function _isConsoleMethod(method: unknown): method is IOptionsColorsProp
 {
-	return methods.includes(method as any);
+	return methods.includes(method as any) || _logMethods.includes(method as any);
 }
 
 /**

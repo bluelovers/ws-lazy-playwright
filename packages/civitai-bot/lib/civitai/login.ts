@@ -54,7 +54,7 @@ export async function checkLogin(page: Page): Promise<ILoginState>
 	return page.evaluate(({ accontMenuSelector, signInSelector, source }): ILoginState =>
 	{
 		/** 由 `#__NEXT_DATA__` 取得 session：伺服器注入，與樣式無關 */
-		const readSession = (): { found: boolean; username: string | null; } =>
+		const session = ((): { found: boolean; username: string | null; } =>
 		{
 			const data = document.getElementById('__NEXT_DATA__');
 
@@ -77,9 +77,7 @@ export async function checkLogin(page: Page): Promise<ILoginState>
 			{
 				return { found: false, username: null };
 			}
-		};
-
-		const session = readSession();
+		})();
 
 		if (session.found)
 		{
