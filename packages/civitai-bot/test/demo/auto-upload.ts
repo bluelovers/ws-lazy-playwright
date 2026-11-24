@@ -213,7 +213,6 @@ export async function autoUploadDemo(
 		/** 等待登入狀態 */
 		await waitForLogin(currentPage, {
 			untilLoggedIn: true,
-			timeout: -1,
 		});
 
 		/** 完成紀錄：完成任務依發布日期分檔保存（多路徑共用同一實例） */
