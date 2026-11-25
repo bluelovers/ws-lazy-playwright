@@ -32,17 +32,43 @@ export class CookieStore implements ICookieStore
 			: source as readonly Cookie[];
 	}
 
-	async save(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>
+	async build(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>
 	{
-		const record: IStorageRecord<Cookie[]> = {
+		return {
 			kind: EnumStorageKind.Cookie,
 			id,
 			updatedAt: Date.now(),
 			payload: [...await this._resolve(source)],
 		};
+	}
+
+	async save(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>
+	{
+		const record = await this.build(id, source);
 
 		await this._persist.write(record);
 		return record;
+	}
+
+	async add(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>
+	{
+		const [existing, incoming] = await Promise.all([
+			this.load(id),
+			this._resolve(source),
+		]);
+
+		return this.build(id, existing ? mergeCookies([[...existing], [...incoming]]) : incoming);
+	}
+
+	async filter(id: string, predicate: (cookie: Cookie) => boolean): Promise<IStorageRecord<Cookie[]> | undefined>
+	{
+		const record = await this._persist.read<Cookie[]>(EnumStorageKind.Cookie, id);
+		if (!record) return undefined;
+
+		return {
+			...record,
+			payload: record.payload.filter(predicate),
+		};
 	}
 
 	async load(id: string): Promise<Cookie[] | undefined>

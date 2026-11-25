@@ -16,6 +16,9 @@ export enum EnumStorageKind
 /** Session 狀態型別：直接取自 `BrowserContext.storageState()` 的回傳值，不另行定義副本 */
 export type ISessionState = Awaited<ReturnType<BrowserContext['storageState']>>;
 
+/** `storageState().origins` 的單一 origin 項目 */
+export type IOriginState = NonNullable<ISessionState['origins']>[number];
+
 /** 經持久化後的儲存紀錄 */
 export interface IStorageRecord<TPayload = unknown>
 {
@@ -41,7 +44,13 @@ export interface IStoragePersist
 /** Cookie 存取契約 */
 export interface ICookieStore
 {
+	/** 還原來源並組裝將被寫入的紀錄；`save` 的核心流程，不執行 write */
+	build(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>;
 	save(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>;
+	/** 併入既有紀錄後回傳新紀錄（尚無紀錄時等同 `build`）；不執行 write，需持久化時以 `save(id, record.payload)` 寫入 */
+	add(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>;
+	/** 依條件過濾既有紀錄並回傳（保留原 updatedAt）；不執行 write，尚無紀錄時回傳 undefined */
+	filter(id: string, predicate: (cookie: Cookie) => boolean): Promise<IStorageRecord<Cookie[]> | undefined>;
 	load(id: string): Promise<Cookie[] | undefined>;
 	/** 將已儲存的 Cookie 套用到指定 context，回傳套用筆數 */
 	apply(id: string, target: BrowserContext): Promise<number>;
@@ -51,10 +60,25 @@ export interface ICookieStore
 	list(): Promise<string[]>;
 }
 
+/** Session 過濾條件；未提供的條件代表該類項目全數保留 */
+export interface ISessionFilterPredicates
+{
+	/** Cookie 條件 */
+	cookie?: (cookie: Cookie) => boolean;
+	/** origin 條件（連同其 localStorage 一併過濾） */
+	origin?: (origin: IOriginState) => boolean;
+}
+
 /** Session 存取契約 */
 export interface ISessionStore
 {
+	/** 還原來源並組裝將被寫入的紀錄；`save` 的核心流程，不執行 write */
+	build(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>;
 	save(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>;
+	/** 併入既有紀錄（cookies 與 origins 皆合併）後回傳新紀錄（尚無紀錄時等同 `build`）；不執行 write，需持久化時以 `save(id, record.payload)` 寫入 */
+	add(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>;
+	/** 依條件過濾既有紀錄的 cookies 與 origins 並回傳（保留原 updatedAt）；不執行 write，尚無紀錄時回傳 undefined */
+	filter(id: string, predicates: ISessionFilterPredicates): Promise<IStorageRecord<ISessionState> | undefined>;
 	load(id: string): Promise<ISessionState | undefined>;
 	/** 將已儲存的 Session 還原到指定 context；origin 內容於後續導航時注入 */
 	restore(id: string, target: BrowserContext): Promise<boolean>;

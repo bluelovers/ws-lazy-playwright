@@ -2,14 +2,13 @@ import type { BrowserContext } from 'playwright';
 import { mergeStorageStates } from './merge';
 import {
 	EnumStorageKind,
+	type IOriginState,
+	type ISessionFilterPredicates,
 	type ISessionState,
 	type ISessionStore,
 	type IStoragePersist,
 	type IStorageRecord,
 } from './types';
-
-/** `storageState().origins` 的單一 origin 項目 */
-type IOriginState = NonNullable<ISessionState['origins']>[number];
 
 /**
  * 產生將 origin 的 localStorage 項目寫回頁面的腳本
@@ -50,11 +49,11 @@ export class SessionStore implements ISessionStore
 			: source as ISessionState;
 	}
 
-	async save(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>
+	async build(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>
 	{
 		const state = await this._resolve(source);
 
-		const record: IStorageRecord<ISessionState> = {
+		return {
 			kind: EnumStorageKind.Session,
 			id,
 			updatedAt: Date.now(),
@@ -66,9 +65,42 @@ export class SessionStore implements ISessionStore
 				})),
 			},
 		};
+	}
+
+	async save(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>
+	{
+		const record = await this.build(id, source);
 
 		await this._persist.write(record);
 		return record;
+	}
+
+	async add(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>
+	{
+		const [existing, state] = await Promise.all([
+			this.load(id),
+			this._resolve(source),
+		]);
+
+		return this.build(id, existing ? mergeStorageStates([existing, state]) : state);
+	}
+
+	async filter(id: string, predicates: ISessionFilterPredicates): Promise<IStorageRecord<ISessionState> | undefined>
+	{
+		const record = await this._persist.read<ISessionState>(EnumStorageKind.Session, id);
+		if (!record) return undefined;
+
+		const { cookie, origin } = predicates;
+		const cookies = record.payload.cookies ?? [];
+		const origins = record.payload.origins ?? [];
+
+		return {
+			...record,
+			payload: {
+				cookies: cookie ? cookies.filter(cookie) : [...cookies],
+				origins: origin ? origins.filter(origin) : [...origins],
+			},
+		};
 	}
 
 	async load(id: string): Promise<ISessionState | undefined>
