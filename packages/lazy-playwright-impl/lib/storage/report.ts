@@ -1,6 +1,7 @@
 import { millisecondsToSeconds, secondsToMilliseconds, tzDayjsSafeParse } from 'dayjs-tz-helper';
 import { EnumStorageKind } from './types';
 import type { IStoragePersist, IStorageRecord, ISessionState } from './types';
+import { createReturnStatement } from 'typescript/unstable/ast/factory';
 
 /** 人類可讀的日期時間格式 */
 const DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
@@ -116,6 +117,48 @@ function _collectItems(record: IStorageRecord): { items: IReportItem[]; cookies:
 }
 
 /**
+ * 判斷網域是否屬於指定分組鍵
+ *
+ * - `.` 鍵：收含自身、裸網域形式（`civitai.red` 屬 `.civitai.red`）與子網域
+ * - 非 `.` 鍵（無基底自成一組者）：僅精確相符
+ */
+export function isDomainInGroup(domain: string, group: string, autoLeadingDot?: boolean): boolean
+{
+	let leadingWithDot = _isLeadingDot(group);
+	const baseDomain = leadingWithDot ? _stripLeadingDot(group) : group;
+
+	if (autoLeadingDot)
+	{
+		leadingWithDot = true;
+		group = '.' + baseDomain;
+	}
+
+	let result: boolean = _isSameDomain(domain, group);
+
+	if (leadingWithDot)
+	{
+		result = result || domain.endsWith(group);
+	}
+
+	return result;
+}
+
+export function _isSameDomain(domain: string, group: string): boolean
+{
+	return _stripLeadingDot(domain) === _stripLeadingDot(group);
+}
+
+export function _isLeadingDot(domain: string): boolean
+{
+	return domain.startsWith('.');
+}
+
+export function _stripLeadingDot(domain: string): string
+{
+	return domain.replace(/^\.+/, '');
+}
+
+/**
  * 依網域分組
  *
  * - 分組鍵為「無上層 `.` 基底」的 `.` 開頭網域（如 `.civitai.com`）
@@ -126,7 +169,7 @@ function _collectItems(record: IStorageRecord): { items: IReportItem[]; cookies:
 function _buildGroups(items: readonly IReportItem[]): IDomainGroupReport[]
 {
 	const distinct = [...new Set(items.map(item => item.domain))];
-	const dotDomains = distinct.filter(domain => domain.startsWith('.'));
+	const dotDomains = distinct.filter(_isLeadingDot);
 	// 分組鍵：`.` 開頭且無上層 `.` 基底者；其餘 `.` 網域僅為組內成員
 	const bases = dotDomains
 		.filter(domain => !dotDomains.some(parent => parent !== domain && domain.endsWith(parent)))
@@ -142,7 +185,7 @@ function _buildGroups(items: readonly IReportItem[]): IDomainGroupReport[]
 
 	for (const item of items)
 	{
-		const key = bases.find(base => item.domain === base.slice(1) || item.domain.endsWith(base)) ?? item.domain;
+		const key = bases.find(base => isDomainInGroup(item.domain, base)) ?? item.domain;
 
 		let group = groups.get(key);
 		if (!group)
