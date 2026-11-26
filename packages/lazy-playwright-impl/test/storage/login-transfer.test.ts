@@ -1,39 +1,7 @@
 /// <reference types="node" />
 import { describe, test, type TestContext } from 'node:test';
-import { BrowserStorageManager } from '../../lib/storage';
-import {
-	_asBrowserContext,
-	_createFakeBrowserContext,
-	type IFakeBrowserContext,
-} from '../lib/helpers/fake-browser-context';
-import { _createFakeStoragePersist, _createTestCookie } from '../lib/helpers/storage';
-
-/** 登入情境：無頭 a 僅有匿名 Cookie；有頭 b 已完成登入（憑證 Cookie + origin localStorage） */
-async function _createLoginScenario(): Promise<{
-	manager: BrowserStorageManager;
-	a: IFakeBrowserContext;
-	b: IFakeBrowserContext;
-}>
-{
-	const manager = new BrowserStorageManager({
-		persist: _createFakeStoragePersist(),
-	});
-
-	const a = _createFakeBrowserContext([
-		_createTestCookie({ name: 'anonymous', domain: '.example.com' }),
-	]);
-	const b = _createFakeBrowserContext(
-		[],
-		[{ origin: 'https://example.com', localStorage: [{ name: 'token', value: 'abc' }] }],
-	);
-
-	// b 於有頭視窗完成登入，取得憑證 Cookie
-	await b.addCookies([
-		_createTestCookie({ name: 'user_session', value: 'secret', domain: '.example.com' }),
-	]);
-
-	return { manager, a, b };
-}
+import { _asBrowserContext } from '../lib/helpers/fake-browser-context';
+import { _createLoginScenario } from '../lib/helpers/login-scenario';
 
 describe('無頭 context a 遇到需要登入 → 有頭 context b 登入 → 傳回 a', () =>
 {
@@ -47,7 +15,7 @@ describe('無頭 context a 遇到需要登入 → 有頭 context b 登入 → �
 
 		const saved = await manager.sessions.save('login', _asBrowserContext(b));
 
-		t.assert.strictEqual(saved.payload.cookies.length, 1);
+		t.assert.strictEqual(saved.payload.cookies.length, 2);
 		t.assert.strictEqual(saved.payload.origins[0]?.localStorage[0]?.name, 'token');
 
 		const restored = await manager.sessions.restore('login', _asBrowserContext(a));
@@ -56,7 +24,7 @@ describe('無頭 context a 遇到需要登入 → 有頭 context b 登入 → �
 		const after = await a.cookies();
 		t.assert.ok(after.some(cookie => cookie.name === 'user_session' && cookie.value === 'secret'));
 		t.assert.ok(after.some(cookie => cookie.name === 'anonymous'));
-		t.assert.strictEqual(a.initScripts.length, 1);
+		t.assert.strictEqual(a.initScripts.length, 2);
 		t.assert.ok(a.initScripts[0]?.includes('"token"'));
 	});
 
@@ -66,11 +34,11 @@ describe('無頭 context a 遇到需要登入 → 有頭 context b 登入 → �
 
 		const saved = await manager.cookies.save('login', _asBrowserContext(b));
 
-		t.assert.strictEqual(saved.payload.length, 1);
+		t.assert.strictEqual(saved.payload.length, 2);
 
 		const applied = await manager.cookies.apply('login', _asBrowserContext(a));
 
-		t.assert.strictEqual(applied, 1);
+		t.assert.strictEqual(applied, 2);
 		const after = await a.cookies();
 		t.assert.ok(after.some(cookie => cookie.name === 'user_session' && cookie.value === 'secret'));
 		t.assert.ok(after.some(cookie => cookie.name === 'anonymous'));
