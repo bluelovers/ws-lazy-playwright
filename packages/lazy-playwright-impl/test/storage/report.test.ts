@@ -39,6 +39,11 @@ describe('storage report', () =>
 		t.assert.strictEqual(groups.get('.civitai.com')?.count, 2);
 		t.assert.strictEqual(groups.get('.civitai.red')?.count, 2);
 		t.assert.strictEqual(groups.get('solo.example.org')?.count, 1);
+		t.assert.snapshot(report.groups.map(group => ({
+			domain: group.domain,
+			count: group.count,
+			domains: group.domains,
+		})));
 	});
 
 	test('.civitai.com 存在時 .advertising.civitai.com 歸入該組', (t: TestContext) =>
@@ -172,6 +177,7 @@ describe('storage report', () =>
 		t.assert.ok(text.includes('total 2 (cookies 1, origins 1)'));
 		t.assert.ok(text.includes('  .civitai.red: 2'));
 		t.assert.ok(text.includes('    civitai.red: 1'));
+		t.assert.snapshot(text.replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, '<DATE>'));
 	});
 
 	test('formatStorageReportDiff 輸出前後差異', (t: TestContext) =>
@@ -192,5 +198,6 @@ describe('storage report', () =>
 		t.assert.ok(text.includes('total: 2 -> 3 (+1)'));
 		t.assert.ok(text.includes('.a.com: 1 -> 2 (+1)'));
 		t.assert.ok(text.includes('.b.com: 1 -> 0 (-1)'));
+		t.assert.snapshot(text.replace(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/g, '<DATE>'));
 	});
 });

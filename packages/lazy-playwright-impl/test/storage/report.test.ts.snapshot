@@ -1,0 +1,35 @@
+exports[`storage report > formatStorageReport 輸出總數與分組數量 1`] = `
+"[session] default @ <DATE>\\ntotal 2 (cookies 1, origins 1)\\ngroups 1:\\n  .civitai.red: 2 [expires <DATE> ~ <DATE>]\\n    .civitai.red: 1\\n    civitai.red: 1"
+`;
+
+exports[`storage report > formatStorageReportDiff 輸出前後差異 1`] = `
+"[session] default\\nupdatedAt: <DATE> -> <DATE>\\ntotal: 2 -> 3 (+1)\\ngroups:\\n  .a.com: 1 -> 2 (+1)\\n  .b.com: 1 -> 0 (-1)\\n  .c.com: 0 -> 1 (+1)"
+`;
+
+exports[`storage report > 依 . 基底分組：裸網域歸入所屬基底，無基底者自成一組 1`] = `
+[
+  {
+    "domain": ".civitai.com",
+    "count": 2,
+    "domains": {
+      ".civitai.com": 1,
+      "auth.civitai.com": 1
+    }
+  },
+  {
+    "domain": ".civitai.red",
+    "count": 2,
+    "domains": {
+      ".civitai.red": 1,
+      "civitai.red": 1
+    }
+  },
+  {
+    "domain": "solo.example.org",
+    "count": 1,
+    "domains": {
+      "solo.example.org": 1
+    }
+  }
+]
+`;

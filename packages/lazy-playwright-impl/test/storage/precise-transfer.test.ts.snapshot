@@ -1,0 +1,54 @@
+exports[`精確轉移（filter + add） > cookies 路徑：filter 僅選取憑證、add 併入 a 紀錄，轉移排除第三方 Cookie 1`] = `
+[
+  {
+    "name": "anonymous",
+    "value": "value",
+    "domain": ".example.com",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "user_session",
+    "value": "secret",
+    "domain": ".example.com",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]
+`;
+
+exports[`精確轉移（filter + add） > session 路徑：filter 僅選取憑證與目標 origin，restore 後排除第三方內容 1`] = `
+{
+  "cookies": [
+    {
+      "name": "anonymous",
+      "value": "value",
+      "domain": ".example.com",
+      "path": "/",
+      "expires": 1893456000,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "user_session",
+      "value": "secret",
+      "domain": ".example.com",
+      "path": "/",
+      "expires": 1893456000,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "initScripts": [
+    "(() => {if (location.origin !== \\"https://example.com\\") return;try { const s = window.localStorage; for (const [k, v] of [{\\"name\\":\\"token\\",\\"value\\":\\"abc\\"}]) s.setItem(k, v); } catch {}})();"
+  ]
+}
+`;

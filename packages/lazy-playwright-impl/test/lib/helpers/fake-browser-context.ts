@@ -48,8 +48,25 @@ export function _createFakeBrowserContext(
 		},
 		async addCookies(incoming)
 		{
-			current.push(...incoming);
-			addedCookies.push(...incoming);
+			for (const cookie of incoming)
+			{
+				// 同 name + domain + path 覆寫，對齊 Playwright 的 Cookie 識別語意
+				const index = current.findIndex(existing =>
+					existing.name === cookie.name
+					&& existing.domain === cookie.domain
+					&& existing.path === cookie.path);
+
+				if (index >= 0)
+				{
+					current[index] = cookie;
+				}
+				else
+				{
+					current.push(cookie);
+				}
+
+				addedCookies.push(cookie);
+			}
 		},
 		async addInitScript(script)
 		{

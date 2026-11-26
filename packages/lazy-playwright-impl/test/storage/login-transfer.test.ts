@@ -26,6 +26,7 @@ describe('無頭 context a 遇到需要登入 → 有頭 context b 登入 → �
 		t.assert.ok(after.some(cookie => cookie.name === 'anonymous'));
 		t.assert.strictEqual(a.initScripts.length, 2);
 		t.assert.ok(a.initScripts[0]?.includes('"token"'));
+		t.assert.snapshot({ cookies: await a.cookies(), initScripts: [...a.initScripts] });
 	});
 
 	test('cookies 路徑：b 儲存 cookies 後套用至 a，a 取得憑證', async (t: TestContext) =>
@@ -42,5 +43,6 @@ describe('無頭 context a 遇到需要登入 → 有頭 context b 登入 → �
 		const after = await a.cookies();
 		t.assert.ok(after.some(cookie => cookie.name === 'user_session' && cookie.value === 'secret'));
 		t.assert.ok(after.some(cookie => cookie.name === 'anonymous'));
+		t.assert.snapshot(await a.cookies());
 	});
 });

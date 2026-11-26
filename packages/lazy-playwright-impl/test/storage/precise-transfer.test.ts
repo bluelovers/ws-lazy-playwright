@@ -33,6 +33,7 @@ describe('精確轉移（filter + add）', () =>
 		t.assert.ok(after.some(cookie => cookie.name === 'user_session' && cookie.value === 'secret'));
 		t.assert.ok(after.some(cookie => cookie.name === 'anonymous'));
 		t.assert.strictEqual(after.some(cookie => cookie.name === 'tracking_id'), false);
+		t.assert.snapshot(await a.cookies());
 	});
 
 	test('session 路徑：filter 僅選取憑證與目標 origin，restore 後排除第三方內容', async (t: TestContext) =>
@@ -68,5 +69,6 @@ describe('精確轉移（filter + add）', () =>
 		t.assert.strictEqual(after.some(cookie => cookie.name === 'tracking_id'), false);
 		t.assert.strictEqual(a.initScripts.length, 1);
 		t.assert.ok(a.initScripts[0]?.includes('"token"'));
+		t.assert.snapshot({ cookies: await a.cookies(), initScripts: [...a.initScripts] });
 	});
 });

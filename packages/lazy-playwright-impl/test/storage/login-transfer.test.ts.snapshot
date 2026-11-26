@@ -1,0 +1,75 @@
+exports[`無頭 context a 遇到需要登入 → 有頭 context b 登入 → 傳回 a > cookies 路徑：b 儲存 cookies 後套用至 a，a 取得憑證 1`] = `
+[
+  {
+    "name": "anonymous",
+    "value": "value",
+    "domain": ".example.com",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "user_session",
+    "value": "secret",
+    "domain": ".example.com",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  },
+  {
+    "name": "tracking_id",
+    "value": "value",
+    "domain": ".tracker.com",
+    "path": "/",
+    "expires": 1893456000,
+    "httpOnly": false,
+    "secure": false,
+    "sameSite": "Lax"
+  }
+]
+`;
+
+exports[`無頭 context a 遇到需要登入 → 有頭 context b 登入 → 傳回 a > session 路徑：b 儲存 session 後還原至 a，a 取得憑證與 localStorage 注入 1`] = `
+{
+  "cookies": [
+    {
+      "name": "anonymous",
+      "value": "value",
+      "domain": ".example.com",
+      "path": "/",
+      "expires": 1893456000,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "user_session",
+      "value": "secret",
+      "domain": ".example.com",
+      "path": "/",
+      "expires": 1893456000,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "tracking_id",
+      "value": "value",
+      "domain": ".tracker.com",
+      "path": "/",
+      "expires": 1893456000,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "initScripts": [
+    "(() => {if (location.origin !== \\"https://example.com\\") return;try { const s = window.localStorage; for (const [k, v] of [{\\"name\\":\\"token\\",\\"value\\":\\"abc\\"}]) s.setItem(k, v); } catch {}})();",
+    "(() => {if (location.origin !== \\"https://tracker.com\\") return;try { const s = window.localStorage; for (const [k, v] of [{\\"name\\":\\"tid\\",\\"value\\":\\"t1\\"}]) s.setItem(k, v); } catch {}})();"
+  ]
+}
+`;
