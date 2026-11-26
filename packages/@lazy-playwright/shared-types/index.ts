@@ -56,6 +56,7 @@ export const enum EnumBrowserKindSubChannel
 
 	Chrome_Beta = 'chrome-beta',
 	Chrome_Canary = 'chrome-canary',
+	Chrome_Dev = 'chrome-dev',
 
 	/* --- */
 }
@@ -88,7 +89,7 @@ export type IBrowserKind = EnumAutomationEngine.Chromium | EnumAutomationEngine.
  *
  * 此處的 EnumAutomationEngine.Firefox 並非實際通道，而是為了表示「使用 Firefox 原生瀏覽器」而非 Camoufox
  */
-export type IBrowserKindChannel = EnumAutomationEngine.Chrome | EnumAutomationEngine.MSEdge | EnumBrowserKindSubChannel | EnumAutomationEngine.Firefox | (string & {});
+export type IBrowserKindChannel = EnumAutomationEngine.Chromium | EnumAutomationEngine.Chrome | EnumAutomationEngine.MSEdge | EnumBrowserKindSubChannel | EnumAutomationEngine.Firefox | (string & {});
 
 /**
  * 將自動化引擎 (Automation Engine) 歸一化為可啟動的基礎瀏覽器種類 (Base Kind) 的結果
@@ -125,6 +126,11 @@ export function _handleBrowserKind(browserEngine: EnumAutomationEngine, channel?
 		case EnumAutomationEngine.Playwright:
 		case EnumAutomationEngine.Chromium:
 			browserKind = EnumAutomationEngine.Chromium;
+			/**
+			 * Chromium: new headless mode
+			 * @see https://playwright.dev/docs/browsers#chromium-new-headless-mode
+			 */
+			channel ||= EnumAutomationEngine.Chromium;
 			break;
 
 		case EnumAutomationEngine.MSEdge:
