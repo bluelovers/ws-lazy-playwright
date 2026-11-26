@@ -44,25 +44,38 @@ export interface IStoragePersist
 	list(kind: EnumStorageKind): Promise<string[]>;
 }
 
-export type ICookieStoreSourceInput = BrowserContext | readonly Cookie[];
+export type IStoreSourceInput<T> = BrowserContext | T;
 
-/** Cookie 存取契約 */
-export interface ICookieStore
+export type ICookieStoreSourceInput = IStoreSourceInput<readonly Cookie[]>;
+export type ISessionStoreSourceInput = IStoreSourceInput<ISessionState>;
+
+/**
+ * Store 基礎契約 (Base Store Contract)
+ *
+ * `ICookieStore` 與 `ISessionStore` 的共用骨架：以 payload、來源與過濾條件型別參數化，
+ * 各 store 再延伸專屬操作（如 `apply` / `restore`）。
+ */
+export interface IStore<TPayload, TSource, TPredicate>
 {
 	/** 還原來源並組裝將被寫入的紀錄；`save` 的核心流程，不執行 write */
-	build(id: IStorageID, source: ICookieStoreSourceInput): Promise<IStorageRecord<Cookie[]>>;
-	save(id: IStorageID, source: ICookieStoreSourceInput): Promise<IStorageRecord<Cookie[]>>;
+	build(id: IStorageID, source: TSource): Promise<IStorageRecord<TPayload>>;
+	save(id: IStorageID, source: TSource): Promise<IStorageRecord<TPayload>>;
 	/** 併入既有紀錄後回傳新紀錄（尚無紀錄時等同 `build`）；不執行 write，需持久化時以 `save(id, record.payload)` 寫入 */
-	add(id: IStorageID, source: ICookieStoreSourceInput): Promise<IStorageRecord<Cookie[]>>;
+	add(id: IStorageID, source: TSource): Promise<IStorageRecord<TPayload>>;
 	/** 依條件過濾既有紀錄並回傳（保留原 updatedAt）；不執行 write，尚無紀錄時回傳 undefined */
-	filter(id: IStorageID, predicate: (cookie: Cookie) => boolean): Promise<IStorageRecord<Cookie[]> | undefined>;
-	load(id: IStorageID): Promise<Cookie[] | undefined>;
-	/** 將已儲存的 Cookie 套用到指定 context，回傳套用筆數 */
-	apply(id: IStorageID, target: BrowserContext): Promise<number>;
-	/** 從多個 context 收集所有 Cookie，去重後儲存 */
-	saveAll(id: IStorageID, contexts: readonly BrowserContext[]): Promise<IStorageRecord<Cookie[]>>;
+	filter(id: IStorageID, predicate: TPredicate): Promise<IStorageRecord<TPayload> | undefined>;
+	load(id: IStorageID): Promise<TPayload | undefined>;
+	/** 從多個 context 收集狀態並合併後儲存 */
+	saveAll(id: IStorageID, contexts: readonly BrowserContext[]): Promise<IStorageRecord<TPayload>>;
 	remove(id: IStorageID): Promise<boolean>;
 	list(): Promise<string[]>;
+}
+
+/** Cookie 存取契約 */
+export interface ICookieStore extends IStore<Cookie[], ICookieStoreSourceInput, (cookie: Cookie) => boolean>
+{
+	/** 將已儲存的 Cookie 套用到指定 context，回傳套用筆數 */
+	apply(id: IStorageID, target: BrowserContext): Promise<number>;
 }
 
 /** Session 過濾條件；未提供的條件代表該類項目全數保留 */
@@ -74,25 +87,11 @@ export interface ISessionFilterPredicates
 	origin?: (origin: IOriginState) => boolean;
 }
 
-export type ISessionStoreSourceInput = BrowserContext | ISessionState;
-
 /** Session 存取契約 */
-export interface ISessionStore
+export interface ISessionStore extends IStore<ISessionState, ISessionStoreSourceInput, ISessionFilterPredicates>
 {
-	/** 還原來源並組裝將被寫入的紀錄；`save` 的核心流程，不執行 write */
-	build(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>;
-	save(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>;
-	/** 併入既有紀錄（cookies 與 origins 皆合併）後回傳新紀錄（尚無紀錄時等同 `build`）；不執行 write，需持久化時以 `save(id, record.payload)` 寫入 */
-	add(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>;
-	/** 依條件過濾既有紀錄的 cookies 與 origins 並回傳（保留原 updatedAt）；不執行 write，尚無紀錄時回傳 undefined */
-	filter(id: IStorageID, predicates: ISessionFilterPredicates): Promise<IStorageRecord<ISessionState> | undefined>;
-	load(id: IStorageID): Promise<ISessionState | undefined>;
 	/** 將已儲存的 Session 還原到指定 context；origin 內容於後續導航時注入 */
 	restore(id: IStorageID, target: BrowserContext): Promise<boolean>;
-	/** 從多個 context 收集 storageState，合併後儲存；結果可直接作為 `newContext` 的 `storageState` */
-	saveAll(id: IStorageID, contexts: readonly BrowserContext[]): Promise<IStorageRecord<ISessionState>>;
-	remove(id: IStorageID): Promise<boolean>;
-	list(): Promise<string[]>;
 }
 
 /** 檔案後端設定 */
