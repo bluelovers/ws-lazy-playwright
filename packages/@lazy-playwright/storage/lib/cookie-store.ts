@@ -2,6 +2,8 @@ import type { BrowserContext, Cookie } from 'playwright';
 import { mergeCookies } from './merge';
 import {
 	EnumStorageKind,
+	ICookieStoreSourceInput,
+	IStorageID,
 	type ICookieStore,
 	type IStoragePersist,
 	type IStorageRecord,
@@ -25,14 +27,14 @@ export class CookieStore implements ICookieStore
 	 * 以 `cookies()` 是否存在辨別 `BrowserContext` 與純 Cookie 陣列，
 	 * 兩種來源統一為 Cookie 陣列後再寫入
 	 */
-	protected async _resolve(source: BrowserContext | readonly Cookie[]): Promise<readonly Cookie[]>
+	protected async _resolve(source: ICookieStoreSourceInput): Promise<readonly Cookie[]>
 	{
 		return typeof (source as BrowserContext).cookies === 'function'
 			? await (source as BrowserContext).cookies()
 			: source as readonly Cookie[];
 	}
 
-	async build(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>
+	async build(id: IStorageID, source: ICookieStoreSourceInput): Promise<IStorageRecord<Cookie[]>>
 	{
 		return {
 			kind: EnumStorageKind.Cookie,
@@ -42,7 +44,7 @@ export class CookieStore implements ICookieStore
 		};
 	}
 
-	async save(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>
+	async save(id: IStorageID, source: ICookieStoreSourceInput): Promise<IStorageRecord<Cookie[]>>
 	{
 		const record = await this.build(id, source);
 
@@ -50,7 +52,7 @@ export class CookieStore implements ICookieStore
 		return record;
 	}
 
-	async add(id: string, source: BrowserContext | readonly Cookie[]): Promise<IStorageRecord<Cookie[]>>
+	async add(id: IStorageID, source: ICookieStoreSourceInput): Promise<IStorageRecord<Cookie[]>>
 	{
 		const [existing, incoming] = await Promise.all([
 			this.load(id),
@@ -60,7 +62,7 @@ export class CookieStore implements ICookieStore
 		return this.build(id, existing ? mergeCookies([[...existing], [...incoming]]) : incoming);
 	}
 
-	async filter(id: string, predicate: (cookie: Cookie) => boolean): Promise<IStorageRecord<Cookie[]> | undefined>
+	async filter(id: IStorageID, predicate: (cookie: Cookie) => boolean): Promise<IStorageRecord<Cookie[]> | undefined>
 	{
 		const record = await this._persist.read<Cookie[]>(EnumStorageKind.Cookie, id);
 		if (!record) return undefined;
@@ -71,19 +73,19 @@ export class CookieStore implements ICookieStore
 		};
 	}
 
-	async load(id: string): Promise<Cookie[] | undefined>
+	async load(id: IStorageID): Promise<Cookie[] | undefined>
 	{
 		return (await this._persist.read<Cookie[]>(EnumStorageKind.Cookie, id))?.payload;
 	}
 
-	async saveAll(id: string, contexts: readonly BrowserContext[]): Promise<IStorageRecord<Cookie[]>>
+	async saveAll(id: IStorageID, contexts: readonly BrowserContext[]): Promise<IStorageRecord<Cookie[]>>
 	{
 		const groups = await Promise.all(contexts.map(context => context.cookies()));
 
 		return this.save(id, mergeCookies(groups));
 	}
 
-	async apply(id: string, target: BrowserContext): Promise<number>
+	async apply(id: IStorageID, target: BrowserContext): Promise<number>
 	{
 		const cookies = await this.load(id);
 		if (!cookies?.length) return 0;
@@ -92,7 +94,7 @@ export class CookieStore implements ICookieStore
 		return cookies.length;
 	}
 
-	async remove(id: string): Promise<boolean>
+	async remove(id: IStorageID): Promise<boolean>
 	{
 		return this._persist.remove(EnumStorageKind.Cookie, id);
 	}

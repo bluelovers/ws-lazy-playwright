@@ -174,7 +174,7 @@ export async function autoUploadDemo(
 	const automation = await createBrowserAutomation({
 		// engine: EnumAutomationEngine.Camoufox,
 		storage: {
-			file: { baseDir: storageBaseDir },
+			fileStorageOptions: { baseDir: storageBaseDir },
 			/** 建立 context 時自動還原登入狀態（Cookie / Session），不需自行組裝還原流程 */
 			restore: { id: storageId },
 		},

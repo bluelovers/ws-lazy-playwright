@@ -2,10 +2,13 @@ import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'upath2';
 import {
 	EnumStorageKind,
+	IFileStorageOptionsInput,
+	IStorageID,
 	type IFileStorageOptions,
 	type IStoragePersist,
 	type IStorageRecord,
 } from './types';
+import { ITSRequireAtLeastOne } from 'ts-type';
 
 /** 檔案後端的預設根目錄 */
 const DEFAULT_BASE_DIR = '.cache/lazy-playwright-impl';
@@ -16,7 +19,7 @@ const DEFAULT_BASE_DIR = '.cache/lazy-playwright-impl';
  * 以 `encodeURIComponent` 轉義路徑分隔符與控制字元，避免 id 造成路徑跳脫；
  * `list()` 以 `decodeURIComponent` 還原，確保 id 可來回轉換。
  */
-function _toFileName(id: string): string
+function _toFileName(id: IStorageID): string
 {
 	return encodeURIComponent(id);
 }
@@ -25,6 +28,16 @@ function _toFileName(id: string): string
 function _toStorageId(fileName: string): string
 {
 	return decodeURIComponent(fileName);
+}
+
+export function _getFileStoragePersistBaseDir(cwd: string): string
+{
+	if (!cwd?.length)
+	{
+		throw new RangeError(`cwd is required: ${cwd}`);
+	}
+
+	return resolve(cwd, DEFAULT_BASE_DIR);
 }
 
 /**
@@ -36,17 +49,17 @@ export class FileStoragePersist implements IStoragePersist
 {
 	protected readonly _baseDir: string;
 
-	constructor(options: IFileStorageOptions = {})
+	constructor(options: IFileStorageOptionsInput)
 	{
-		this._baseDir = resolve(options.baseDir ?? DEFAULT_BASE_DIR);
+		this._baseDir = resolve(options.baseDir ?? _getFileStoragePersistBaseDir(options.cwd));
 	}
 
-	protected _file(kind: EnumStorageKind, id: string): string
+	protected _file(kind: EnumStorageKind, id: IStorageID): string
 	{
 		return join(this._baseDir, kind, `${_toFileName(id)}.json`);
 	}
 
-	async read<TPayload>(kind: EnumStorageKind, id: string): Promise<IStorageRecord<TPayload> | undefined>
+	async read<TPayload>(kind: EnumStorageKind, id: IStorageID): Promise<IStorageRecord<TPayload> | undefined>
 	{
 		try
 		{
@@ -66,7 +79,7 @@ export class FileStoragePersist implements IStoragePersist
 		await writeFile(file, JSON.stringify(record, null, '\t'), 'utf8');
 	}
 
-	async remove(kind: EnumStorageKind, id: string): Promise<boolean>
+	async remove(kind: EnumStorageKind, id: IStorageID): Promise<boolean>
 	{
 		try
 		{

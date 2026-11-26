@@ -2,6 +2,8 @@ import type { BrowserContext } from 'playwright';
 import { mergeStorageStates } from './merge';
 import {
 	EnumStorageKind,
+	ISessionStoreSourceInput,
+	IStorageID,
 	type IOriginState,
 	type ISessionFilterPredicates,
 	type ISessionState,
@@ -42,14 +44,14 @@ export class SessionStore implements ISessionStore
 	}
 
 	/** 以 `storageState()` 是否存在辨別 `BrowserContext` 與既有的 Session 狀態 */
-	protected async _resolve(source: BrowserContext | ISessionState): Promise<ISessionState>
+	protected async _resolve(source: ISessionStoreSourceInput): Promise<ISessionState>
 	{
 		return typeof (source as BrowserContext).storageState === 'function'
 			? await (source as BrowserContext).storageState()
 			: source as ISessionState;
 	}
 
-	async build(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>
+	async build(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>
 	{
 		const state = await this._resolve(source);
 
@@ -67,7 +69,7 @@ export class SessionStore implements ISessionStore
 		};
 	}
 
-	async save(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>
+	async save(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>
 	{
 		const record = await this.build(id, source);
 
@@ -75,7 +77,7 @@ export class SessionStore implements ISessionStore
 		return record;
 	}
 
-	async add(id: string, source: BrowserContext | ISessionState): Promise<IStorageRecord<ISessionState>>
+	async add(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>
 	{
 		const [existing, state] = await Promise.all([
 			this.load(id),
@@ -85,7 +87,7 @@ export class SessionStore implements ISessionStore
 		return this.build(id, existing ? mergeStorageStates([existing, state]) : state);
 	}
 
-	async filter(id: string, predicates: ISessionFilterPredicates): Promise<IStorageRecord<ISessionState> | undefined>
+	async filter(id: IStorageID, predicates: ISessionFilterPredicates): Promise<IStorageRecord<ISessionState> | undefined>
 	{
 		const record = await this._persist.read<ISessionState>(EnumStorageKind.Session, id);
 		if (!record) return undefined;
@@ -103,12 +105,12 @@ export class SessionStore implements ISessionStore
 		};
 	}
 
-	async load(id: string): Promise<ISessionState | undefined>
+	async load(id: IStorageID): Promise<ISessionState | undefined>
 	{
 		return (await this._persist.read<ISessionState>(EnumStorageKind.Session, id))?.payload;
 	}
 
-	async saveAll(id: string, contexts: readonly BrowserContext[]): Promise<IStorageRecord<ISessionState>>
+	async saveAll(id: IStorageID, contexts: readonly BrowserContext[]): Promise<IStorageRecord<ISessionState>>
 	{
 		const states = await Promise.all(contexts.map(context => context.storageState()));
 
@@ -135,7 +137,7 @@ export class SessionStore implements ISessionStore
 		return true;
 	}
 
-	async remove(id: string): Promise<boolean>
+	async remove(id: IStorageID): Promise<boolean>
 	{
 		return this._persist.remove(EnumStorageKind.Session, id);
 	}

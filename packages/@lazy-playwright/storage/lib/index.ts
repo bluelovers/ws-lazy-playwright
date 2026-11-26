@@ -17,7 +17,7 @@ export class BrowserStorageManager implements IBrowserStorageManager
 
 	constructor(options: IStorageOptions = {})
 	{
-		this.persist = options.persist ?? new FileStoragePersist(options.file);
+		this.persist = options.persist ?? new FileStoragePersist(options.fileStorageOptions);
 		this.cookies = new CookieStore(this.persist);
 		this.sessions = new SessionStore(this.persist);
 	}
