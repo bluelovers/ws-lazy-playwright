@@ -1,14 +1,14 @@
 /// <reference types="node" />
 import type { Cookie } from 'playwright';
 import { describe, test, type TestContext } from 'node:test';
-import { BrowserStorageManager } from '../../lib/storage';
+import { BrowserStorageManager } from '@lazy-playwright/storage/lib';
 import {
 	createStorageReport,
 	isDomainInGroup,
 	type IDomainGroupReport,
 	type IStorageReport,
-} from '../../lib/storage/report';
-import type { IStorageRecord } from '../../lib/storage/types';
+} from '@lazy-playwright/storage/lib/report';
+import type { IStorageRecord } from '@lazy-playwright/storage/lib/types';
 import { _createFakeStoragePersist, _createTestCookie } from '../lib/helpers/storage';
 
 /** 以分組報告建立「所屬分組」的 filter 條件（分組算法與報告同源） */

@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { BrowserStorageManager } from '../../../lib/storage';
+import { BrowserStorageManager } from '@lazy-playwright/storage/lib';
 import {
 	_asBrowserContext,
 	_createFakeBrowserContext,

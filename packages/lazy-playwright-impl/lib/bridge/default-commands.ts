@@ -5,8 +5,8 @@ import {
 	formatStorageReport,
 	formatStorageReportDiff,
 	readStorageReport,
-} from '../storage';
-import { DEFAULT_STORAGE_ID, EnumStorageKind } from '../storage/types';
+} from '@lazy-playwright/storage/lib/report';
+import { DEFAULT_STORAGE_ID, EnumStorageKind } from '@lazy-playwright/storage/lib/types';
 import type { IBridgeCommandHandler } from './types';
 import { EnumLogLabel } from '../logger';
 

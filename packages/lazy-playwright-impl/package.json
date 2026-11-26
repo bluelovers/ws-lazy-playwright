@@ -54,6 +54,7 @@
     "@lazy-playwright/logger": "^1.0.0",
     "@lazy-playwright/module-registry": "^1.0.0",
     "@lazy-playwright/shared-types": "^1.0.0",
+    "@lazy-playwright/storage": "^1.0.0",
     "@lazy-playwright/util-page": "^1.0.0",
     "@types/micromatch": "^4.0.10",
     "array-hyper-unique": "^2.1.10",

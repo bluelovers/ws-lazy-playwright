@@ -1,13 +1,12 @@
 import { millisecondsToSeconds, secondsToMilliseconds, tzDayjsSafeParse } from 'dayjs-tz-helper';
 import { EnumStorageKind } from './types';
 import type { IStoragePersist, IStorageRecord, ISessionState } from './types';
-import { createReturnStatement } from 'typescript/unstable/ast/factory';
 
 /** 人類可讀的日期時間格式 */
-const DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
+export const DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 
 /** 報告中的單一資料項目（cookie 或 origin） */
-interface IReportItem
+export interface IReportItem
 {
 	/** 網域：cookie 取 domain，origin 取 hostname */
 	domain: string;
@@ -65,13 +64,13 @@ export interface IStorageReportDiff
 }
 
 /** 以人類可讀格式輸出時間戳 */
-function _formatDate(milliseconds: number): string
+export function _formatDate(milliseconds: number): string
 {
 	return tzDayjsSafeParse(milliseconds).format(DATE_FORMAT);
 }
 
 /** 取得 origin 的網域（hostname）；無法解析時以原始字串代替 */
-function _originDomain(origin: string): string
+export function _originDomain(origin: string): string
 {
 	try
 	{
@@ -84,7 +83,7 @@ function _originDomain(origin: string): string
 }
 
 /** 收集紀錄內所有屬於網域的資料項目與各類數量 */
-function _collectItems(record: IStorageRecord): { items: IReportItem[]; cookies: number; origins: number }
+export function _collectItems(record: IStorageRecord): { items: IReportItem[]; cookies: number; origins: number }
 {
 	switch (record.kind)
 	{
@@ -166,7 +165,7 @@ export function _stripLeadingDot(domain: string): string
  * - 其餘網域歸入最長相符的基底組（如 `civitai.red` 歸入 `.civitai.red`）
  * - 找不到基底者自成一組
  */
-function _buildGroups(items: readonly IReportItem[]): IDomainGroupReport[]
+export function _buildGroups(items: readonly IReportItem[]): IDomainGroupReport[]
 {
 	const distinct = [...new Set(items.map(item => item.domain))];
 	const dotDomains = distinct.filter(_isLeadingDot);

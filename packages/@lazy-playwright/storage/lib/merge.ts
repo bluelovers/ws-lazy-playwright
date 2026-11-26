@@ -1,11 +1,8 @@
 import type { Cookie } from 'playwright';
-import type { ISessionState } from './types';
-
-type IOriginState = NonNullable<ISessionState['origins']>[number];
-type ILocalStorageItem = NonNullable<IOriginState['localStorage']>[number];
+import type { IOriginState, ISessionState, ILocalStorageItem } from './types';
 
 /** Cookie 的唯一鍵：同 domain / path / name 視為同一筆 */
-function _cookieKey(cookie: Cookie): string
+export function _cookieKey(cookie: Cookie): string
 {
 	return `${cookie.domain}|${cookie.path}|${cookie.name}`;
 }

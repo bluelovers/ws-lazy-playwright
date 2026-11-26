@@ -16,7 +16,7 @@ import {
  * 腳本內自行比對 `location.origin`，確保只在相符的 origin 執行；
  * `addInitScript` 於 context 內每次導航前執行，可覆蓋後續開啟的分頁。
  */
-function _buildOriginInitScript(origin: IOriginState): string
+export function _buildOriginInitScript(origin: IOriginState): string
 {
 	const entries = JSON.stringify(origin.localStorage ?? []);
 

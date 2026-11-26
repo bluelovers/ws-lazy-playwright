@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from 'playwright';
 import type { EnumAutomationEngine, IBrowserKind } from '@lazy-playwright/shared-types';
-import type { IBrowserStorageManager } from '../storage/types';
+import type { IBrowserStorageManager } from '@lazy-playwright/storage/lib/types';
 import type { ITSNullable } from 'ts-type';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 import type { ITSRequiredWith } from 'ts-type';

@@ -19,6 +19,8 @@ export type ISessionState = Awaited<ReturnType<BrowserContext['storageState']>>;
 /** `storageState().origins` 的單一 origin 項目 */
 export type IOriginState = NonNullable<ISessionState['origins']>[number];
 
+export type ILocalStorageItem = NonNullable<IOriginState['localStorage']>[number];
+
 /** 經持久化後的儲存紀錄 */
 export interface IStorageRecord<TPayload = unknown>
 {
@@ -128,3 +130,4 @@ export interface IBrowserStorageManager
 	readonly cookies: ICookieStore;
 	readonly sessions: ISessionStore;
 }
+

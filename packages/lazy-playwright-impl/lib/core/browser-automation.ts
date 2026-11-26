@@ -8,8 +8,8 @@ import { closeBrowserSafely, closeContextSafely } from '../playwright/browser-ut
 import { pageLiveOn as _pageLiveOn } from '../playwright/event';
 import { gotoPage, type IGotoOptions, type IGotoResult } from '@lazy-playwright/util-page/lib/goto-util';
 import { isPageLike } from '../playwright/type-guard';
-import { BrowserStorageManager } from '../storage';
-import { DEFAULT_STORAGE_ID } from '../storage/types';
+import { BrowserStorageManager } from '@lazy-playwright/storage/lib';
+import { DEFAULT_STORAGE_ID } from '@lazy-playwright/storage/lib/types';
 import type {
 	IPageListener,
 	IBrowserAutomation,

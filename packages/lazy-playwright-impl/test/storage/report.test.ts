@@ -6,9 +6,9 @@ import {
 	diffStorageReport,
 	formatStorageReport,
 	formatStorageReportDiff,
-} from '../../lib/storage/report';
-import { EnumStorageKind } from '../../lib/storage/types';
-import type { IOriginState, IStorageRecord, ISessionState } from '../../lib/storage/types';
+} from '@lazy-playwright/storage/lib/report';
+import { EnumStorageKind } from '@lazy-playwright/storage/lib/types';
+import type { IOriginState, IStorageRecord, ISessionState } from '@lazy-playwright/storage/lib/types';
 import {
 	__TEST_UPDATED_AT,
 	_createTestCookie,

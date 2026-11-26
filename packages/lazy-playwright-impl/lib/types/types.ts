@@ -2,7 +2,7 @@ import type { Browser, BrowserContext, BrowserContextOptions, LaunchOptions, Pag
 import type { IBrowserBridge, IBridgeOptions } from '../bridge/types';
 import type { EnumAutomationEngine, IBrowserKind, IBrowserKindChannel } from '@lazy-playwright/shared-types';
 import type { IPlaywrightModule, IPlaywrightModuleId } from '@lazy-playwright/module-registry';
-import type { IBrowserStorageManager, IStorageOptions } from '../storage/types';
+import type { IBrowserStorageManager, IStorageOptions } from '@lazy-playwright/storage/lib/types';
 import { ICreateNewPageOptions } from '@lazy-playwright/util-page/lib/open-new-util';
 import { IBrowserCtx, IBrowserCtxInput } from '@lazy-playwright/shared-types';
 import { ITSRequiredWith, ITSNullable } from 'ts-type';
