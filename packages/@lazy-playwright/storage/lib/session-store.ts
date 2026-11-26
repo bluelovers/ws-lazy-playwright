@@ -1,5 +1,6 @@
 import type { BrowserContext } from 'playwright';
 import { mergeStorageStates } from './merge';
+import { Store } from './store';
 import {
 	EnumStorageKind,
 	ISessionStoreSourceInput,
@@ -9,7 +10,6 @@ import {
 	type ISessionState,
 	type ISessionStore,
 	type IStoragePersist,
-	type IStorageRecord,
 } from './types';
 
 /**
@@ -32,15 +32,13 @@ export function _buildOriginInitScript(origin: IOriginState): string
  * Session 儲存與讀取
  *
  * Session 等同 Playwright 的 storage state（Cookie + 各 origin 的 localStorage），
- * 直接沿用該結構作為儲存格式。
+ * 直接沿用該結構作為儲存格式；讀寫骨架見 {@link Store}。
  */
-export class SessionStore implements ISessionStore
+export class SessionStore extends Store<ISessionState, ISessionStoreSourceInput, ISessionFilterPredicates> implements ISessionStore
 {
-	protected readonly _persist: IStoragePersist;
-
 	constructor(persist: IStoragePersist)
 	{
-		this._persist = persist;
+		super(persist, EnumStorageKind.Session);
 	}
 
 	/** 以 `storageState()` 是否存在辨別 `BrowserContext` 與既有的 Session 狀態 */
@@ -51,73 +49,43 @@ export class SessionStore implements ISessionStore
 			: source as ISessionState;
 	}
 
-	async build(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>
+	protected _clonePayload(payload: ISessionState): ISessionState
 	{
-		const state = await this._resolve(source);
-
 		return {
-			kind: EnumStorageKind.Session,
-			id,
-			updatedAt: Date.now(),
-			payload: {
-				cookies: [...(state.cookies ?? [])],
-				origins: (state.origins ?? []).map(origin => ({
-					...origin,
-					localStorage: [...(origin.localStorage ?? [])],
-				})),
-			},
+			cookies: [...(payload.cookies ?? [])],
+			origins: (payload.origins ?? []).map(origin => ({
+				...origin,
+				localStorage: [...(origin.localStorage ?? [])],
+			})),
 		};
 	}
 
-	async save(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>
+	protected _merge(existing: ISessionState, incoming: ISessionState): ISessionState
 	{
-		const record = await this.build(id, source);
-
-		await this._persist.write(record);
-		return record;
+		return mergeStorageStates([existing, incoming]);
 	}
 
-	async add(id: IStorageID, source: ISessionStoreSourceInput): Promise<IStorageRecord<ISessionState>>
+	protected _filter(payload: ISessionState, predicates: ISessionFilterPredicates): ISessionState
 	{
-		const [existing, state] = await Promise.all([
-			this.load(id),
-			this._resolve(source),
-		]);
-
-		return this.build(id, existing ? mergeStorageStates([existing, state]) : state);
-	}
-
-	async filter(id: IStorageID, predicates: ISessionFilterPredicates): Promise<IStorageRecord<ISessionState> | undefined>
-	{
-		const record = await this._persist.read<ISessionState>(EnumStorageKind.Session, id);
-		if (!record) return undefined;
-
 		const { cookie, origin } = predicates;
-		const cookies = record.payload.cookies ?? [];
-		const origins = record.payload.origins ?? [];
+		const cookies = payload.cookies ?? [];
+		const origins = payload.origins ?? [];
 
 		return {
-			...record,
-			payload: {
-				cookies: cookie ? cookies.filter(cookie) : [...cookies],
-				origins: origin ? origins.filter(origin) : [...origins],
-			},
+			...payload,
+			cookies: cookie ? cookies.filter(cookie) : [...cookies],
+			origins: origin ? origins.filter(origin) : [...origins],
 		};
 	}
 
-	async load(id: IStorageID): Promise<ISessionState | undefined>
-	{
-		return (await this._persist.read<ISessionState>(EnumStorageKind.Session, id))?.payload;
-	}
-
-	async saveAll(id: IStorageID, contexts: readonly BrowserContext[]): Promise<IStorageRecord<ISessionState>>
+	protected async _collect(contexts: readonly BrowserContext[]): Promise<ISessionState>
 	{
 		const states = await Promise.all(contexts.map(context => context.storageState()));
 
-		return this.save(id, mergeStorageStates(states));
+		return mergeStorageStates(states);
 	}
 
-	async restore(id: string, target: BrowserContext): Promise<boolean>
+	async restore(id: IStorageID, target: BrowserContext): Promise<boolean>
 	{
 		const state = await this.load(id);
 		if (!state) return false;
@@ -135,15 +103,5 @@ export class SessionStore implements ISessionStore
 		}
 
 		return true;
-	}
-
-	async remove(id: IStorageID): Promise<boolean>
-	{
-		return this._persist.remove(EnumStorageKind.Session, id);
-	}
-
-	async list(): Promise<string[]>
-	{
-		return this._persist.list(EnumStorageKind.Session);
 	}
 }
