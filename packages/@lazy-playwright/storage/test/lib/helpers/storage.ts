@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import type { Cookie } from 'playwright';
-import { EnumStorageKind } from '@lazy-playwright/storage/lib/types';
-import type { IStoragePersist, IStorageRecord, ISessionState } from '@lazy-playwright/storage/lib/types';
+import { EnumStorageKind } from '../../../lib/types';
+import type { IStoragePersist, IStorageRecord, ISessionState } from '../../../lib/types';
 
 /** 測試用儲存 id */
 export const __TEST_STORAGE_ID = 'default';

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import type { BrowserContext, Cookie } from 'playwright';
-import type { IOriginState } from '@lazy-playwright/storage/lib/types';
+import type { IOriginState } from '../../../lib/types';
 
 /** 模擬瀏覽器 context：僅實作儲存流程會呼叫的成員 */
 export interface IFakeBrowserContext

@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { describe, test, type TestContext } from 'node:test';
-import { CookieStore } from '@lazy-playwright/storage/lib/cookie-store';
-import { EnumStorageKind } from '@lazy-playwright/storage/lib/types';
+import { CookieStore } from '../../lib/cookie-store';
+import { EnumStorageKind } from '../../lib/types';
 import {
 	__TEST_STORAGE_ID,
 	__TEST_UPDATED_AT,
