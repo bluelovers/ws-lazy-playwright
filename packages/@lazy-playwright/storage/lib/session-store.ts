@@ -32,10 +32,11 @@ export function _buildOriginInitScript(origin: IOriginState): string
  * Session 儲存與讀取
  *
  * Session 等同 Playwright 的 storage state（Cookie + 各 origin 的 localStorage），
- * 直接沿用該結構作為儲存格式；讀寫骨架見 {@link Store}。
+ * 直接沿用該結構作為儲存格式。
  */
 export class SessionStore extends Store<ISessionState, ISessionStoreSourceInput, ISessionFilterPredicates> implements ISessionStore
 {
+	/** 以指定持久化後端建立 Session store */
 	constructor(persist: IStoragePersist)
 	{
 		super(persist, EnumStorageKind.Session);
@@ -49,6 +50,7 @@ export class SessionStore extends Store<ISessionState, ISessionStoreSourceInput,
 			: source as ISessionState;
 	}
 
+	/** 複製 cookies 與各 origin 的 localStorage；缺失欄位補為空陣列，避免紀錄持有來源參考 */
 	protected _clonePayload(payload: ISessionState): ISessionState
 	{
 		return {
@@ -60,11 +62,13 @@ export class SessionStore extends Store<ISessionState, ISessionStoreSourceInput,
 		};
 	}
 
+	/** 既有 Session 在前、新來源在後，交由 mergeStorageStates 合併 cookies 與 origins */
 	protected _merge(existing: ISessionState, incoming: ISessionState): ISessionState
 	{
 		return mergeStorageStates([existing, incoming]);
 	}
 
+	/** cookie 與 origin 條件各自過濾；未提供條件的項目全數保留 */
 	protected _filter(payload: ISessionState, predicates: ISessionFilterPredicates): ISessionState
 	{
 		const { cookie, origin } = predicates;
@@ -78,6 +82,7 @@ export class SessionStore extends Store<ISessionState, ISessionStoreSourceInput,
 		};
 	}
 
+	/** 收集各 context 的 storageState 並合併為單一狀態 */
 	protected async _collect(contexts: readonly BrowserContext[]): Promise<ISessionState>
 	{
 		const states = await Promise.all(contexts.map(context => context.storageState()));
@@ -85,9 +90,11 @@ export class SessionStore extends Store<ISessionState, ISessionStoreSourceInput,
 		return mergeStorageStates(states);
 	}
 
+	/** 將已儲存的 Session 還原到指定 context；未儲存過時回傳 false */
 	async restore(id: IStorageID, target: BrowserContext): Promise<boolean>
 	{
 		const state = await this.load(id);
+		/** 無紀錄時沒有可還原的內容 */
 		if (!state) return false;
 
 		/** Cookie 可立即套用；localStorage 需等頁面導航後才能寫入 */
@@ -98,6 +105,7 @@ export class SessionStore extends Store<ISessionState, ISessionStoreSourceInput,
 
 		for (const origin of state.origins ?? [])
 		{
+			/** 無 localStorage 的 origin 沒有可注入的項目 */
 			if (!origin.localStorage?.length) continue;
 			await target.addInitScript(_buildOriginInitScript(origin));
 		}
