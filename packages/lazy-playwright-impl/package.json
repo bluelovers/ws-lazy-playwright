@@ -6,6 +6,15 @@
     "playwright",
     "create-by-yarn-tool"
   ],
+  "homepage": "https://github.com/bluelovers/ws-lazy-playwright/tree/master/packages/lazy-playwright-impl#readme",
+  "bugs": {
+    "url": "https://github.com/bluelovers/ws-lazy-playwright/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluelovers/ws-lazy-playwright.git",
+    "directory": "packages/lazy-playwright-impl"
+  },
   "license": "ISC",
   "author": "",
   "sideEffects": false,
@@ -67,9 +76,8 @@
     "fast-glob": "^3.3.3",
     "micromatch": "^4.0.8",
     "playwright": "^1.65.1",
-    "ts-type": "^3.0.19",
+    "ts-type": "^3.0.21",
     "tslib": ">=2.9.1",
-    "upath2": "^3.1.25"
-  },
-  "devDependencies": {}
+    "upath2": "^3.1.27"
+  }
 }

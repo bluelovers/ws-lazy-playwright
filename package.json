@@ -8,6 +8,14 @@
     "playwright",
     "create-by-yarn-tool"
   ],
+  "homepage": "https://github.com/bluelovers/ws-lazy-playwright#readme",
+  "bugs": {
+    "url": "https://github.com/bluelovers/ws-lazy-playwright/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluelovers/ws-lazy-playwright.git"
+  },
   "workspaces": [
     "packages/*",
     "packages/@lazy-playwright/*"
@@ -33,10 +41,10 @@
     "build:all": "yarn-tool ws run build --concurrency 1",
     "build:since": "node --run build:all -- --since",
     "ci:install": "node --run ci:install:pnpm",
+    "ci:install:playwright": "yt ws run ci:install:playwright",
     "ci:install:pnpm": "pnpm install --frozen-lockfile && pnpm add --workspace yarn-tool lerna ynpx pnpm typescript ts-node tsx ts-jest jest @bluelovers/jest-config @bluelovers/tsconfig @yarn-tool/require-resolve",
     "ci:install:yarn": "yarn install --frozen-lockfile && yarn add -W yarn-tool lerna ynpx pnpm typescript ts-node tsx ts-jest jest @bluelovers/jest-config @bluelovers/tsconfig @yarn-tool/require-resolve",
     "ci:build": "echo workspaces ci:build",
-    "ci:install:playwright": "yt ws run ci:install:playwright",
     "lerna:publish": "node --run prepublishOnly:root && lerna publish --no-private && pnpm run postpublishOnly",
     "lerna:publish:yes": "node --run lerna:publish:yes:patch --",
     "lerna:publish:yes:force": "lerna publish --no-private --yes --bump patch --force-publish",
@@ -47,10 +55,11 @@
     "ws:fix-all:addStaticFiles": "node --run ws:fix-all -- --addStaticFiles",
     "ws:fix-all:resetStaticFiles": "node --run ws:fix-all -- --resetStaticFiles",
     "preversion": "pnpm run test",
-    "version": "echo workspaces version",
+    "version": "node --run prepublishOnly:lerna",
     "postversion": "yarn-tool fix-all --noStaticFiles",
     "prepare:fix-ws-links": "echo ynpx --quiet @yarn-tool/fix-ws-links",
     "prepublishOnly": "echo workspaces prepublishOnly",
+    "prepublishOnly:lerna": "echo workspaces prepublishOnly:lerna",
     "prepublishOnly:check-bin": "ynpx --quiet @yarn-tool/check-pkg-bin",
     "prepublishOnly:lockfile": "ynpx --quiet sync-lockfile",
     "prepublishOnly:root": "node --run prepublishOnly:check-bin && node --run prepare:fix-ws-links",
@@ -69,16 +78,16 @@
   "dependencies": {
     "@playwright/test": "^1.65.1",
     "@types/yargs": "^17.0.35",
-    "ts-type": "^3.0.19",
+    "ts-type": "^3.0.21",
     "tslib": "^2.9.1",
     "typescript": "^7.0.2"
   },
   "devDependencies": {
     "@bluelovers/tsconfig": "^2.0.3",
     "@types/jest": "^30.0.0",
-    "@types/node": "^26.6.6",
-    "@yarn-tool/require-resolve": "^4.0.16",
-    "@yarn-tool/ws-find-up-paths": "^1.0.27"
+    "@types/node": "^26.6.11",
+    "@yarn-tool/require-resolve": "^4.0.20",
+    "@yarn-tool/ws-find-up-paths": "^1.0.35"
   },
   "peerDependencies": {
     "@bluelovers/conventional-changelog-bluelovers": "*"

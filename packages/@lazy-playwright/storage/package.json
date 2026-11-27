@@ -63,11 +63,12 @@
     "tsc:showConfig": "ynpx get-current-tsconfig -p"
   },
   "dependencies": {
+    "@bluelovers/fs-json": "1.0.22",
     "dayjs": "^1.11.23",
     "dayjs-tz-helper": "^1.0.8",
-    "ts-type": "^3.0.19",
+    "ts-type": "^3.0.21",
     "tslib": ">=2.8.1",
-    "upath2": "^3.1.25"
+    "upath2": "^3.1.27"
   },
   "devDependencies": {
     "playwright": "^1.65.1"

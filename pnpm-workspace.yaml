@@ -30,3 +30,5 @@ minimumReleaseAgeExclude:
   - playwright-core
   - playwright
   - ts-type
+  - '@bluelovers/fs-json'
+minimumReleaseAge: 0

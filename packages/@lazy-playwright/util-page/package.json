@@ -7,6 +7,15 @@
     "create-by-yarn-tool",
     "create-by-tsdx"
   ],
+  "homepage": "https://github.com/bluelovers/ws-lazy-playwright/tree/master/packages/@lazy-playwright/util-page#readme",
+  "bugs": {
+    "url": "https://github.com/bluelovers/ws-lazy-playwright/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluelovers/ws-lazy-playwright.git",
+    "directory": "packages/@lazy-playwright/util-page"
+  },
   "license": "ISC",
   "author": "",
   "sideEffects": false,
@@ -53,7 +62,7 @@
   },
   "dependencies": {
     "@lazy-playwright/shared-types": "^1.0.0",
-    "ts-type": "^3.0.19",
+    "ts-type": "^3.0.21",
     "tslib": ">=2.9.1"
   },
   "devDependencies": {

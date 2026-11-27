@@ -6,6 +6,15 @@
     "playwright",
     "create-by-yarn-tool"
   ],
+  "homepage": "https://github.com/bluelovers/ws-lazy-playwright/tree/master/packages/@lazy-playwright/browser-config#readme",
+  "bugs": {
+    "url": "https://github.com/bluelovers/ws-lazy-playwright/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluelovers/ws-lazy-playwright.git",
+    "directory": "packages/@lazy-playwright/browser-config"
+  },
   "license": "ISC",
   "author": "",
   "sideEffects": false,
@@ -14,7 +23,7 @@
   "scripts": {
     "coverage": "pnpm run test --coverage",
     "pretest": "echo pretest",
-    "test": "echo \"Error: no test specified\"",
+    "test": "node --run test:node --",
     "test:jest": "jest --passWithNoTests",
     "test:jest:coverage": "node --run test:jest -- --coverage",
     "test:jest:snapshot": "node --run test:jest -- -u",
@@ -48,7 +57,7 @@
   },
   "dependencies": {
     "@lazy-playwright/shared-types": "^1.0.0",
-    "ts-type": "^3.0.19",
+    "ts-type": "^3.0.21",
     "tslib": ">=2.8.1"
   },
   "devDependencies": {
