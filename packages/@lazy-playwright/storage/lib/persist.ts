@@ -1,5 +1,6 @@
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'upath2';
+import { readdir, rm } from 'node:fs/promises';
+import { join, resolve } from 'upath2';
+import { outputJSON, readJSON, type IWriteOptions } from '@bluelovers/fs-json';
 import {
 	EnumStorageKind,
 	IFileStorageOptionsInput,
@@ -12,6 +13,47 @@ import { ITSRequireAtLeastOne } from 'ts-type';
 
 /** 檔案後端的預設根目錄 */
 const DEFAULT_BASE_DIR = '.cache/lazy-playwright-impl';
+
+/**
+ * JSON 寫入選項
+ *
+ * 以製表符縮排、保留結尾換行（`finalEOL` 為該套件預設值，此處明確寫出以固定格式），
+ * 所有紀錄寫入共用此設定，避免格式散落在各呼叫點。
+ */
+const JSON_WRITE_OPTIONS: IWriteOptions = {
+	spaces: '\t',
+	finalEOL: true,
+};
+
+/**
+ * 型別守衛：驗證解析結果具備 {@link IStorageRecord} 骨架
+ *
+ * 泛型 `T` 直接貫穿守衛，讓驗證通過的值維持 `IStorageRecord<T>` 而無需再轉型；
+ * `payload` 內部結構執行期無法驗證，僅確認欄位存在，其餘欄位驗證實際型別。
+ */
+function _isStorageRecord<T>(value: unknown): value is IStorageRecord<T>
+{
+	if (typeof value !== 'object' || value === null)
+	{
+		return false;
+	}
+
+	const record = value as Partial<IStorageRecord>;
+
+	return Object.values(EnumStorageKind).includes(record.kind as EnumStorageKind)
+		&& typeof record.id === 'string'
+		&& typeof record.updatedAt === 'number'
+		&& 'payload' in record;
+}
+
+/** 區分「檔案不存在（尚未儲存）」與其他真實錯誤，讓只有前者對應無紀錄 */
+function _isNotFoundError(error: unknown): boolean
+{
+	return typeof error === 'object'
+		&& error !== null
+		&& 'code' in error
+		&& error.code === 'ENOENT';
+}
 
 /**
  * 將儲存 id 轉為安全檔名
@@ -63,28 +105,52 @@ export class FileStoragePersist implements IStoragePersist
 		return join(this._baseDir, kind, `${_toFileName(id)}.json`);
 	}
 
-	/** 讀取並解析紀錄；檔案不存在或內容非法時回傳 undefined，視為尚未儲存 */
+	/**
+	 * 讀取並解析紀錄
+	 *
+	 * 檔案不存在對應「尚未儲存」，回傳 undefined；
+	 * JSON 內容非法或骨架 / `kind` 不符一律抛錯，避免損壞資料被靜默當作無紀錄。
+	 */
 	async read<TPayload>(kind: EnumStorageKind, id: IStorageID): Promise<IStorageRecord<TPayload> | undefined>
 	{
+		const file = this._file(kind, id);
+
+		let record: IStorageRecord<TPayload>;
+
 		try
 		{
-			const raw = await readFile(this._file(kind, id), 'utf8');
-			return JSON.parse(raw) as IStorageRecord<TPayload>;
+			record = await readJSON<IStorageRecord<TPayload>>(file);
 		}
-		catch
+		catch (error)
 		{
-			/** 檔案不存在與解析失敗同樣對應「無紀錄」，不向呼叫端區分失敗原因 */
-			return undefined;
+			if (_isNotFoundError(error))
+			{
+				return undefined;
+			}
+
+			/** JSON 解析失敗等真實錯誤直接上抛，不吞成「無紀錄」 */
+			throw error;
 		}
+
+		if (!_isStorageRecord<TPayload>(record))
+		{
+			throw new SyntaxError(`Invalid storage record: ${file}`);
+		}
+
+		if (record.kind !== kind)
+		{
+			throw new SyntaxError(`Storage record kind mismatch: expected ${kind}, got ${String(record.kind)} (${file})`);
+		}
+
+		return record;
 	}
 
 	/** 以製表符縮排的 JSON 寫入對應路徑 */
 	async write<TPayload>(record: IStorageRecord<TPayload>): Promise<void>
 	{
 		const file = this._file(record.kind, record.id);
-		/** 首次寫入時 kind 目錄尚未建立，先建立目錄再寫檔 */
-		await mkdir(dirname(file), { recursive: true });
-		await writeFile(file, JSON.stringify(record, null, '\t'), 'utf8');
+		/** `outputJSON` 於目錄尚未建立時會自動建目錄，免去先 `mkdir` 再寫檔 */
+		await outputJSON<IStorageRecord<TPayload>>(file, record, JSON_WRITE_OPTIONS);
 	}
 
 	/** 移除紀錄；檔案不存在等失敗情形回傳 false */
