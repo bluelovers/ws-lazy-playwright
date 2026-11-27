@@ -15,7 +15,7 @@ export async function consoleChannelDemo()
 	const automation = await createBrowserAutomation({
 		engine: EnumAutomationEngine.Playwright,
 		storage: {
-			file: { baseDir: __TEST_TEMP_STORAGE },
+			fileStorageOptions: { baseDir: __TEST_TEMP_STORAGE },
 		},
 		bridge: {
 			/** 啟用 console 訊息通道：純 Node 端聽取，不注入腳本 */

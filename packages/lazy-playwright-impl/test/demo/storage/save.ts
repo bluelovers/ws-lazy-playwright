@@ -16,7 +16,7 @@ export async function saveDemo()
 	const automation = await createBrowserAutomation({
 		engine: EnumAutomationEngine.Playwright,
 		storage: {
-			file: { baseDir: __TEST_TEMP_STORAGE },
+			fileStorageOptions: { baseDir: __TEST_TEMP_STORAGE },
 		},
 	});
 
